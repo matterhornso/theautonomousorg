@@ -213,16 +213,16 @@ export default function Home() {
           <div className="hidden md:flex items-center gap-8 text-sm text-neutral-600">
             <a
               href="#how-it-works"
-              className="hover:text-primary transition-colors"
+              className="hover:text-primary transition-colors py-3"
             >
               How it works
             </a>
-            <a href="#agents" className="hover:text-primary transition-colors">
+            <a href="#agents" className="hover:text-primary transition-colors py-3">
               Agents
             </a>
             <a
               href="#pricing"
-              className="hover:text-primary transition-colors"
+              className="hover:text-primary transition-colors py-3"
             >
               Pricing
             </a>
@@ -231,7 +231,7 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <a
               href="#cta"
-              className="hidden sm:inline-flex px-5 py-2.5 bg-primary text-surface text-sm font-medium rounded-lg hover:bg-neutral-800 transition-colors"
+              className="hidden sm:inline-flex px-5 py-3 bg-primary text-surface text-sm font-medium rounded-lg hover:bg-neutral-800 transition-colors"
             >
               Get started
             </a>
@@ -428,7 +428,7 @@ export default function Home() {
                   <button
                     key={role.title}
                     onClick={() => setActiveRole(i)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
                       activeRole === i
                         ? "bg-accent text-primary"
                         : "bg-neutral-800 text-neutral-400 hover:text-surface hover:bg-neutral-700"
@@ -935,13 +935,13 @@ export default function Home() {
               </span>
             </div>
             <div className="flex items-center gap-6 text-sm">
-              <a href="#" className="hover:text-surface transition-colors">
+              <a href="#" className="hover:text-surface transition-colors py-3">
                 Privacy
               </a>
-              <a href="#" className="hover:text-surface transition-colors">
+              <a href="#" className="hover:text-surface transition-colors py-3">
                 Terms
               </a>
-              <a href="#" className="hover:text-surface transition-colors">
+              <a href="#" className="hover:text-surface transition-colors py-3">
                 Contact
               </a>
             </div>
