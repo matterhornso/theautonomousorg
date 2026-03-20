@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #0A0A0B;
+  --color-accent: #D4A853;
+  --color-accent-hover: #C49A45;
+  --color-secondary: #2D5A3D;
+  --color-surface: #FAFAF8;
+  --color-surface-mid: #F0EDE6;
+  --color-surface-warm: #E8E4DB;
+  --color-neutral-50: #FAFAF8;
+  --color-neutral-100: #F0EDE6;
+  --color-neutral-200: #E2DED4;
+  --color-neutral-300: #C4BFB3;
+  --color-neutral-400: #A09A8D;
+  --color-neutral-500: #7D776B;
+  --color-neutral-600: #5A554B;
+  --color-neutral-700: #3D3935;
+  --color-neutral-800: #252320;
+  --color-neutral-900: #0A0A0B;
+
+  --font-serif: "Instrument Serif", Georgia, serif;
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-smooth: cubic-bezier(0.45, 0, 0.55, 1);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-primary);
+  background: var(--color-surface);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-primary);
+}
+
+/* Scroll-triggered fade-up animation */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.7s var(--ease-out-expo) both;
+}
+
+/* Stagger delays */
+.delay-1 { animation-delay: 75ms; }
+.delay-2 { animation-delay: 150ms; }
+.delay-3 { animation-delay: 225ms; }
+.delay-4 { animation-delay: 300ms; }
+.delay-5 { animation-delay: 375ms; }
+.delay-6 { animation-delay: 450ms; }
+
+/* Grain texture overlay for hero */
+.grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Subtle shimmer for accent elements */
+@keyframes shimmer {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-surface);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-neutral-300);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-neutral-400);
+}
