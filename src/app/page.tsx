@@ -369,7 +369,7 @@ export default function Home() {
             </p>
           </Reveal>
           <Reveal delay={75}>
-            <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl tracking-tight mb-16 max-w-2xl">
+            <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl lg:text-[56px] tracking-tight mb-16 max-w-2xl">
               From website to workforce
               <br />
               <span className="text-neutral-400">in four steps.</span>
@@ -384,7 +384,7 @@ export default function Home() {
                     {step.number}
                   </span>
                   <div className="w-full h-px bg-neutral-200 my-4 group-hover:bg-accent transition-colors" />
-                  <h3 className="text-lg font-semibold mb-2">{step.title}</h3>
+                  <h3 className="text-xl font-semibold mb-2">{step.title}</h3>
                   <p className="text-neutral-500 text-sm leading-relaxed">
                     {step.description}
                   </p>
@@ -407,7 +407,7 @@ export default function Home() {
                 </p>
               </Reveal>
               <Reveal delay={75}>
-                <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl tracking-tight mb-4">
+                <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl lg:text-[56px] tracking-tight mb-4">
                   Every role.
                   <br />
                   <span className="text-neutral-400">
@@ -596,7 +596,7 @@ export default function Home() {
                 </p>
               </Reveal>
               <Reveal delay={75}>
-                <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl tracking-tight mb-6">
+                <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl lg:text-[56px] tracking-tight mb-6">
                   Manage your team
                   <br />
                   <span className="text-neutral-400">from your pocket.</span>
@@ -654,7 +654,7 @@ export default function Home() {
               </p>
             </Reveal>
             <Reveal delay={75}>
-              <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl tracking-tight mb-6">
+              <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl lg:text-[56px] tracking-tight mb-6">
                 Claude Opus by default.
                 <br />
                 <span className="text-neutral-400">Your model if you prefer.</span>
@@ -742,7 +742,7 @@ export default function Home() {
               </p>
             </Reveal>
             <Reveal delay={75}>
-              <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl tracking-tight mb-4">
+              <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl lg:text-[56px] tracking-tight mb-4">
                 Pay for what you use.
               </h2>
             </Reveal>
