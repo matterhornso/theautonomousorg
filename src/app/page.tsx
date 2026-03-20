@@ -277,7 +277,7 @@ export default function Home() {
                       placeholder="Enter your company website..."
                       value={websiteUrl}
                       onChange={(e) => setWebsiteUrl(e.target.value)}
-                      className="w-full px-5 py-4 bg-white border border-neutral-200 rounded-xl text-base placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
+                      className="w-full px-5 py-4 bg-white border border-neutral-200 rounded-xl text-base placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
                     />
                   </div>
                   <button className="px-8 py-4 bg-primary text-surface font-medium rounded-xl hover:bg-neutral-800 transition-all hover:shadow-lg hover:shadow-primary/10 active:scale-[0.98] whitespace-nowrap">
@@ -905,7 +905,7 @@ export default function Home() {
               <input
                 type="url"
                 placeholder="Enter your company website..."
-                className="flex-1 px-5 py-4 bg-neutral-800 border border-neutral-700 rounded-xl text-base text-surface placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-all"
+                className="flex-1 px-5 py-4 bg-neutral-800 border border-neutral-700 rounded-xl text-base text-surface placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
               />
               <button className="px-8 py-4 bg-accent text-primary font-medium rounded-xl hover:bg-accent-hover transition-all hover:shadow-lg hover:shadow-accent/10 active:scale-[0.98] whitespace-nowrap">
                 Get started free
