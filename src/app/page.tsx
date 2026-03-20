@@ -354,7 +354,7 @@ export default function Home() {
       </section>
 
       {/* ─── How It Works ───────────────────────────────── */}
-      <section id="how-it-works" className="py-24 lg:py-32">
+      <section id="how-it-works" className="py-20 lg:py-28">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
           <Reveal>
             <p className="text-sm text-accent font-medium tracking-wide uppercase mb-3">
@@ -638,7 +638,7 @@ export default function Home() {
       </section>
 
       {/* ─── BYOM Section ───────────────────────────────── */}
-      <section className="py-24 lg:py-32 bg-surface-mid">
+      <section className="py-20 lg:py-28 bg-surface-mid">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center">
             <Reveal>
@@ -886,7 +886,7 @@ export default function Home() {
       </section>
 
       {/* ─── Final CTA ──────────────────────────────────── */}
-      <section id="cta" className="py-24 lg:py-32 bg-primary text-surface">
+      <section id="cta" className="py-20 lg:py-28 bg-primary text-surface">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-8 text-center">
           <Reveal>
             <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl lg:text-6xl tracking-tight mb-6">
