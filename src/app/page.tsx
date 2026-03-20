@@ -1,145 +1,8 @@
-"use client";
-
-import { useState, useEffect, useRef, type ReactNode } from "react";
-
-// ─── Scroll-triggered animation wrapper ─────────────────────────────
-function Reveal({
-  children,
-  className = "",
-  delay = 0,
-}: {
-  children: ReactNode;
-  className?: string;
-  delay?: number;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          observer.unobserve(el);
-        }
-      },
-      { threshold: 0.15 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div
-      ref={ref}
-      className={className}
-      style={{
-        opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(24px)",
-        transition: `opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms`,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-// ─── Agent role data ─────────────────────────────────────────────────
-const agentRoles = [
-  {
-    title: "Sales",
-    icon: "S",
-    description:
-      "Prospect research, outbound sequences, CRM updates, pipeline forecasting, and deal qualification — running 24/7.",
-    skills: [
-      "Lead scoring",
-      "Email sequences",
-      "CRM management",
-      "Pipeline analytics",
-    ],
-  },
-  {
-    title: "Marketing",
-    icon: "M",
-    description:
-      "Content strategy, campaign execution, SEO optimization, social media management, and performance analytics.",
-    skills: [
-      "Content creation",
-      "SEO optimization",
-      "Campaign management",
-      "Analytics",
-    ],
-  },
-  {
-    title: "Accounting",
-    icon: "A",
-    description:
-      "Invoice processing, expense tracking, financial reporting, tax preparation, and cash flow forecasting.",
-    skills: [
-      "Bookkeeping",
-      "Financial reports",
-      "Tax compliance",
-      "Cash flow",
-    ],
-  },
-  {
-    title: "Strategy",
-    icon: "St",
-    description:
-      "Market analysis, competitive intelligence, business modeling, OKR tracking, and strategic planning.",
-    skills: [
-      "Market research",
-      "Competitive analysis",
-      "Business modeling",
-      "OKR tracking",
-    ],
-  },
-  {
-    title: "Product",
-    icon: "P",
-    description:
-      "User research synthesis, feature prioritization, roadmap management, sprint planning, and stakeholder updates.",
-    skills: [
-      "User research",
-      "Roadmap planning",
-      "Sprint management",
-      "Specs & PRDs",
-    ],
-  },
-  {
-    title: "Front-End Engineering",
-    icon: "FE",
-    description:
-      "UI component development, responsive design, performance optimization, accessibility, and design system maintenance.",
-    skills: [
-      "React / Next.js",
-      "UI components",
-      "Performance",
-      "Accessibility",
-    ],
-  },
-  {
-    title: "Back-End Engineering",
-    icon: "BE",
-    description:
-      "API development, database design, infrastructure management, security hardening, and system architecture.",
-    skills: ["API design", "Databases", "Infrastructure", "Security"],
-  },
-  {
-    title: "AI Expert",
-    icon: "AI",
-    description:
-      "Model selection, prompt engineering, RAG pipeline setup, fine-tuning workflows, and AI strategy consulting.",
-    skills: [
-      "Model selection",
-      "Prompt engineering",
-      "RAG pipelines",
-      "Fine-tuning",
-    ],
-  },
-];
+import { Reveal } from "./components/reveal";
+import { Navbar } from "./components/navbar";
+import { AgentShowcase } from "./components/agent-showcase";
+import { agentRoles } from "./data";
+import { WebsiteForm } from "./components/website-form";
 
 const steps = [
   {
@@ -168,80 +31,13 @@ const steps = [
   },
 ];
 
-// ─── Main Page ───────────────────────────────────────────────────────
 export default function Home() {
-  const [websiteUrl, setWebsiteUrl] = useState("");
-  const [activeRole, setActiveRole] = useState(0);
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  // Auto-rotate roles
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveRole((prev) => (prev + 1) % agentRoles.length);
-    }, 4000);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
     <div className="min-h-screen">
-      {/* ─── Navigation ─────────────────────────────────── */}
-      <nav
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          scrolled
-            ? "bg-surface/90 backdrop-blur-xl border-b border-neutral-200"
-            : "bg-transparent"
-        }`}
-      >
-        <div className="max-w-[1280px] mx-auto px-6 lg:px-8 h-16 flex items-center justify-between">
-          <a href="#" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
-              <span className="text-surface text-xs font-bold tracking-tight font-[family-name:var(--font-sans)]">
-                TA
-              </span>
-            </div>
-            <span className="text-lg font-medium tracking-tight">
-              The Autonomous
-            </span>
-          </a>
-
-          <div className="hidden md:flex items-center gap-8 text-sm text-neutral-600">
-            <a
-              href="#how-it-works"
-              className="hover:text-primary transition-colors py-3"
-            >
-              How it works
-            </a>
-            <a href="#agents" className="hover:text-primary transition-colors py-3">
-              Agents
-            </a>
-            <a
-              href="#pricing"
-              className="hover:text-primary transition-colors py-3"
-            >
-              Pricing
-            </a>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <a
-              href="#cta"
-              className="hidden sm:inline-flex px-5 py-3 bg-primary text-surface text-sm font-medium rounded-lg hover:bg-neutral-800 transition-colors"
-            >
-              Get started
-            </a>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* ─── Hero ───────────────────────────────────────── */}
       <section className="relative min-h-screen flex items-center grain overflow-hidden">
-        {/* Subtle gradient orb */}
         <div className="absolute top-1/4 right-1/4 w-[600px] h-[600px] bg-accent/5 rounded-full blur-[128px] pointer-events-none" />
 
         <div className="relative z-10 max-w-[1280px] mx-auto px-6 lg:px-8 pt-32 pb-24">
@@ -270,19 +66,8 @@ export default function Home() {
               </Reveal>
 
               <Reveal delay={225}>
-                <div className="flex flex-col sm:flex-row gap-3 max-w-xl">
-                  <div className="flex-1 relative">
-                    <input
-                      type="url"
-                      placeholder="Enter your company website..."
-                      value={websiteUrl}
-                      onChange={(e) => setWebsiteUrl(e.target.value)}
-                      className="w-full px-5 py-4 bg-white border border-neutral-200 rounded-xl text-base placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
-                    />
-                  </div>
-                  <button className="px-8 py-4 bg-primary text-surface font-medium rounded-xl hover:bg-neutral-800 transition-all hover:shadow-lg hover:shadow-primary/10 active:scale-[0.98] whitespace-nowrap">
-                    Get recommendations
-                  </button>
+                <div className="max-w-xl">
+                  <WebsiteForm variant="light" />
                 </div>
               </Reveal>
 
@@ -294,7 +79,6 @@ export default function Home() {
               </Reveal>
             </div>
 
-            {/* Floating agent cards - decorative */}
             <div className="hidden lg:block">
               <Reveal delay={200}>
                 <div className="space-y-3">
@@ -330,7 +114,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── Stats / Social Proof ───────────────────────── */}
+      {/* ─── Stats ──────────────────────────────────────── */}
       <section className="py-16 border-y border-neutral-200 bg-surface-mid">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
           <Reveal>
@@ -391,119 +175,7 @@ export default function Home() {
       {/* ─── Agents Showcase ────────────────────────────── */}
       <section id="agents" className="py-24 lg:py-32 bg-primary text-surface">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-16 items-start">
-            {/* Left — role selector */}
-            <div>
-              <Reveal>
-                <p className="text-sm text-accent font-medium tracking-wide uppercase mb-3">
-                  Your AI workforce
-                </p>
-              </Reveal>
-              <Reveal delay={75}>
-                <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl lg:text-[56px] tracking-tight mb-4">
-                  Every role.
-                  <br />
-                  <span className="text-neutral-400">
-                    Every skill. Ready to go.
-                  </span>
-                </h2>
-              </Reveal>
-              <Reveal delay={150}>
-                <p className="text-neutral-400 text-lg leading-relaxed mb-10 max-w-lg">
-                  Each agent comes pre-configured with the right tools,
-                  knowledge, and workflows for their role. Powered by Claude
-                  Opus by default — or bring your own model.
-                </p>
-              </Reveal>
-
-              <div className="flex flex-wrap gap-2">
-                {agentRoles.map((role, i) => (
-                  <button
-                    key={role.title}
-                    onClick={() => setActiveRole(i)}
-                    className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                      activeRole === i
-                        ? "bg-accent text-primary"
-                        : "bg-neutral-800 text-neutral-400 hover:text-surface hover:bg-neutral-700"
-                    }`}
-                  >
-                    {role.title}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Right — agent detail card */}
-            <Reveal delay={150}>
-              <div className="bg-neutral-800/50 border border-neutral-700/50 rounded-2xl p-8 lg:p-10 backdrop-blur-sm">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-14 h-14 bg-accent rounded-xl flex items-center justify-center text-primary text-lg font-bold">
-                    {agentRoles[activeRole].icon}
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-semibold">
-                      {agentRoles[activeRole].title} Agent
-                    </h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="w-2 h-2 bg-secondary rounded-full" />
-                      <span className="text-sm text-neutral-400">
-                        Active &middot; Claude Opus
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <p className="text-neutral-300 leading-relaxed mb-8">
-                  {agentRoles[activeRole].description}
-                </p>
-
-                <div>
-                  <p className="text-xs text-neutral-500 uppercase tracking-wider mb-3">
-                    Core Skills
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {agentRoles[activeRole].skills.map((skill) => (
-                      <span
-                        key={skill}
-                        className="px-3 py-1.5 bg-neutral-700/50 border border-neutral-600/30 rounded-lg text-sm text-neutral-300"
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-8 pt-6 border-t border-neutral-700/50">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-neutral-500 uppercase tracking-wider">
-                        Model
-                      </p>
-                      <p className="text-sm font-medium font-[family-name:var(--font-mono)] mt-1">
-                        claude-opus-4
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-neutral-500 uppercase tracking-wider">
-                        Channel
-                      </p>
-                      <p className="text-sm font-medium mt-1">
-                        WhatsApp
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-neutral-500 uppercase tracking-wider">
-                        Status
-                      </p>
-                      <p className="text-sm font-medium text-secondary mt-1">
-                        Ready
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Reveal>
-          </div>
+          <AgentShowcase />
         </div>
       </section>
 
@@ -511,10 +183,8 @@ export default function Home() {
       <section className="py-24 lg:py-32">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
-            {/* Chat mockup */}
             <Reveal>
               <div className="bg-white border border-neutral-200 rounded-2xl shadow-xl overflow-hidden max-w-md mx-auto lg:mx-0">
-                {/* WhatsApp header */}
                 <div className="bg-[#075E54] px-4 py-3 flex items-center gap-3">
                   <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-white text-xs font-bold">
                     S
@@ -527,7 +197,6 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Chat messages */}
                 <div className="p-4 space-y-3 bg-[#ECE5DD] min-h-[320px]">
                   <div className="flex justify-end">
                     <div className="bg-[#DCF8C6] rounded-xl rounded-tr-sm px-3 py-2 max-w-[75%] shadow-sm">
@@ -544,9 +213,9 @@ export default function Home() {
                   <div className="flex justify-start">
                     <div className="bg-white rounded-xl rounded-tl-sm px-3 py-2 max-w-[75%] shadow-sm">
                       <p className="text-sm">
-                        Great progress. 142 emails sent, 38 opened (26.8% rate),
-                        12 replies so far. 3 are qualified leads — I&apos;ve
-                        already updated the CRM.
+                        Great progress. 142 emails sent, 38 opened (26.8%
+                        rate), 12 replies so far. 3 are qualified leads —
+                        I&apos;ve already updated the CRM.
                       </p>
                       <p className="text-[10px] text-neutral-500 text-right mt-1">
                         10:32 AM
@@ -581,7 +250,6 @@ export default function Home() {
               </div>
             </Reveal>
 
-            {/* Text */}
             <div>
               <Reveal>
                 <p className="text-sm text-accent font-medium tracking-wide uppercase mb-3">
@@ -650,7 +318,9 @@ export default function Home() {
               <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl lg:text-[56px] tracking-tight mb-6">
                 Claude Opus by default.
                 <br />
-                <span className="text-neutral-400">Your model if you prefer.</span>
+                <span className="text-neutral-400">
+                  Your model if you prefer.
+                </span>
               </h2>
             </Reveal>
             <Reveal delay={150}>
@@ -725,7 +395,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── Pricing Teaser ─────────────────────────────── */}
+      {/* ─── Pricing ────────────────────────────────────── */}
       <section id="pricing" className="py-24 lg:py-32">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -811,11 +481,7 @@ export default function Home() {
                       Most popular
                     </div>
                   )}
-                  <p
-                    className={`text-sm font-medium ${
-                      plan.featured ? "text-accent" : "text-accent"
-                    }`}
-                  >
+                  <p className="text-sm font-medium text-accent">
                     {plan.name}
                   </p>
                   <div className="flex items-baseline gap-1 mt-3 mb-1">
@@ -823,7 +489,9 @@ export default function Home() {
                     {plan.period && (
                       <span
                         className={`text-sm ${
-                          plan.featured ? "text-neutral-400" : "text-neutral-500"
+                          plan.featured
+                            ? "text-neutral-400"
+                            : "text-neutral-500"
                         }`}
                       >
                         {plan.period}
@@ -901,15 +569,8 @@ export default function Home() {
             </p>
           </Reveal>
           <Reveal delay={150}>
-            <div className="flex flex-col sm:flex-row gap-3 max-w-xl mx-auto">
-              <input
-                type="url"
-                placeholder="Enter your company website..."
-                className="flex-1 px-5 py-4 bg-neutral-800 border border-neutral-700 rounded-xl text-base text-surface placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
-              />
-              <button className="px-8 py-4 bg-accent text-primary font-medium rounded-xl hover:bg-accent-hover transition-all hover:shadow-lg hover:shadow-accent/10 active:scale-[0.98] whitespace-nowrap">
-                Get started free
-              </button>
+            <div className="max-w-xl mx-auto">
+              <WebsiteForm variant="dark" />
             </div>
           </Reveal>
         </div>
@@ -928,13 +589,22 @@ export default function Home() {
               </span>
             </div>
             <div className="flex items-center gap-6 text-sm">
-              <a href="#" className="hover:text-surface transition-colors py-3">
+              <a
+                href="#"
+                className="hover:text-surface transition-colors py-3"
+              >
                 Privacy
               </a>
-              <a href="#" className="hover:text-surface transition-colors py-3">
+              <a
+                href="#"
+                className="hover:text-surface transition-colors py-3"
+              >
                 Terms
               </a>
-              <a href="#" className="hover:text-surface transition-colors py-3">
+              <a
+                href="#"
+                className="hover:text-surface transition-colors py-3"
+              >
                 Contact
               </a>
             </div>
