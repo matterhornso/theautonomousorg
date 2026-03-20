@@ -427,7 +427,7 @@ export default function Home() {
       {/* ─── Pricing ────────────────────────────────────── */}
       <section id="pricing" className="py-24 lg:py-32">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
-          <div className="text-center mb-16">
+          <div className="text-center mb-10">
             <Reveal>
               <p className="text-sm text-accent font-medium tracking-wide uppercase mb-3">
                 Pricing
@@ -446,7 +446,7 @@ export default function Home() {
             </Reveal>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-5 max-w-4xl mx-auto">
             {[
               {
                 name: "Starter",
@@ -499,7 +499,7 @@ export default function Home() {
             ].map((plan) => (
               <Reveal key={plan.name} delay={plan.featured ? 75 : 0}>
                 <div
-                  className={`p-8 rounded-2xl border h-full flex flex-col ${
+                  className={`p-6 rounded-2xl border h-full flex flex-col ${
                     plan.featured
                       ? "bg-primary text-surface border-primary shadow-2xl shadow-primary/10 relative"
                       : "bg-white border-neutral-200"
@@ -513,8 +513,8 @@ export default function Home() {
                   <p className="text-sm font-medium text-accent">
                     {plan.name}
                   </p>
-                  <div className="flex items-baseline gap-1 mt-3 mb-1">
-                    <span className="text-4xl font-semibold">{plan.price}</span>
+                  <div className="flex items-baseline gap-1 mt-2 mb-1">
+                    <span className="text-3xl font-semibold">{plan.price}</span>
                     {plan.period && (
                       <span
                         className={`text-sm ${
@@ -528,14 +528,14 @@ export default function Home() {
                     )}
                   </div>
                   <p
-                    className={`text-sm mb-6 ${
+                    className={`text-sm mb-5 ${
                       plan.featured ? "text-neutral-400" : "text-neutral-500"
                     }`}
                   >
                     {plan.description}
                   </p>
 
-                  <ul className="space-y-3 mb-8 flex-1">
+                  <ul className="space-y-2.5 mb-6">
                     {plan.features.map((feature) => (
                       <li key={feature} className="flex items-start gap-2.5">
                         <svg
