@@ -44,10 +44,8 @@ export default function Home() {
           <div className="max-w-3xl mx-auto text-center">
             <Reveal>
               <h1 className="font-[family-name:var(--font-serif)] text-[42px] sm:text-6xl lg:text-[80px] leading-[1.02] tracking-tight mb-6">
-                Run your company
-                <br />
-                with{" "}
-                <span className="italic text-accent">AI agents.</span>
+                Your entire company,{" "}
+                <span className="italic text-accent">autonomous.</span>
               </h1>
             </Reveal>
 
