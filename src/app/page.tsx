@@ -36,75 +36,128 @@ export default function Home() {
     <div className="min-h-screen">
       <Navbar />
 
-      {/* ─── Hero ───────────────────────────────────────── */}
+      {/* ─── Hero — focused on description + form ─────── */}
       <section className="relative min-h-screen flex items-center grain overflow-hidden">
-        <div className="absolute top-1/4 right-1/4 w-[600px] h-[600px] bg-accent/5 rounded-full blur-[128px] pointer-events-none" />
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-accent/[0.03] rounded-full blur-[128px] pointer-events-none" />
 
-        <div className="relative z-10 max-w-[1280px] mx-auto px-6 lg:px-8 pt-32 pb-24">
-          <div className="grid lg:grid-cols-[1fr,380px] gap-12 items-center">
+        <div className="relative z-10 max-w-[1280px] mx-auto px-6 lg:px-8 pt-28 pb-20">
+          <div className="max-w-3xl mx-auto text-center">
+            <Reveal>
+              <h1 className="font-[family-name:var(--font-serif)] text-[42px] sm:text-6xl lg:text-[80px] leading-[1.02] tracking-tight mb-6">
+                Run your company
+                <br />
+                with{" "}
+                <span className="italic text-accent">AI agents.</span>
+              </h1>
+            </Reveal>
+
+            <Reveal delay={75}>
+              <p className="text-lg sm:text-xl text-neutral-600 leading-relaxed mb-4 max-w-2xl mx-auto">
+                The Autonomous gives you an AI workforce for every part of your
+                business — Sales, Marketing, Accounting, Strategy, Product,
+                Engineering, and more. Each agent comes with the right skills
+                for the job, ready to work 24/7.
+              </p>
+            </Reveal>
+
+            <Reveal delay={150}>
+              <p className="text-base sm:text-lg text-neutral-500 leading-relaxed mb-10 max-w-2xl mx-auto">
+                Enter your company website and we&apos;ll analyze your business
+                to recommend which agents would have the highest impact.
+                Communicate with your agents via WhatsApp — no new tools to
+                learn.
+              </p>
+            </Reveal>
+
+            <Reveal delay={225}>
+              <div className="max-w-xl mx-auto">
+                <WebsiteForm variant="light" />
+              </div>
+            </Reveal>
+
+            <Reveal delay={300}>
+              <p className="text-sm text-neutral-400 mt-4">
+                Free analysis &middot; No credit card required &middot; 2 minute
+                setup
+              </p>
+            </Reveal>
+          </div>
+        </div>
+
+        {/* Scroll indicator */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-neutral-400">
+          <span className="text-xs tracking-wide uppercase">Learn more</span>
+          <svg
+            className="w-4 h-4 animate-bounce"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19 14l-7 7m0 0l-7-7"
+            />
+          </svg>
+        </div>
+      </section>
+
+      {/* ─── What is The Autonomous ─────────────────────── */}
+      <section className="py-24 lg:py-32 border-t border-neutral-200">
+        <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
               <Reveal>
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-surface-mid rounded-full text-sm text-neutral-600 mb-8">
-                  <span className="w-2 h-2 bg-accent rounded-full" />
-                  Powered by Claude Opus &middot; Bring your own models
-                </div>
-              </Reveal>
-
-              <Reveal delay={75}>
-                <h1 className="font-[family-name:var(--font-serif)] text-[40px] sm:text-6xl lg:text-[72px] leading-[1.05] tracking-tight mb-6">
-                  Your entire company,{" "}
-                  <span className="italic text-accent">autonomous.</span>
-                </h1>
-              </Reveal>
-
-              <Reveal delay={150}>
-                <p className="text-lg sm:text-xl text-neutral-600 max-w-2xl leading-relaxed mb-10">
-                  AI agents for every role — Sales, Marketing, Engineering,
-                  Strategy, and more. Enter your website, get recommended agents,
-                  and talk to them on WhatsApp.
+                <p className="text-sm text-accent font-medium tracking-wide uppercase mb-3">
+                  The autonomous workforce
                 </p>
               </Reveal>
-
-              <Reveal delay={225}>
-                <div className="max-w-xl">
-                  <WebsiteForm variant="light" />
-                </div>
+              <Reveal delay={75}>
+                <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl lg:text-[56px] tracking-tight mb-6">
+                  Every role your company needs.
+                  <br />
+                  <span className="text-neutral-400">Handled by AI.</span>
+                </h2>
               </Reveal>
-
-              <Reveal delay={300}>
-                <p className="text-sm text-neutral-400 mt-4">
-                  Free analysis &middot; No credit card required &middot; 2
-                  minute setup
+              <Reveal delay={150}>
+                <p className="text-neutral-500 text-lg leading-relaxed mb-8">
+                  Most AI tools automate one task. The Autonomous runs entire
+                  departments. Your AI Sales agent doesn&apos;t just send
+                  emails — it researches prospects, qualifies leads, updates
+                  your CRM, and schedules demos. Your AI Marketing agent
+                  doesn&apos;t just write copy — it plans campaigns, optimizes
+                  SEO, manages social, and reports on performance.
+                </p>
+              </Reveal>
+              <Reveal delay={225}>
+                <p className="text-neutral-500 text-lg leading-relaxed">
+                  You choose which roles to fill. Each agent arrives
+                  pre-configured with the skills, tools, and domain knowledge
+                  for its job. And they collaborate with each other — just
+                  like a real team.
                 </p>
               </Reveal>
             </div>
 
-            <div className="hidden lg:block">
-              <Reveal delay={200}>
+            <div>
+              <Reveal delay={150}>
                 <div className="space-y-3">
-                  {agentRoles.slice(0, 5).map((role, i) => (
+                  {agentRoles.map((role, i) => (
                     <div
                       key={role.title}
-                      className="bg-white/80 backdrop-blur-sm border border-neutral-200/60 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
-                      style={{
-                        opacity: 0.5 + i * 0.125,
-                        transform: `translateX(${i * 4}px)`,
-                      }}
+                      className="flex items-center gap-4 p-4 bg-white border border-neutral-200/60 rounded-xl hover:shadow-sm transition-all"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-surface text-xs font-bold shrink-0">
-                          {role.icon}
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">
-                            {role.title} Agent
-                          </p>
-                          <p className="text-xs text-neutral-500">
-                            {role.skills[0]} &middot; {role.skills[1]}
-                          </p>
-                        </div>
-                        <div className="ml-auto w-2 h-2 bg-secondary rounded-full shrink-0" />
+                      <div className="w-11 h-11 bg-primary rounded-lg flex items-center justify-center text-surface text-xs font-bold shrink-0">
+                        {role.icon}
                       </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">{role.title}</p>
+                        <p className="text-xs text-neutral-500 truncate">
+                          {role.skills.join(" · ")}
+                        </p>
+                      </div>
+                      <div className="w-2 h-2 bg-secondary rounded-full shrink-0" />
                     </div>
                   ))}
                 </div>
@@ -114,31 +167,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── Stats ──────────────────────────────────────── */}
-      <section className="py-16 border-y border-neutral-200 bg-surface-mid">
-        <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
-          <Reveal>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-              {[
-                { value: "8", label: "Agent roles available" },
-                { value: "2 min", label: "Average setup time" },
-                { value: "24/7", label: "Agents never sleep" },
-                { value: "100+", label: "Skills per agent" },
-              ].map((stat) => (
-                <div key={stat.label}>
-                  <p className="font-[family-name:var(--font-serif)] text-3xl sm:text-4xl text-primary mb-1">
-                    {stat.value}
-                  </p>
-                  <p className="text-sm text-neutral-500">{stat.label}</p>
-                </div>
-              ))}
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
       {/* ─── How It Works ───────────────────────────────── */}
-      <section id="how-it-works" className="py-20 lg:py-28">
+      <section id="how-it-works" className="py-20 lg:py-28 bg-surface-mid">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
           <Reveal>
             <p className="text-sm text-accent font-medium tracking-wide uppercase mb-3">
@@ -160,7 +190,7 @@ export default function Home() {
                   <span className="font-[family-name:var(--font-mono)] text-xs text-accent font-medium">
                     {step.number}
                   </span>
-                  <div className="w-full h-px bg-neutral-200 my-4 group-hover:bg-accent transition-colors" />
+                  <div className="w-full h-px bg-neutral-300 my-4 group-hover:bg-accent transition-colors" />
                   <h3 className="text-xl font-semibold mb-2">{step.title}</h3>
                   <p className="text-neutral-500 text-sm leading-relaxed">
                     {step.description}
@@ -172,7 +202,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── Agents Showcase ────────────────────────────── */}
+      {/* ─── Agents Showcase (interactive) ──────────────── */}
       <section id="agents" className="py-24 lg:py-32 bg-primary text-surface">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
           <AgentShowcase />
@@ -305,14 +335,15 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── BYOM Section ───────────────────────────────── */}
+      {/* ─── Powered by / BYOM — moved down from hero ──── */}
       <section className="py-20 lg:py-28 bg-surface-mid">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center">
             <Reveal>
-              <p className="text-sm text-accent font-medium tracking-wide uppercase mb-3">
-                Bring your own model
-              </p>
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full text-sm text-neutral-600 mb-6 border border-neutral-200">
+                <span className="w-2 h-2 bg-accent rounded-full" />
+                Powered by Claude Opus &middot; Bring your own models
+              </div>
             </Reveal>
             <Reveal delay={75}>
               <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl lg:text-[56px] tracking-tight mb-6">
