@@ -2,65 +2,291 @@
 
 import { useState } from "react";
 
-export function WebsiteForm({ variant = "light" }: { variant?: "light" | "dark" }) {
-  const [url, setUrl] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+interface Recommendation {
+  role: string;
+  impact: string;
+  reason: string;
+  example: string;
+}
 
-  const handleSubmit = (e: React.FormEvent) => {
+interface Analysis {
+  company: {
+    name: string;
+    industry: string;
+    description: string;
+    stage: string;
+  };
+  recommendations: Recommendation[];
+  summary: string;
+}
+
+const roleIcons: Record<string, string> = {
+  Sales: "S",
+  Marketing: "M",
+  Accounting: "A",
+  Strategy: "St",
+  Product: "P",
+  "Front-End Engineering": "FE",
+  "Back-End Engineering": "BE",
+  "AI Expert": "AI",
+};
+
+export function WebsiteForm({
+  variant = "light",
+}: {
+  variant?: "light" | "dark";
+}) {
+  const [url, setUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [analysis, setAnalysis] = useState<Analysis | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!url.trim()) return;
-    setSubmitted(true);
+    if (!url.trim() || loading) return;
+
+    setLoading(true);
+    setError("");
+    setAnalysis(null);
+
+    try {
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: url.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Something went wrong. Please try again.");
+        return;
+      }
+
+      setAnalysis(data);
+    } catch {
+      setError("Network error. Please check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (submitted) {
+  const isDark = variant === "dark";
+
+  // ─── Results view ──────────────────────────────────────
+  if (analysis) {
     return (
       <div
-        className={`flex items-center gap-3 px-5 py-4 rounded-xl border ${
-          variant === "dark"
-            ? "bg-neutral-800 border-neutral-700"
-            : "bg-white border-neutral-200"
+        className={`rounded-2xl border overflow-hidden ${
+          isDark
+            ? "bg-neutral-800/50 border-neutral-700"
+            : "bg-white border-neutral-200 shadow-lg"
         }`}
       >
-        <span className="w-2 h-2 bg-secondary rounded-full shrink-0" />
-        <p
-          className={`text-sm ${
-            variant === "dark" ? "text-neutral-300" : "text-neutral-600"
+        {/* Company header */}
+        <div
+          className={`px-6 py-5 border-b ${
+            isDark ? "border-neutral-700" : "border-neutral-100"
           }`}
         >
-          Thanks! We&apos;ll analyze{" "}
-          <span className="font-medium">{url}</span> and send your personalized
-          agent recommendations shortly.
-        </p>
+          <div className="flex items-center justify-between mb-2">
+            <h3
+              className={`text-lg font-semibold ${
+                isDark ? "text-surface" : "text-primary"
+              }`}
+            >
+              {analysis.company.name}
+            </h3>
+            <span
+              className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                isDark
+                  ? "bg-neutral-700 text-neutral-300"
+                  : "bg-neutral-100 text-neutral-600"
+              }`}
+            >
+              {analysis.company.stage}
+            </span>
+          </div>
+          <p
+            className={`text-sm ${
+              isDark ? "text-neutral-400" : "text-neutral-500"
+            }`}
+          >
+            {analysis.company.industry} &middot;{" "}
+            {analysis.company.description}
+          </p>
+        </div>
+
+        {/* Recommendations */}
+        <div className="px-6 py-5">
+          <p
+            className={`text-xs uppercase tracking-wider font-medium mb-4 ${
+              isDark ? "text-neutral-500" : "text-neutral-400"
+            }`}
+          >
+            Recommended agents
+          </p>
+          <div className="space-y-3">
+            {analysis.recommendations.map((rec) => (
+              <div
+                key={rec.role}
+                className={`flex gap-4 p-4 rounded-xl ${
+                  isDark ? "bg-neutral-800" : "bg-neutral-50"
+                }`}
+              >
+                <div className="w-11 h-11 bg-primary rounded-lg flex items-center justify-center text-surface text-xs font-bold shrink-0">
+                  {roleIcons[rec.role] || rec.role.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p
+                      className={`font-medium text-sm ${
+                        isDark ? "text-surface" : "text-primary"
+                      }`}
+                    >
+                      {rec.role} Agent
+                    </p>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                        rec.impact === "high"
+                          ? "bg-accent/20 text-accent"
+                          : isDark
+                            ? "bg-neutral-700 text-neutral-400"
+                            : "bg-neutral-200 text-neutral-500"
+                      }`}
+                    >
+                      {rec.impact} impact
+                    </span>
+                  </div>
+                  <p
+                    className={`text-sm leading-relaxed ${
+                      isDark ? "text-neutral-400" : "text-neutral-600"
+                    }`}
+                  >
+                    {rec.reason}
+                  </p>
+                  <p
+                    className={`text-xs mt-1.5 italic ${
+                      isDark ? "text-neutral-500" : "text-neutral-400"
+                    }`}
+                  >
+                    e.g. {rec.example}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Summary + actions */}
+        <div
+          className={`px-6 py-4 border-t ${
+            isDark ? "border-neutral-700" : "border-neutral-100"
+          }`}
+        >
+          <p
+            className={`text-sm mb-4 ${
+              isDark ? "text-neutral-400" : "text-neutral-500"
+            }`}
+          >
+            {analysis.summary}
+          </p>
+          <div className="flex gap-3">
+            <button
+              className="flex-1 py-3 bg-accent text-primary font-medium rounded-xl text-sm hover:bg-accent-hover transition-all active:scale-[0.98]"
+            >
+              Get started with these agents
+            </button>
+            <button
+              onClick={() => {
+                setAnalysis(null);
+                setUrl("");
+              }}
+              className={`px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                isDark
+                  ? "bg-neutral-800 text-neutral-400 hover:text-surface"
+                  : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+              }`}
+            >
+              Try another
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
+  // ─── Form view ─────────────────────────────────────────
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
-      <div className="flex-1 relative">
-        <input
-          type="url"
-          placeholder="Enter your company website..."
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          required
-          className={`w-full px-5 py-4 rounded-xl text-base transition-all focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent ${
-            variant === "dark"
-              ? "bg-neutral-800 border border-neutral-700 text-surface placeholder:text-neutral-500"
-              : "bg-white border border-neutral-200 placeholder:text-neutral-400"
+    <div>
+      <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
+        <div className="flex-1 relative">
+          <input
+            type="url"
+            placeholder="Enter your company website..."
+            value={url}
+            onChange={(e) => {
+              setUrl(e.target.value);
+              setError("");
+            }}
+            required
+            disabled={loading}
+            className={`w-full px-5 py-4 rounded-xl text-base transition-all focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent disabled:opacity-60 ${
+              isDark
+                ? "bg-neutral-800 border border-neutral-700 text-surface placeholder:text-neutral-500"
+                : "bg-white border border-neutral-200 placeholder:text-neutral-400"
+            }`}
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={loading}
+          className={`px-8 py-4 font-medium rounded-xl transition-all hover:shadow-lg active:scale-[0.98] whitespace-nowrap disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
+            isDark
+              ? "bg-accent text-primary hover:bg-accent-hover hover:shadow-accent/10"
+              : "bg-primary text-surface hover:bg-neutral-800 hover:shadow-primary/10"
           }`}
-        />
-      </div>
-      <button
-        type="submit"
-        className={`px-8 py-4 font-medium rounded-xl transition-all hover:shadow-lg active:scale-[0.98] whitespace-nowrap ${
-          variant === "dark"
-            ? "bg-accent text-primary hover:bg-accent-hover hover:shadow-accent/10"
-            : "bg-primary text-surface hover:bg-neutral-800 hover:shadow-primary/10"
-        }`}
-      >
-        {variant === "dark" ? "Get started free" : "Get recommendations"}
-      </button>
-    </form>
+        >
+          {loading ? (
+            <>
+              <svg
+                className="w-4 h-4 animate-spin"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                />
+              </svg>
+              Analyzing...
+            </>
+          ) : isDark ? (
+            "Get started free"
+          ) : (
+            "Get recommendations"
+          )}
+        </button>
+      </form>
+
+      {error && (
+        <p
+          className={`text-sm mt-3 ${
+            isDark ? "text-red-400" : "text-red-600"
+          }`}
+        >
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
