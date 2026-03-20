@@ -255,7 +255,7 @@ export default function Home() {
               </Reveal>
 
               <Reveal delay={75}>
-                <h1 className="font-[family-name:var(--font-serif)] text-5xl sm:text-6xl lg:text-[72px] leading-[1.05] tracking-tight mb-6">
+                <h1 className="font-[family-name:var(--font-serif)] text-[40px] sm:text-6xl lg:text-[72px] leading-[1.05] tracking-tight mb-6">
                   Your entire company,{" "}
                   <span className="italic text-accent">autonomous.</span>
                 </h1>
