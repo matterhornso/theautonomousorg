@@ -13,6 +13,21 @@ export const metadata: Metadata = {
     "AI sales agent",
     "AI marketing agent",
   ],
+  metadataBase: new URL("https://theautonomous.org"),
+  openGraph: {
+    title: "The Autonomous — Run Your Company with AI Agents",
+    description:
+      "AI agents for Sales, Marketing, Engineering, Strategy, and more. Enter your website, get recommended agents, communicate via WhatsApp.",
+    url: "https://theautonomous.org",
+    siteName: "The Autonomous",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "The Autonomous — Run Your Company with AI Agents",
+    description:
+      "AI agents for every role in your company. Enter your website, get recommended agents, communicate via WhatsApp.",
+  },
 };
 
 export default function RootLayout({
