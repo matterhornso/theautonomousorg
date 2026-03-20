@@ -10,6 +10,7 @@ export const agentRoles = [
       "CRM management",
       "Pipeline analytics",
     ],
+    connectors: ["Apollo.io", "HubSpot", "Calendly", "Gmail"],
   },
   {
     title: "Marketing",
@@ -22,6 +23,7 @@ export const agentRoles = [
       "Campaign management",
       "Analytics",
     ],
+    connectors: ["Instantly.ai", "Buffer", "SEMrush", "Canva"],
   },
   {
     title: "Accounting",
@@ -29,6 +31,7 @@ export const agentRoles = [
     description:
       "Invoice processing, expense tracking, financial reporting, tax preparation, and cash flow forecasting.",
     skills: ["Bookkeeping", "Financial reports", "Tax compliance", "Cash flow"],
+    connectors: ["QuickBooks", "Xero", "Stripe", "Plaid"],
   },
   {
     title: "Strategy",
@@ -41,6 +44,7 @@ export const agentRoles = [
       "Business modeling",
       "OKR tracking",
     ],
+    connectors: ["Crunchbase", "SimilarWeb", "Google Trends"],
   },
   {
     title: "Product",
@@ -53,13 +57,20 @@ export const agentRoles = [
       "Sprint management",
       "Specs & PRDs",
     ],
+    connectors: ["Linear", "Jira", "Notion", "Figma"],
   },
   {
     title: "Front-End Engineering",
     icon: "FE",
     description:
       "UI component development, responsive design, performance optimization, accessibility, and design system maintenance.",
-    skills: ["React / Next.js", "UI components", "Performance", "Accessibility"],
+    skills: [
+      "React / Next.js",
+      "UI components",
+      "Performance",
+      "Accessibility",
+    ],
+    connectors: ["GitHub", "Vercel", "Chromatic"],
   },
   {
     title: "Back-End Engineering",
@@ -67,6 +78,7 @@ export const agentRoles = [
     description:
       "API development, database design, infrastructure management, security hardening, and system architecture.",
     skills: ["API design", "Databases", "Infrastructure", "Security"],
+    connectors: ["GitHub", "AWS", "Datadog", "PagerDuty"],
   },
   {
     title: "AI Expert",
@@ -79,5 +91,6 @@ export const agentRoles = [
       "RAG pipelines",
       "Fine-tuning",
     ],
+    connectors: ["Anthropic API", "OpenAI API", "HuggingFace"],
   },
 ];

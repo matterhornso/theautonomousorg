@@ -152,7 +152,7 @@ export default function Home() {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm">{role.title}</p>
                         <p className="text-xs text-neutral-500 truncate">
-                          {role.skills.join(" · ")}
+                          {role.connectors.join(" · ")}
                         </p>
                       </div>
                       <div className="w-2 h-2 bg-secondary rounded-full shrink-0" />
@@ -207,8 +207,126 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── WhatsApp Integration ───────────────────────── */}
+      {/* ─── Platform Features ───────────────────────────── */}
       <section className="py-24 lg:py-32">
+        <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <Reveal>
+              <p className="text-sm text-accent font-medium tracking-wide uppercase mb-3">
+                How agents work
+              </p>
+            </Reveal>
+            <Reveal delay={75}>
+              <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl lg:text-[56px] tracking-tight mb-4">
+                Not chatbots.
+                <br />
+                <span className="text-neutral-400">Actual teammates.</span>
+              </h2>
+            </Reveal>
+            <Reveal delay={150}>
+              <p className="text-neutral-500 text-lg max-w-2xl mx-auto">
+                Each agent runs in its own isolated cloud instance with
+                persistent memory, role-specific tools, and the ability to
+                collaborate with other agents — just like a real team.
+              </p>
+            </Reveal>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {[
+              {
+                title: "Isolated instances",
+                desc: "Each agent runs in its own cloud environment with dedicated resources. Your data never crosses between companies.",
+                icon: (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 01.9 2.7m0 0a3 3 0 01-3 3m0 3h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008zm-3 6h.008v.008h-.008v-.008zm0-6h.008v.008h-.008v-.008z" />
+                  </svg>
+                ),
+              },
+              {
+                title: "Persistent memory",
+                desc: "Agents remember every conversation, decision, and context. They get smarter the more your team works with them.",
+                icon: (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
+                  </svg>
+                ),
+              },
+              {
+                title: "Real connectors",
+                desc: "Each agent comes with MCP integrations for its role — Apollo for Sales, Instantly for Marketing, QuickBooks for Accounting.",
+                icon: (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                  </svg>
+                ),
+              },
+              {
+                title: "Agent collaboration",
+                desc: "Agents talk to each other. Your Sales agent can ask the Admin agent to draft a contract — automatically.",
+                icon: (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+                  </svg>
+                ),
+              },
+              {
+                title: "Team access",
+                desc: "Multiple people can connect to the same agent. Your whole sales team talks to one Sales agent that knows everything.",
+                icon: (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                  </svg>
+                ),
+              },
+              {
+                title: "Company context",
+                desc: "We research your company across the web — website, socials, news — and give every agent deep context about your business.",
+                icon: (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m5.231 13.481L15 17.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v16.5c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9zm3.75 11.625a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                  </svg>
+                ),
+              },
+              {
+                title: "Downloadable skills",
+                desc: "Every agent's skills are available for download. Use them locally with your own Claude Code setup if you prefer.",
+                icon: (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                  </svg>
+                ),
+              },
+              {
+                title: "WhatsApp & Telegram",
+                desc: "Choose your channel. Agents connect through WhatsApp or Telegram — talk to them from anywhere, anytime.",
+                icon: (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+                  </svg>
+                ),
+              },
+            ].map((feature, i) => (
+              <Reveal key={feature.title} delay={i * 50}>
+                <div className="p-5 rounded-xl border border-neutral-200 bg-white h-full">
+                  <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center text-surface mb-3">
+                    {feature.icon}
+                  </div>
+                  <h3 className="font-semibold text-sm mb-1.5">
+                    {feature.title}
+                  </h3>
+                  <p className="text-neutral-500 text-sm leading-relaxed">
+                    {feature.desc}
+                  </p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── WhatsApp Integration ───────────────────────── */}
+      <section className="py-24 lg:py-32 bg-surface-mid border-t border-neutral-200">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <Reveal>

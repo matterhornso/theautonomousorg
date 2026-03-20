@@ -77,43 +77,72 @@ export function AgentShowcase() {
             {agentRoles[activeRole].description}
           </p>
 
-          <div>
-            <p className="text-xs text-neutral-500 uppercase tracking-wider mb-3">
-              Core Skills
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {agentRoles[activeRole].skills.map((skill) => (
-                <span
-                  key={skill}
-                  className="px-3 py-1.5 bg-neutral-700/50 border border-neutral-600/30 rounded-lg text-sm text-neutral-300"
-                >
-                  {skill}
-                </span>
-              ))}
+          <div className="grid grid-cols-2 gap-6 mb-6">
+            <div>
+              <p className="text-xs text-neutral-500 uppercase tracking-wider mb-2">
+                Skills
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {agentRoles[activeRole].skills.map((skill) => (
+                  <span
+                    key={skill}
+                    className="px-2.5 py-1 bg-neutral-700/50 border border-neutral-600/30 rounded-md text-xs text-neutral-300"
+                  >
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-neutral-500 uppercase tracking-wider mb-2">
+                Connectors
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {agentRoles[activeRole].connectors.map((conn) => (
+                  <span
+                    key={conn}
+                    className="px-2.5 py-1 bg-accent/10 border border-accent/20 rounded-md text-xs text-accent"
+                  >
+                    {conn}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="mt-8 pt-6 border-t border-neutral-700/50">
-            <div className="flex items-center justify-between">
+          <div className="pt-5 border-t border-neutral-700/50">
+            <div className="grid grid-cols-4 gap-4">
               <div>
-                <p className="text-xs text-neutral-500 uppercase tracking-wider">
+                <p className="text-[10px] text-neutral-500 uppercase tracking-wider">
+                  Instance
+                </p>
+                <p className="text-xs font-medium font-[family-name:var(--font-mono)] mt-1 text-neutral-300">
+                  Isolated
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] text-neutral-500 uppercase tracking-wider">
                   Model
                 </p>
-                <p className="text-sm font-medium font-[family-name:var(--font-mono)] mt-1">
-                  claude-opus-4
+                <p className="text-xs font-medium font-[family-name:var(--font-mono)] mt-1 text-neutral-300">
+                  Claude Opus
                 </p>
               </div>
               <div>
-                <p className="text-xs text-neutral-500 uppercase tracking-wider">
-                  Channel
+                <p className="text-[10px] text-neutral-500 uppercase tracking-wider">
+                  Memory
                 </p>
-                <p className="text-sm font-medium mt-1">WhatsApp</p>
+                <p className="text-xs font-medium text-secondary mt-1">
+                  Persistent
+                </p>
               </div>
               <div>
-                <p className="text-xs text-neutral-500 uppercase tracking-wider">
-                  Status
+                <p className="text-[10px] text-neutral-500 uppercase tracking-wider">
+                  Access
                 </p>
-                <p className="text-sm font-medium text-secondary mt-1">Ready</p>
+                <p className="text-xs font-medium text-neutral-300 mt-1">
+                  Multi-user
+                </p>
               </div>
             </div>
           </div>
