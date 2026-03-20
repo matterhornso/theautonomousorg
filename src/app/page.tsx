@@ -330,30 +330,23 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── Logos / Social Proof ───────────────────────── */}
+      {/* ─── Stats / Social Proof ───────────────────────── */}
       <section className="py-16 border-y border-neutral-200 bg-surface-mid">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
           <Reveal>
-            <p className="text-center text-sm text-neutral-500 mb-8 tracking-wide uppercase">
-              Trusted by forward-thinking teams
-            </p>
-          </Reveal>
-          <Reveal delay={75}>
-            <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-6 opacity-40">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
               {[
-                "Acme Corp",
-                "Globex",
-                "Initech",
-                "Hooli",
-                "Piedmont",
-                "Vehement",
-              ].map((name) => (
-                <span
-                  key={name}
-                  className="text-lg font-medium text-neutral-700 tracking-tight"
-                >
-                  {name}
-                </span>
+                { value: "8", label: "Agent roles available" },
+                { value: "2 min", label: "Average setup time" },
+                { value: "24/7", label: "Agents never sleep" },
+                { value: "100+", label: "Skills per agent" },
+              ].map((stat) => (
+                <div key={stat.label}>
+                  <p className="font-[family-name:var(--font-serif)] text-3xl sm:text-4xl text-primary mb-1">
+                    {stat.value}
+                  </p>
+                  <p className="text-sm text-neutral-500">{stat.label}</p>
+                </div>
               ))}
             </div>
           </Reveal>
