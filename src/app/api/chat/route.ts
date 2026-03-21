@@ -10,6 +10,11 @@ import {
   setMemory,
   getAgentsByCompany,
 } from "@/lib/db";
+import {
+  isApolloConfigured,
+  apolloTools,
+  executeApolloTool,
+} from "@/lib/mcp/apollo";
 
 const client = new Anthropic();
 
@@ -70,12 +75,19 @@ export async function POST(request: NextRequest) {
 
     const systemPrompt = agent.system_prompt + memorySection;
 
-    // Stream response
+    // Determine available tools for this agent
+    const tools: Anthropic.Tool[] = [];
+    if (isApolloConfigured() && ["Sales", "Strategy"].includes(agent.role)) {
+      tools.push(...apolloTools as Anthropic.Tool[]);
+    }
+
+    // Stream response (with tool use if tools available)
     const stream = client.messages.stream({
       model: "claude-sonnet-4-6",
       max_tokens: 4096,
       system: systemPrompt,
       messages: apiMessages,
+      ...(tools.length > 0 ? { tools } : {}),
     });
 
     const encoder = new TextEncoder();
@@ -91,6 +103,8 @@ export async function POST(request: NextRequest) {
             )
           );
 
+          const toolCalls: { id: string; name: string; input: Record<string, unknown> }[] = [];
+
           for await (const event of stream) {
             if (
               event.type === "content_block_delta" &&
@@ -100,6 +114,52 @@ export async function POST(request: NextRequest) {
               fullResponse += text;
               controller.enqueue(
                 encoder.encode(`data: ${JSON.stringify({ text })}\n\n`)
+              );
+            } else if (
+              event.type === "content_block_start" &&
+              (event as unknown as { content_block: { type: string; id: string; name: string } }).content_block.type === "tool_use"
+            ) {
+              toolCalls.push({
+                id: (event as unknown as { content_block: { type: string; id: string; name: string } }).content_block.id,
+                name: (event as unknown as { content_block: { type: string; id: string; name: string } }).content_block.name,
+                input: {} as Record<string, unknown>,
+              });
+            } else if (
+              event.type === "content_block_delta" &&
+              event.delta.type === "input_json_delta"
+            ) {
+              // Tool input comes as JSON deltas — accumulate
+              const lastTool = toolCalls[toolCalls.length - 1];
+              if (lastTool) {
+                // Will be parsed from the final message
+              }
+            }
+          }
+
+          // Handle tool calls if any
+          if (toolCalls.length > 0) {
+            const finalMessage = await stream.finalMessage();
+
+            // Extract full tool inputs from final message
+            for (const block of finalMessage.content) {
+              if (block.type === "tool_use") {
+                const tc = toolCalls.find((t) => t.id === block.id);
+                if (tc) tc.input = block.input as Record<string, unknown>;
+              }
+            }
+
+            // Execute each tool and send results
+            for (const tc of toolCalls) {
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({ text: `\n\n*Searching Apollo.io...*\n\n` })}\n\n`
+                )
+              );
+
+              const result = await executeApolloTool(tc.name, tc.input);
+              fullResponse += `\n\n${result}`;
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({ text: result })}\n\n`)
               );
             }
           }

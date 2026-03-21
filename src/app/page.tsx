@@ -104,7 +104,7 @@ export default function Home() {
       </section>
 
       {/* ─── What is The Autonomous ─────────────────────── */}
-      <section className="py-24 lg:py-32 border-t border-neutral-200">
+      <section className="py-16 lg:py-24 border-t border-neutral-200">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
@@ -142,23 +142,30 @@ export default function Home() {
 
             <div>
               <Reveal delay={150}>
-                <div className="space-y-3">
-                  {agentRoles.map((role, i) => (
-                    <div
-                      key={role.title}
-                      className="flex items-center gap-4 p-4 bg-white border border-neutral-200/60 rounded-xl hover:shadow-sm transition-all"
-                    >
-                      <AgentIcon role={role.title} size="md" />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm">{role.title}</p>
-                        <p className="text-xs text-neutral-500 truncate">
-                          {role.connectors.join(" · ")}
-                        </p>
+                <div className="relative">
+                  <div className="max-h-[480px] overflow-y-auto space-y-2 pr-2 scrollbar-thin">
+                    {agentRoles.map((role) => (
+                      <div
+                        key={role.title}
+                        className="flex items-center gap-3 p-3 bg-white border border-neutral-200/60 rounded-lg hover:shadow-sm transition-all"
+                      >
+                        <AgentIcon role={role.title} size="sm" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm">{role.title}</p>
+                          <p className="text-xs text-neutral-500 truncate">
+                            {role.connectors.join(" · ")}
+                          </p>
+                        </div>
+                        <div className="w-2 h-2 bg-secondary rounded-full shrink-0" />
                       </div>
-                      <div className="w-2 h-2 bg-secondary rounded-full shrink-0" />
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                  {/* Fade-out at bottom to indicate scrollability */}
+                  <div className="absolute bottom-0 left-0 right-2 h-12 bg-gradient-to-t from-surface to-transparent pointer-events-none" />
                 </div>
+                <p className="text-xs text-neutral-400 mt-2 text-center">
+                  {agentRoles.length} agent roles available &middot; scroll to see all
+                </p>
               </Reveal>
             </div>
           </div>
