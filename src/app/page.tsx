@@ -700,29 +700,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── Final CTA ──────────────────────────────────── */}
-      <section id="cta" className="py-20 lg:py-28 bg-primary text-surface">
-        <div className="max-w-[1280px] mx-auto px-6 lg:px-8 text-center">
-          <Reveal>
-            <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl lg:text-6xl tracking-tight mb-6">
-              Ready to go{" "}
-              <span className="italic text-accent">autonomous?</span>
-            </h2>
-          </Reveal>
-          <Reveal delay={75}>
-            <p className="text-neutral-400 text-lg max-w-xl mx-auto mb-10">
-              Enter your website and discover which AI agents can transform your
-              business. Setup takes 2 minutes.
-            </p>
-          </Reveal>
-          <Reveal delay={150}>
-            <div className="max-w-xl mx-auto">
-              <WebsiteForm variant="dark" />
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
       {/* ─── Newsletter ──────────────────────────────────── */}
       <section className="py-16 bg-surface-mid border-t border-neutral-200">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
