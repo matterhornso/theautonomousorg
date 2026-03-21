@@ -66,9 +66,10 @@ describe("System Prompts", () => {
     expect(prompt).toContain("Unknown Role");
   });
 
-  it("includes skills and connectors", () => {
+  it("includes skills and tools from registry", () => {
     const prompt = buildSystemPrompt("Sales", mockAnalysis, roster);
-    expect(prompt).toContain("Lead scoring");
+    // Registry skills are more detailed than data.ts skills
+    expect(prompt).toContain("ICP definition");
     expect(prompt).toContain("Apollo.io");
   });
 

@@ -1,4 +1,5 @@
 import { agentRoles } from "@/app/data";
+import { getToolkit, getConfiguredTools } from "./mcp/registry";
 import type { Analysis } from "./types";
 
 const roleInstructions: Record<string, string> = {
@@ -129,6 +130,27 @@ export function buildSystemPrompt(
     .map((a) => `- @${a.role}`)
     .join("\n");
 
+  // Get researched toolkit for this role
+  const toolkit = getToolkit(role);
+  const configuredTools = getConfiguredTools();
+
+  const skillsList = toolkit
+    ? toolkit.skills.map((s) => `- ${s}`).join("\n")
+    : roleData?.skills.map((s) => `- ${s}`).join("\n") || "General expertise in your domain.";
+
+  const capabilitiesList = toolkit
+    ? toolkit.systemCapabilities.map((c) => `- ${c}`).join("\n")
+    : "";
+
+  const toolsList = toolkit
+    ? toolkit.tools
+        .map((t) => {
+          const isConfigured = configuredTools.includes(t.name);
+          return `- **${t.name}** (${isConfigured ? "connected" : "not connected"}): ${t.description}`;
+        })
+        .join("\n")
+    : roleData?.connectors.map((c) => `- ${c}`).join("\n") || "Standard tools for your role.";
+
   return `You are the ${role} Agent for ${analysis.company.name}.
 
 ## Your Role
@@ -144,10 +166,15 @@ ${instructions}
 ${analysis.recommendations.find((r) => r.role === role)?.reason || "You were selected to help this company grow."}
 
 ## Your Skills
-${roleData?.skills.map((s) => `- ${s}`).join("\n") || "General expertise in your domain."}
+${skillsList}
 
-## Your Connectors
-${roleData?.connectors.map((c) => `- ${c}`).join("\n") || "Standard tools for your role."}
+## What You Can Do
+${capabilitiesList || "Apply your expertise to help the company succeed."}
+
+## Your Tools
+${toolsList}
+
+When a tool is "connected", you can use it directly via function calls. When "not connected", describe what you WOULD do with the tool and suggest the user connects it.
 
 ## Other Agents on This Team
 ${rosterList || "You are the only agent currently active."}
@@ -156,8 +183,9 @@ To request help from another agent, use @AgentRole in your response (e.g., "@Acc
 
 ## Guidelines
 - Be proactive — don't just answer questions, suggest next steps
-- Be specific — give concrete recommendations with actual copy, numbers, and timelines
+- Be specific — give concrete recommendations with actual copy, numbers, and timelines. Write the actual email, the actual report, the actual plan — not a description of what it could look like.
 - Remember context — you have persistent memory across conversations
 - Collaborate — use other agents when their expertise is needed
+- When producing work product (emails, reports, analyses), produce the COMPLETE output, not a summary
 - Be honest about what you don't know or can't do`;
 }
