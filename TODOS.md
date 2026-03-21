@@ -60,10 +60,8 @@ URL validation (format, protocol, blocks private IPs), XSS sanitization, string/
 - **Priority:** P3
 - **Depends on:** Clerk enterprise plan
 
-## Agent Skill Marketplace
-- **What:** Third-party developers build and sell agent skills
-- **Effort:** Ocean — multi-quarter project
-- **Priority:** P4 (future)
+## ~~Agent Skill Marketplace~~ — REMOVED
+Not pursuing. TA provides agents to do tasks, not a marketplace for skills.
 
 ## Mobile App
 - **What:** React Native app for managing agents on mobile
