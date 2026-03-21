@@ -73,6 +73,12 @@ export function Navbar() {
           </Show>
           <Show when="signed-in">
             <a
+              href="/profile"
+              className="hidden sm:inline-flex px-4 py-2.5 text-sm text-neutral-600 hover:text-primary transition-colors"
+            >
+              Profile
+            </a>
+            <a
               href="/dashboard"
               className="hidden sm:inline-flex px-4 py-2.5 text-sm text-neutral-600 hover:text-primary transition-colors"
             >

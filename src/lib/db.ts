@@ -25,6 +25,22 @@ function getDb(): Database.Database {
 
 function initSchema(db: Database.Database) {
   db.exec(`
+    CREATE TABLE IF NOT EXISTS user_profiles (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL UNIQUE,
+      full_name TEXT,
+      role_title TEXT,
+      company_name TEXT,
+      company_website TEXT,
+      company_size TEXT,
+      industry TEXT,
+      current_tools TEXT,
+      biggest_challenges TEXT,
+      automation_goals TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS companies (
       id TEXT PRIMARY KEY,
       user_id TEXT,
@@ -237,4 +253,81 @@ export function setMemory(
      ON CONFLICT(agent_id, key)
      DO UPDATE SET value = excluded.value, updated_at = datetime('now')`
   ).run(id, agentId, key, value);
+}
+
+// ─── User Profiles ───────────────────────────────────────
+export interface UserProfile {
+  id: string;
+  user_id: string;
+  full_name: string | null;
+  role_title: string | null;
+  company_name: string | null;
+  company_website: string | null;
+  company_size: string | null;
+  industry: string | null;
+  current_tools: string | null;
+  biggest_challenges: string | null;
+  automation_goals: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function getUserProfile(userId: string): UserProfile | undefined {
+  return getDb()
+    .prepare("SELECT * FROM user_profiles WHERE user_id = ?")
+    .get(userId) as UserProfile | undefined;
+}
+
+export function upsertUserProfile(
+  userId: string,
+  data: {
+    full_name?: string;
+    role_title?: string;
+    company_name?: string;
+    company_website?: string;
+    company_size?: string;
+    industry?: string;
+    current_tools?: string;
+    biggest_challenges?: string;
+    automation_goals?: string;
+  }
+): UserProfile {
+  const db = getDb();
+  const existing = getUserProfile(userId);
+
+  if (existing) {
+    db.prepare(
+      `UPDATE user_profiles SET
+        full_name = ?, role_title = ?, company_name = ?, company_website = ?,
+        company_size = ?, industry = ?, current_tools = ?,
+        biggest_challenges = ?, automation_goals = ?, updated_at = datetime('now')
+       WHERE user_id = ?`
+    ).run(
+      data.full_name ?? existing.full_name,
+      data.role_title ?? existing.role_title,
+      data.company_name ?? existing.company_name,
+      data.company_website ?? existing.company_website,
+      data.company_size ?? existing.company_size,
+      data.industry ?? existing.industry,
+      data.current_tools ?? existing.current_tools,
+      data.biggest_challenges ?? existing.biggest_challenges,
+      data.automation_goals ?? existing.automation_goals,
+      userId
+    );
+  } else {
+    const id = randomUUID();
+    db.prepare(
+      `INSERT INTO user_profiles (id, user_id, full_name, role_title, company_name, company_website, company_size, industry, current_tools, biggest_challenges, automation_goals)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      id, userId,
+      data.full_name ?? null, data.role_title ?? null,
+      data.company_name ?? null, data.company_website ?? null,
+      data.company_size ?? null, data.industry ?? null,
+      data.current_tools ?? null, data.biggest_challenges ?? null,
+      data.automation_goals ?? null
+    );
+  }
+
+  return getUserProfile(userId)!;
 }

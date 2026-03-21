@@ -1,5 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import { getUserProfile } from "@/lib/db";
 
 const client = new Anthropic();
 
@@ -97,6 +99,7 @@ async function fetchWebsiteContent(url: string): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
+    const { userId } = await auth();
     const { url } = await request.json();
 
     if (!url || typeof url !== "string") {
@@ -130,6 +133,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Build user context from profile if authenticated
+    let userContext = "";
+    if (userId) {
+      const profile = getUserProfile(userId);
+      if (profile) {
+        const parts = [];
+        if (profile.role_title) parts.push(`User's role: ${profile.role_title}`);
+        if (profile.company_size) parts.push(`Company size: ${profile.company_size} people`);
+        if (profile.current_tools) parts.push(`Tools they currently use: ${profile.current_tools}`);
+        if (profile.biggest_challenges) parts.push(`Their biggest challenges: ${profile.biggest_challenges}`);
+        if (profile.automation_goals) parts.push(`What they want to automate: ${profile.automation_goals}`);
+        if (parts.length > 0) {
+          userContext = `\n\nAdditional context from the user's profile:\n${parts.join("\n")}\n\nUse this context to make your recommendations more specific and relevant to their actual needs.`;
+        }
+      }
+    }
+
     // Analyze with Claude
     const message = await client.messages.create({
       model: "claude-sonnet-4-6",
@@ -138,7 +158,7 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: "user",
-          content: `Analyze this company's website and recommend AI agents:\n\nURL: ${url}\n\nWebsite content:\n${websiteContent}`,
+          content: `Analyze this company's website and recommend AI agents:\n\nURL: ${url}\n\nWebsite content:\n${websiteContent}${userContext}`,
         },
       ],
     });
