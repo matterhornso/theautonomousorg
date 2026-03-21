@@ -33,7 +33,7 @@ export function AgentShowcase() {
         <Reveal delay={150}>
           <p className="text-neutral-400 text-lg leading-relaxed mb-10 max-w-lg">
             Each agent comes pre-configured with the right tools, knowledge, and
-            workflows for their role. Powered by Claude Opus by default — or
+            workflows for their role. Powered by Claude Sonnet 4.6 by default — or
             bring your own model.
           </p>
         </Reveal>
@@ -66,7 +66,7 @@ export function AgentShowcase() {
               <div className="flex items-center gap-2 mt-1">
                 <span className="w-2 h-2 bg-secondary rounded-full" />
                 <span className="text-sm text-neutral-400">
-                  Active &middot; Claude Opus
+                  Active &middot; Claude Sonnet 4.6
                 </span>
               </div>
             </div>
@@ -124,7 +124,7 @@ export function AgentShowcase() {
                   Model
                 </p>
                 <p className="text-xs font-medium font-[family-name:var(--font-mono)] mt-1 text-neutral-300">
-                  Claude Opus
+                  Claude Sonnet 4.6
                 </p>
               </div>
               <div>

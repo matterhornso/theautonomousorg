@@ -4,6 +4,7 @@ import { AgentShowcase } from "./components/agent-showcase";
 import { agentRoles } from "./data";
 import { WebsiteForm } from "./components/website-form";
 import { AgentIcon } from "./components/agent-icons";
+import { NewsletterForm } from "./components/newsletter-form";
 
 const steps = [
   {
@@ -26,9 +27,9 @@ const steps = [
   },
   {
     number: "04",
-    title: "Communicate via WhatsApp",
+    title: "Connect via dashboard, WhatsApp, or Telegram",
     description:
-      "Talk to your agents where you already work. Assign tasks, get updates, and make decisions — all from WhatsApp.",
+      "Manage your agents from the admin dashboard, or connect via WhatsApp and Telegram. Assign tasks, get updates, and make decisions — wherever you prefer.",
   },
 ];
 
@@ -297,8 +298,8 @@ export default function Home() {
                 ),
               },
               {
-                title: "WhatsApp & Telegram",
-                desc: "Choose your channel. Agents connect through WhatsApp or Telegram — talk to them from anywhere, anytime.",
+                title: "Dashboard, WhatsApp & Telegram",
+                desc: "Manage agents from the admin dashboard, or connect via WhatsApp and Telegram — talk to them from anywhere, anytime.",
                 icon: (
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
@@ -398,29 +399,29 @@ export default function Home() {
             <div>
               <Reveal>
                 <p className="text-sm text-accent font-medium tracking-wide uppercase mb-3">
-                  WhatsApp native
+                  Connect anywhere
                 </p>
               </Reveal>
               <Reveal delay={75}>
                 <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl lg:text-[56px] tracking-tight mb-6">
                   Manage your team
                   <br />
-                  <span className="text-neutral-400">from your pocket.</span>
+                  <span className="text-neutral-400">your way.</span>
                 </h2>
               </Reveal>
               <Reveal delay={150}>
                 <p className="text-neutral-500 text-lg leading-relaxed mb-8 max-w-lg">
-                  No new apps to learn. No dashboards to check. Your AI agents
-                  live in WhatsApp — assign tasks, get status updates, review
-                  work, and make decisions from the app you already use every
-                  day.
+                  Use the admin dashboard for full control, or connect via
+                  WhatsApp and Telegram for quick access on the go. Assign
+                  tasks, get status updates, and make decisions — wherever you
+                  are.
                 </p>
               </Reveal>
               <Reveal delay={225}>
                 <div className="space-y-4">
                   {[
-                    "Natural language — just tell agents what to do",
-                    "Real-time updates pushed to your phone",
+                    "Admin dashboard for full agent management",
+                    "WhatsApp & Telegram for on-the-go access",
                     "Agents collaborate with each other autonomously",
                     "Full audit trail of every action taken",
                   ].map((item, i) => (
@@ -457,12 +458,12 @@ export default function Home() {
             <Reveal>
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full text-sm text-neutral-600 mb-6 border border-neutral-200">
                 <span className="w-2 h-2 bg-accent rounded-full" />
-                Powered by Claude Opus &middot; Bring your own models
+                Powered by Claude Sonnet 4.6 &middot; Bring your own models
               </div>
             </Reveal>
             <Reveal delay={75}>
               <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl lg:text-[56px] tracking-tight mb-6">
-                Claude Opus by default.
+                Claude Sonnet 4.6 by default.
                 <br />
                 <span className="text-neutral-400">
                   Your model if you prefer.
@@ -471,7 +472,7 @@ export default function Home() {
             </Reveal>
             <Reveal delay={150}>
               <p className="text-neutral-500 text-lg leading-relaxed mb-12">
-                Every agent runs on Claude Opus for best-in-class reasoning. But
+                Every agent runs on Claude Sonnet 4.6 for best-in-class reasoning. But
                 if you have specific model requirements — latency, cost,
                 compliance — bring your own. GPT-4o, Gemini, Llama, Mistral, or
                 any OpenAI-compatible endpoint.
@@ -483,7 +484,7 @@ export default function Home() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
               {[
                 {
-                  name: "Claude Opus",
+                  name: "Claude Sonnet 4.6",
                   tag: "Default",
                   desc: "Best reasoning & analysis",
                 },
@@ -574,7 +575,7 @@ export default function Home() {
                   "1 AI agent",
                   "100 tasks / month",
                   "WhatsApp integration",
-                  "Claude Opus included",
+                  "Claude Sonnet 4.6 included",
                   "Community support",
                 ],
                 cta: "Start free",
@@ -722,38 +723,83 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── Footer ─────────────────────────────────────── */}
-      <footer className="py-12 bg-primary text-neutral-400 border-t border-neutral-800">
+      {/* ─── Newsletter ──────────────────────────────────── */}
+      <section className="py-16 bg-surface-mid border-t border-neutral-200">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-neutral-800 rounded-md flex items-center justify-center">
-                <span className="text-surface text-xs font-bold">TA</span>
+          <div className="max-w-xl mx-auto text-center">
+            <h3 className="font-[family-name:var(--font-serif)] text-2xl tracking-tight mb-2">
+              Stay in the loop
+            </h3>
+            <p className="text-sm text-neutral-500 mb-5">
+              Get updates on new agents, features, and the future of autonomous
+              companies.
+            </p>
+            <NewsletterForm />
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Footer ─────────────────────────────────────── */}
+      <footer className="py-10 bg-primary text-neutral-400 border-t border-neutral-800">
+        <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row items-start justify-between gap-8 mb-8">
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-7 h-7 bg-neutral-800 rounded-md flex items-center justify-center">
+                  <span className="text-surface text-xs font-bold">TA</span>
+                </div>
+                <span className="text-sm font-medium text-neutral-300">
+                  The Autonomous
+                </span>
               </div>
-              <span className="text-sm text-neutral-500">
-                &copy; 2026 The Autonomous. All rights reserved.
-              </span>
+              <p className="text-xs text-neutral-500 max-w-xs">
+                AI agents for every role in your company. Enter your website,
+                get recommended agents, and start automating your workflows.
+              </p>
             </div>
-            <div className="flex items-center gap-6 text-sm">
-              <a
-                href="#"
-                className="hover:text-surface transition-colors py-3"
-              >
-                Privacy
-              </a>
-              <a
-                href="#"
-                className="hover:text-surface transition-colors py-3"
-              >
-                Terms
-              </a>
-              <a
-                href="#"
-                className="hover:text-surface transition-colors py-3"
-              >
-                Contact
-              </a>
+            <div className="flex gap-12">
+              <div>
+                <p className="text-xs font-medium text-neutral-300 uppercase tracking-wider mb-3">
+                  Product
+                </p>
+                <div className="flex flex-col gap-2 text-sm">
+                  <a href="/#how-it-works" className="hover:text-surface transition-colors">
+                    How it works
+                  </a>
+                  <a href="/#agents" className="hover:text-surface transition-colors">
+                    Agents
+                  </a>
+                  <a href="/#pricing" className="hover:text-surface transition-colors">
+                    Pricing
+                  </a>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-neutral-300 uppercase tracking-wider mb-3">
+                  Legal
+                </p>
+                <div className="flex flex-col gap-2 text-sm">
+                  <a href="/privacy" className="hover:text-surface transition-colors">
+                    Privacy Policy
+                  </a>
+                  <a href="/terms" className="hover:text-surface transition-colors">
+                    Terms of Service
+                  </a>
+                  <a href="/contact" className="hover:text-surface transition-colors">
+                    Contact Us
+                  </a>
+                </div>
+              </div>
             </div>
+          </div>
+          <div className="pt-6 border-t border-neutral-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <span className="text-xs text-neutral-500">
+              &copy; 2026 The Autonomous. All rights reserved.
+            </span>
+            <span className="text-xs text-neutral-500">
+              Built by{" "}
+              <span className="text-neutral-400 font-medium">Chainflux</span>
+            </span>
           </div>
         </div>
       </footer>

@@ -1,7 +1,7 @@
 # TheAutonomous.org
 
 ## Project
-AI-powered platform that enables companies to run their entire business with AI agents for every workflow: Sales, Marketing, Accounting, Strategy, Product Development, Engineering (front-end & back-end), Product Management, and AI expertise. Users enter their company website, get recommended agents, and communicate with them via WhatsApp. Agents default to Claude Opus but users can bring their own models.
+AI-powered platform that enables companies to run their entire business with AI agents for every workflow: Sales, Marketing, Accounting, Strategy, Product Development, Engineering (front-end & back-end), Product Management, and AI expertise. Users enter their company website, get recommended agents, and communicate with them via WhatsApp. Agents default to Claude Sonnet 4.6 but users can bring their own models.
 
 ## Design System
 Always read DESIGN.md before making any visual or UI decisions.
