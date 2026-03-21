@@ -1,0 +1,80 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createCompany, createAgent, getAgentRoster } from "@/lib/db";
+import { buildSystemPrompt } from "@/lib/prompts";
+import { agentRoles } from "@/app/data";
+import type { Analysis } from "@/lib/types";
+
+export async function POST(request: NextRequest) {
+  try {
+    const { analysis, selectedRoles } = (await request.json()) as {
+      analysis: Analysis;
+      selectedRoles: string[];
+    };
+
+    if (!analysis?.company?.name || !selectedRoles?.length) {
+      return NextResponse.json(
+        { error: "Missing analysis or selected roles" },
+        { status: 400 }
+      );
+    }
+
+    // Create company record
+    const company = createCompany({
+      name: analysis.company.name,
+      url: analysis.company.description || "",
+      industry: analysis.company.industry,
+      description: analysis.company.description,
+      stage: analysis.company.stage,
+      analysis_json: JSON.stringify(analysis),
+    });
+
+    // Create agents for each selected role
+    const agents: { id: string; role: string; status: string; skills_json: string | null; connectors_json: string | null }[] = [];
+    for (const role of selectedRoles) {
+      const roleData = agentRoles.find((r) => r.title === role);
+
+      // Build a preliminary roster (will be updated as agents are created)
+      const roster = agents.map((a) => ({ role: a.role, id: a.id }));
+      // Add future agents too so everyone knows about the full team
+      const fullRoster = selectedRoles.map((r) => ({
+        role: r,
+        id: agents.find((a) => a.role === r)?.id || "pending",
+      }));
+
+      const systemPrompt = buildSystemPrompt(role, analysis, fullRoster);
+
+      const agent = createAgent({
+        company_id: company.id,
+        role,
+        system_prompt: systemPrompt,
+        company_context: JSON.stringify(analysis.company),
+        skills_json: JSON.stringify(roleData?.skills || []),
+        connectors_json: JSON.stringify(roleData?.connectors || []),
+      });
+
+      agents.push(agent);
+    }
+
+    // Update system prompts with final agent IDs
+    // (The roster was built with "pending" IDs for agents created after each one)
+    const finalRoster = getAgentRoster(company.id);
+    // For MVP, the roster in prompts uses role names not IDs, so this is fine
+
+    return NextResponse.json({
+      companyId: company.id,
+      agents: agents.map((a) => ({
+        id: a.id,
+        role: a.role,
+        status: a.status,
+        skills: JSON.parse(a.skills_json || "[]"),
+        connectors: JSON.parse(a.connectors_json || "[]"),
+      })),
+    });
+  } catch (error) {
+    console.error("Provision error:", error);
+    return NextResponse.json(
+      { error: "Failed to provision agents" },
+      { status: 500 }
+    );
+  }
+}

@@ -2,3 +2,4 @@ node_modules/
 .next/
 .gstack/
 .env*
+data/*.db

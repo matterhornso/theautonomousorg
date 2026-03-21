@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface Recommendation {
   role: string;
@@ -36,10 +37,13 @@ export function WebsiteForm({
 }: {
   variant?: "light" | "dark";
 }) {
+  const router = useRouter();
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const [provisioning, setProvisioning] = useState(false);
   const [error, setError] = useState("");
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,6 +68,12 @@ export function WebsiteForm({
       }
 
       setAnalysis(data);
+      // Pre-select high-impact recommendations
+      setSelectedRoles(
+        data.recommendations
+          .filter((r: Recommendation) => r.impact === "high")
+          .map((r: Recommendation) => r.role)
+      );
     } catch {
       setError("Network error. Please check your connection and try again.");
     } finally {
@@ -127,14 +137,32 @@ export function WebsiteForm({
             Recommended agents
           </p>
           <div className="space-y-3">
-            {analysis.recommendations.map((rec) => (
-              <div
+            {analysis.recommendations.map((rec) => {
+              const isSelected = selectedRoles.includes(rec.role);
+              return (
+              <button
                 key={rec.role}
-                className={`flex gap-4 p-4 rounded-xl ${
-                  isDark ? "bg-neutral-800" : "bg-neutral-50"
+                type="button"
+                onClick={() =>
+                  setSelectedRoles((prev) =>
+                    prev.includes(rec.role)
+                      ? prev.filter((r) => r !== rec.role)
+                      : [...prev, rec.role]
+                  )
+                }
+                className={`flex gap-4 p-4 rounded-xl text-left transition-all ${
+                  isSelected
+                    ? isDark
+                      ? "bg-neutral-800 ring-2 ring-accent"
+                      : "bg-accent/5 ring-2 ring-accent"
+                    : isDark
+                      ? "bg-neutral-800 opacity-60 hover:opacity-80"
+                      : "bg-neutral-50 opacity-60 hover:opacity-80"
                 }`}
               >
-                <div className="w-11 h-11 bg-primary rounded-lg flex items-center justify-center text-surface text-xs font-bold shrink-0">
+                <div className={`w-11 h-11 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
+                  isSelected ? "bg-accent text-primary" : "bg-primary text-surface"
+                }`}>
                   {roleIcons[rec.role] || rec.role.charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -173,8 +201,9 @@ export function WebsiteForm({
                     e.g. {rec.example}
                   </p>
                 </div>
-              </div>
-            ))}
+              </button>
+              );
+            })}
           </div>
         </div>
 
@@ -193,9 +222,41 @@ export function WebsiteForm({
           </p>
           <div className="flex gap-3">
             <button
-              className="flex-1 py-3 bg-accent text-primary font-medium rounded-xl text-sm hover:bg-accent-hover transition-all active:scale-[0.98]"
+              disabled={provisioning || selectedRoles.length === 0}
+              onClick={async () => {
+                if (!analysis || selectedRoles.length === 0) return;
+                setProvisioning(true);
+                try {
+                  const res = await fetch("/api/provision", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ analysis, selectedRoles }),
+                  });
+                  const data = await res.json();
+                  if (res.ok && data.companyId) {
+                    router.push(`/dashboard/${data.companyId}`);
+                  } else {
+                    setError(data.error || "Failed to provision agents");
+                    setProvisioning(false);
+                  }
+                } catch {
+                  setError("Network error. Please try again.");
+                  setProvisioning(false);
+                }
+              }}
+              className="flex-1 py-3 bg-accent text-primary font-medium rounded-xl text-sm hover:bg-accent-hover transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              Get started with these agents
+              {provisioning ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Provisioning agents...
+                </>
+              ) : (
+                `Launch ${selectedRoles.length} agent${selectedRoles.length !== 1 ? "s" : ""}`
+              )}
             </button>
             <button
               onClick={() => {
