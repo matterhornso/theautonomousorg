@@ -1,5 +1,6 @@
 export interface Company {
   id: string;
+  user_id: string | null;
   name: string;
   url: string;
   industry: string | null;

@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createCompany, createAgent, getAgentRoster } from "@/lib/db";
+import { auth } from "@clerk/nextjs/server";
+import { createCompany, createAgent } from "@/lib/db";
 import { buildSystemPrompt } from "@/lib/prompts";
 import { agentRoles } from "@/app/data";
 import type { Analysis } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
   try {
+    const { userId } = await auth();
+
     const { analysis, selectedRoles } = (await request.json()) as {
       analysis: Analysis;
       selectedRoles: string[];
@@ -18,10 +21,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create company record
+    // Create company record linked to authenticated user
     const company = createCompany({
       name: analysis.company.name,
       url: analysis.company.description || "",
+      user_id: userId ?? undefined,
       industry: analysis.company.industry,
       description: analysis.company.description,
       stage: analysis.company.stage,
@@ -54,11 +58,6 @@ export async function POST(request: NextRequest) {
 
       agents.push(agent);
     }
-
-    // Update system prompts with final agent IDs
-    // (The roster was built with "pending" IDs for agents created after each one)
-    const finalRoster = getAgentRoster(company.id);
-    // For MVP, the roster in prompts uses role names not IDs, so this is fine
 
     return NextResponse.json({
       companyId: company.id,

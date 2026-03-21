@@ -27,6 +27,7 @@ function initSchema(db: Database.Database) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS companies (
       id TEXT PRIMARY KEY,
+      user_id TEXT,
       name TEXT NOT NULL,
       url TEXT NOT NULL,
       industry TEXT,
@@ -80,6 +81,7 @@ function initSchema(db: Database.Database) {
 export function createCompany(data: {
   name: string;
   url: string;
+  user_id?: string;
   industry?: string;
   description?: string;
   stage?: string;
@@ -88,10 +90,11 @@ export function createCompany(data: {
   const db = getDb();
   const id = randomUUID();
   db.prepare(
-    `INSERT INTO companies (id, name, url, industry, description, stage, analysis_json)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO companies (id, user_id, name, url, industry, description, stage, analysis_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
+    data.user_id ?? null,
     data.name,
     data.url,
     data.industry ?? null,
@@ -100,6 +103,12 @@ export function createCompany(data: {
     data.analysis_json ?? null
   );
   return db.prepare("SELECT * FROM companies WHERE id = ?").get(id) as Company;
+}
+
+export function getCompaniesByUser(userId: string): Company[] {
+  return getDb()
+    .prepare("SELECT * FROM companies WHERE user_id = ? ORDER BY created_at DESC")
+    .all(userId) as Company[];
 }
 
 export function getCompany(id: string): Company | undefined {
