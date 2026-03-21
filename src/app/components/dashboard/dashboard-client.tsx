@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { AgentIcon } from "../agent-icons";
 
 interface AgentInfo {
@@ -9,6 +9,7 @@ interface AgentInfo {
   status: string;
   skills: string[];
   connectors: string[];
+  starters: string[];
 }
 
 interface CompanyInfo {
@@ -22,15 +23,40 @@ interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
+  relayFrom?: string;
 }
 
+interface ActivityItem {
+  type: string;
+  agent_role: string;
+  agent_id: string;
+  title: string;
+  detail: string | null;
+  status: string;
+  created_at: string;
+}
+
+interface TaskItem {
+  id: string;
+  agent_id: string;
+  type: string;
+  title: string;
+  status: string;
+  result: string | null;
+  error: string | null;
+  created_at: string;
+}
 
 export function DashboardClient({
   company,
   agents,
+  initialActivity = [],
+  initialTasks = [],
 }: {
   company: CompanyInfo;
   agents: AgentInfo[];
+  initialActivity?: ActivityItem[];
+  initialTasks?: TaskItem[];
 }) {
   const [activeAgent, setActiveAgent] = useState<AgentInfo | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -38,6 +64,9 @@ export function DashboardClient({
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [streamingText, setStreamingText] = useState("");
+  const [activity] = useState<ActivityItem[]>(initialActivity);
+  const [tasks] = useState<TaskItem[]>(initialTasks);
+  const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -46,10 +75,17 @@ export function DashboardClient({
   }, [messages, streamingText]);
 
   useEffect(() => {
-    if (activeAgent) {
-      inputRef.current?.focus();
-    }
+    if (activeAgent) inputRef.current?.focus();
   }, [activeAgent]);
+
+  // Poll for task updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Trigger task processing
+      fetch("/api/tasks/process", { method: "POST" }).catch(() => {});
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   const selectAgent = (agent: AgentInfo) => {
     setActiveAgent(agent);
@@ -58,99 +94,109 @@ export function DashboardClient({
     setStreamingText("");
   };
 
-  const sendMessage = async () => {
-    if (!input.trim() || !activeAgent || loading) return;
+  const sendMessage = useCallback(
+    async (text?: string) => {
+      const userMessage = (text || input).trim();
+      if (!userMessage || !activeAgent || loading) return;
 
-    const userMessage = input.trim();
-    setInput("");
-    setMessages((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), role: "user", content: userMessage },
-    ]);
-    setLoading(true);
-    setStreamingText("");
+      setInput("");
+      setMessages((prev) => [
+        ...prev,
+        { id: crypto.randomUUID(), role: "user", content: userMessage },
+      ]);
+      setLoading(true);
+      setStreamingText("");
 
-    try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          agentId: activeAgent.id,
-          conversationId,
-          message: userMessage,
-        }),
-      });
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            agentId: activeAgent.id,
+            conversationId,
+            message: userMessage,
+          }),
+        });
 
-      if (!response.ok || !response.body) {
-        throw new Error("Chat request failed");
-      }
+        if (!response.ok || !response.body) throw new Error("Chat failed");
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let accumulated = "";
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulated = "";
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split("\n");
 
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const data = line.slice(6);
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const data = line.slice(6);
 
-          if (data === "[DONE]") {
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: crypto.randomUUID(),
-                role: "assistant",
-                content: accumulated,
-              },
-            ]);
-            setStreamingText("");
-            accumulated = "";
-            continue;
-          }
-
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.conversationId) {
-              setConversationId(parsed.conversationId);
-            } else if (parsed.text) {
-              accumulated += parsed.text;
-              setStreamingText(accumulated);
-            } else if (parsed.interAgent) {
-              // Show inter-agent communication indicator
+            if (data === "[DONE]") {
               setMessages((prev) => [
                 ...prev,
                 {
                   id: crypto.randomUUID(),
-                  role: "system",
-                  content: `${parsed.interAgent.from} mentioned @${parsed.interAgent.to}`,
+                  role: "assistant",
+                  content: accumulated,
                 },
               ]);
+              setStreamingText("");
+              accumulated = "";
+              continue;
             }
-          } catch {
-            // Skip malformed SSE lines
+
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.conversationId) {
+                setConversationId(parsed.conversationId);
+              } else if (parsed.text) {
+                accumulated += parsed.text;
+                setStreamingText(accumulated);
+              } else if (parsed.interAgent) {
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    id: crypto.randomUUID(),
+                    role: "system",
+                    content: `Asking @${parsed.interAgent.to}...`,
+                  },
+                ]);
+              } else if (parsed.relay) {
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    id: crypto.randomUUID(),
+                    role: "system",
+                    content: parsed.relay.response,
+                    relayFrom: parsed.relay.from,
+                  },
+                ]);
+              }
+            } catch {
+              /* skip */
+            }
           }
         }
+      } catch {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: "system",
+            content: "Connection lost. Please try again.",
+          },
+        ]);
+        setStreamingText("");
+      } finally {
+        setLoading(false);
       }
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          role: "system",
-          content: "Failed to get a response. Please try again.",
-        },
-      ]);
-      setStreamingText("");
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [activeAgent, conversationId, input, loading]
+  );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -159,11 +205,14 @@ export function DashboardClient({
     }
   };
 
+  const agentTasks = activeAgent
+    ? tasks.filter((t) => t.agent_id === activeAgent.id)
+    : [];
+
   return (
     <div className="h-screen flex bg-surface">
       {/* ─── Sidebar ────────────────────────────────────── */}
       <aside className="w-72 bg-primary text-surface flex flex-col shrink-0">
-        {/* Company header */}
         <div className="px-5 py-5 border-b border-neutral-800">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-7 h-7 bg-accent rounded-md flex items-center justify-center text-primary text-[10px] font-bold">
@@ -176,10 +225,45 @@ export function DashboardClient({
           </p>
         </div>
 
-        {/* Agent list */}
         <div className="flex-1 overflow-y-auto py-3">
-          <p className="px-5 text-[10px] text-neutral-500 uppercase tracking-wider mb-2">
-            Your Agents
+          {/* Activity feed button */}
+          <button
+            onClick={() => setActiveAgent(null)}
+            className={`w-full px-5 py-3 flex items-center gap-3 text-left transition-colors ${
+              !activeAgent ? "bg-neutral-800" : "hover:bg-neutral-800/50"
+            }`}
+          >
+            <div
+              className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs shrink-0 ${
+                !activeAgent
+                  ? "bg-accent text-primary"
+                  : "bg-neutral-800 text-neutral-400"
+              }`}
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"
+                />
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Activity</p>
+              <p className="text-xs text-neutral-500">
+                {activity.filter((a) => a.status === "done").length} completed
+              </p>
+            </div>
+          </button>
+
+          <p className="px-5 mt-3 text-[10px] text-neutral-500 uppercase tracking-wider mb-2">
+            Agents
           </p>
           {agents.map((agent) => (
             <button
@@ -191,11 +275,18 @@ export function DashboardClient({
                   : "hover:bg-neutral-800/50"
               }`}
             >
-              <AgentIcon role={agent.role} size="sm" variant={activeAgent?.id === agent.id ? "accent" : "dark"} />
+              <AgentIcon
+                role={agent.role}
+                size="sm"
+                variant={activeAgent?.id === agent.id ? "accent" : "dark"}
+              />
               <div className="min-w-0">
                 <p className="text-sm font-medium truncate">{agent.role}</p>
                 <p className="text-xs text-neutral-500 truncate">
-                  {agent.connectors.slice(0, 2).join(", ")}
+                  {tasks.filter(
+                    (t) => t.agent_id === agent.id && t.status === "done"
+                  ).length || 0}{" "}
+                  tasks done
                 </p>
               </div>
               <div className="ml-auto w-2 h-2 bg-secondary rounded-full shrink-0" />
@@ -203,7 +294,6 @@ export function DashboardClient({
           ))}
         </div>
 
-        {/* Back to home */}
         <div className="px-5 py-4 border-t border-neutral-800">
           <a
             href="/"
@@ -221,7 +311,7 @@ export function DashboardClient({
             {/* Agent header */}
             <header className="px-6 py-4 border-b border-neutral-200 bg-white flex items-center gap-4">
               <AgentIcon role={activeAgent.role} size="md" />
-              <div>
+              <div className="flex-1">
                 <h3 className="font-semibold">{activeAgent.role} Agent</h3>
                 <div className="flex items-center gap-3 text-xs text-neutral-500">
                   <span className="flex items-center gap-1">
@@ -229,22 +319,77 @@ export function DashboardClient({
                     Active
                   </span>
                   <span>
-                    {activeAgent.skills.length} skills &middot;{" "}
-                    {activeAgent.connectors.length} connectors
+                    {agentTasks.filter((t) => t.status === "done").length} tasks
+                    completed
                   </span>
                 </div>
               </div>
-              <div className="ml-auto flex gap-1.5">
-                {activeAgent.connectors.map((c) => (
-                  <span
-                    key={c}
-                    className="px-2 py-0.5 bg-neutral-100 rounded text-[10px] text-neutral-500"
-                  >
-                    {c}
-                  </span>
-                ))}
-              </div>
+              {/* Task results toggle */}
+              {agentTasks.length > 0 && (
+                <button
+                  onClick={() =>
+                    setExpandedTask(expandedTask ? null : "all")
+                  }
+                  className="px-3 py-1.5 text-xs bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors"
+                >
+                  {expandedTask ? "Hide tasks" : `View ${agentTasks.length} tasks`}
+                </button>
+              )}
             </header>
+
+            {/* Task results panel */}
+            {expandedTask && agentTasks.length > 0 && (
+              <div className="px-6 py-4 border-b border-neutral-200 bg-neutral-50 max-h-80 overflow-y-auto">
+                <p className="text-xs text-neutral-400 uppercase tracking-wider mb-3">
+                  Proactive Task Results
+                </p>
+                <div className="space-y-2">
+                  {agentTasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className="bg-white rounded-lg border border-neutral-200 overflow-hidden"
+                    >
+                      <button
+                        onClick={() =>
+                          setExpandedTask(
+                            expandedTask === task.id ? "all" : task.id
+                          )
+                        }
+                        className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-neutral-50"
+                      >
+                        <span
+                          className={`w-2 h-2 rounded-full shrink-0 ${
+                            task.status === "done"
+                              ? "bg-secondary"
+                              : task.status === "running"
+                                ? "bg-accent animate-pulse"
+                                : task.status === "failed"
+                                  ? "bg-red-500"
+                                  : "bg-neutral-300"
+                          }`}
+                        />
+                        <span className="text-sm font-medium flex-1">
+                          {task.title}
+                        </span>
+                        <span className="text-[10px] text-neutral-400 uppercase">
+                          {task.status}
+                        </span>
+                      </button>
+                      {expandedTask === task.id && task.result && (
+                        <div className="px-4 pb-4 pt-0 text-sm text-neutral-600 leading-relaxed whitespace-pre-wrap border-t border-neutral-100">
+                          {task.result}
+                        </div>
+                      )}
+                      {expandedTask === task.id && task.error && (
+                        <div className="px-4 pb-4 pt-0 text-sm text-red-600">
+                          Error: {task.error}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
@@ -256,11 +401,25 @@ export function DashboardClient({
                   <h3 className="text-lg font-semibold mb-1">
                     {activeAgent.role} Agent
                   </h3>
-                  <p className="text-sm text-neutral-500 max-w-md">
+                  <p className="text-sm text-neutral-500 max-w-md mb-6">
                     Ready to help with{" "}
                     {activeAgent.skills.slice(0, 3).join(", ").toLowerCase()},
-                    and more. What would you like to work on?
+                    and more.
                   </p>
+                  {/* Conversation starters */}
+                  {activeAgent.starters.length > 0 && (
+                    <div className="flex flex-wrap gap-2 justify-center max-w-lg">
+                      {activeAgent.starters.map((starter) => (
+                        <button
+                          key={starter}
+                          onClick={() => sendMessage(starter)}
+                          className="px-4 py-2 bg-white border border-neutral-200 rounded-full text-sm text-neutral-600 hover:border-accent hover:text-primary transition-all"
+                        >
+                          {starter}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -272,8 +431,27 @@ export function DashboardClient({
                   }`}
                 >
                   {msg.role === "system" ? (
-                    <div className="px-3 py-1.5 bg-accent/10 rounded-lg text-xs text-accent italic">
-                      {msg.content}
+                    <div
+                      className={`max-w-[80%] px-4 py-3 rounded-xl text-sm ${
+                        msg.relayFrom
+                          ? "bg-accent/10 border border-accent/20"
+                          : "bg-neutral-100"
+                      }`}
+                    >
+                      {msg.relayFrom && (
+                        <p className="text-[10px] text-accent font-medium uppercase tracking-wider mb-1">
+                          @{msg.relayFrom} responded
+                        </p>
+                      )}
+                      <p
+                        className={
+                          msg.relayFrom
+                            ? "text-neutral-700 whitespace-pre-wrap"
+                            : "text-neutral-500 italic"
+                        }
+                      >
+                        {msg.content}
+                      </p>
                     </div>
                   ) : (
                     <div
@@ -289,7 +467,6 @@ export function DashboardClient({
                 </div>
               ))}
 
-              {/* Streaming indicator */}
               {streamingText && (
                 <div className="flex justify-start">
                   <div className="max-w-[70%] px-4 py-3 rounded-2xl rounded-bl-md bg-neutral-100 text-primary text-sm leading-relaxed whitespace-pre-wrap">
@@ -322,7 +499,7 @@ export function DashboardClient({
                   }}
                 />
                 <button
-                  onClick={sendMessage}
+                  onClick={() => sendMessage()}
                   disabled={loading || !input.trim()}
                   className="px-4 py-3 bg-primary text-surface rounded-xl text-sm font-medium hover:bg-neutral-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                 >
@@ -364,39 +541,141 @@ export function DashboardClient({
                 </button>
               </div>
               <p className="text-[10px] text-neutral-400 text-center mt-2">
-                Press Enter to send &middot; Shift+Enter for new line &middot;
-                Use @Role to mention other agents
+                Enter to send &middot; Shift+Enter for new line &middot; Use
+                @Role to mention other agents
               </p>
             </div>
           </>
         ) : (
-          /* ─── No agent selected — overview ──────────── */
-          <div className="flex-1 flex items-center justify-center p-8">
-            <div className="text-center max-w-lg">
-              <h2 className="font-[family-name:var(--font-serif)] text-3xl tracking-tight mb-3">
-                Welcome to {company.name}&apos;s AI workforce
+          /* ─── Activity Feed (default view) ──────────── */
+          <div className="flex-1 overflow-y-auto p-8">
+            <div className="max-w-3xl mx-auto">
+              <h2 className="font-[family-name:var(--font-serif)] text-2xl tracking-tight mb-1">
+                Activity
               </h2>
-              <p className="text-neutral-500 text-sm mb-8">
-                Select an agent from the sidebar to start chatting. Each agent
-                has specialized skills and connectors for their role.
+              <p className="text-sm text-neutral-500 mb-6">
+                Your agents are working. Here&apos;s what&apos;s happening.
               </p>
-              <div className="grid grid-cols-2 gap-3">
-                {agents.map((agent) => (
-                  <button
-                    key={agent.id}
-                    onClick={() => selectAgent(agent)}
-                    className="p-4 border border-neutral-200 rounded-xl text-left hover:border-accent hover:shadow-sm transition-all bg-white"
-                  >
-                    <div className="flex items-center gap-3 mb-2">
-                      <AgentIcon role={agent.role} size="sm" />
-                      <span className="font-medium text-sm">{agent.role}</span>
-                    </div>
-                    <p className="text-xs text-neutral-500">
-                      {agent.skills.slice(0, 3).join(" · ")}
-                    </p>
-                  </button>
-                ))}
-              </div>
+
+              {activity.length === 0 && tasks.length === 0 ? (
+                <div className="text-center py-16">
+                  <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <svg
+                      className="w-6 h-6 text-accent animate-pulse"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={1.5}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="font-semibold mb-1">
+                    Your agents are thinking...
+                  </h3>
+                  <p className="text-sm text-neutral-500">
+                    Proactive tasks are being processed. Check back in a moment.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Show tasks as primary activity */}
+                  {tasks.map((task) => {
+                    const agent = agents.find((a) => a.id === task.agent_id);
+                    return (
+                      <div
+                        key={task.id}
+                        className="bg-white border border-neutral-200 rounded-xl overflow-hidden hover:border-neutral-300 transition-colors"
+                      >
+                        <button
+                          onClick={() => {
+                            if (task.status === "done") {
+                              setExpandedTask(
+                                expandedTask === task.id ? null : task.id
+                              );
+                            }
+                            if (agent) {
+                              // Don't navigate, just expand
+                            }
+                          }}
+                          className="w-full px-5 py-4 flex items-start gap-4 text-left"
+                        >
+                          {agent && (
+                            <AgentIcon role={agent.role} size="sm" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="text-xs text-neutral-400">
+                                {agent?.role} Agent
+                              </span>
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                                  task.status === "done"
+                                    ? "bg-secondary/10 text-secondary"
+                                    : task.status === "running"
+                                      ? "bg-accent/10 text-accent"
+                                      : task.status === "failed"
+                                        ? "bg-red-50 text-red-600"
+                                        : "bg-neutral-100 text-neutral-500"
+                                }`}
+                              >
+                                {task.status}
+                              </span>
+                            </div>
+                            <p className="text-sm font-medium">{task.title}</p>
+                            {task.status === "done" &&
+                              task.result &&
+                              expandedTask !== task.id && (
+                                <p className="text-xs text-neutral-500 mt-1 line-clamp-2">
+                                  {task.result.slice(0, 150)}...
+                                </p>
+                              )}
+                          </div>
+                          {task.status === "done" && (
+                            <svg
+                              className={`w-4 h-4 text-neutral-400 shrink-0 mt-1 transition-transform ${
+                                expandedTask === task.id ? "rotate-180" : ""
+                              }`}
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth={2}
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M19 9l-7 7-7-7"
+                              />
+                            </svg>
+                          )}
+                        </button>
+                        {expandedTask === task.id && task.result && (
+                          <div className="px-5 pb-5 pt-0 border-t border-neutral-100">
+                            <div className="text-sm text-neutral-600 leading-relaxed whitespace-pre-wrap mt-3">
+                              {task.result}
+                            </div>
+                            <button
+                              onClick={() => {
+                                const agent = agents.find(
+                                  (a) => a.id === task.agent_id
+                                );
+                                if (agent) selectAgent(agent);
+                              }}
+                              className="mt-3 text-xs text-accent hover:underline"
+                            >
+                              Chat with {agents.find((a) => a.id === task.agent_id)?.role} Agent about this &rarr;
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}

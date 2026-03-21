@@ -90,6 +90,32 @@ function initSchema(db: Database.Database) {
       updated_at TEXT DEFAULT (datetime('now')),
       UNIQUE(agent_id, key)
     );
+
+    CREATE TABLE IF NOT EXISTS tasks (
+      id TEXT PRIMARY KEY,
+      agent_id TEXT NOT NULL REFERENCES agents(id),
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'queued',
+      input_json TEXT,
+      result_json TEXT,
+      retry_count INTEGER DEFAULT 0,
+      error_message TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      completed_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS inter_agent_messages (
+      id TEXT PRIMARY KEY,
+      source_agent_id TEXT NOT NULL REFERENCES agents(id),
+      target_agent_id TEXT NOT NULL REFERENCES agents(id),
+      request TEXT NOT NULL,
+      response TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      conversation_id TEXT REFERENCES conversations(id),
+      created_at TEXT DEFAULT (datetime('now')),
+      completed_at TEXT
+    );
   `);
 }
 
@@ -330,4 +356,155 @@ export function upsertUserProfile(
   }
 
   return getUserProfile(userId)!;
+}
+
+// ─── Tasks ───────────────────────────────────────────────
+export interface Task {
+  id: string;
+  agent_id: string;
+  type: string;
+  title: string;
+  status: "queued" | "running" | "done" | "failed";
+  input_json: string | null;
+  result_json: string | null;
+  retry_count: number;
+  error_message: string | null;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export function createTask(data: {
+  agent_id: string;
+  type: string;
+  title: string;
+  input_json?: string;
+}): Task {
+  const db = getDb();
+  const id = randomUUID();
+  db.prepare(
+    `INSERT INTO tasks (id, agent_id, type, title, input_json) VALUES (?, ?, ?, ?, ?)`
+  ).run(id, data.agent_id, data.type, data.title, data.input_json ?? null);
+  return db.prepare("SELECT * FROM tasks WHERE id = ?").get(id) as Task;
+}
+
+export function getTasksByAgent(agentId: string): Task[] {
+  return getDb()
+    .prepare("SELECT * FROM tasks WHERE agent_id = ? ORDER BY created_at DESC")
+    .all(agentId) as Task[];
+}
+
+export function getTasksByCompany(companyId: string): Task[] {
+  return getDb()
+    .prepare(
+      `SELECT t.* FROM tasks t
+       JOIN agents a ON t.agent_id = a.id
+       WHERE a.company_id = ?
+       ORDER BY t.created_at DESC`
+    )
+    .all(companyId) as Task[];
+}
+
+export function getNextQueuedTask(): Task | undefined {
+  return getDb()
+    .prepare(
+      "SELECT * FROM tasks WHERE status = 'queued' ORDER BY created_at ASC LIMIT 1"
+    )
+    .get() as Task | undefined;
+}
+
+export function updateTaskStatus(
+  id: string,
+  status: "running" | "done" | "failed",
+  result?: { result_json?: string; error_message?: string }
+): void {
+  const db = getDb();
+  if (status === "done") {
+    db.prepare(
+      `UPDATE tasks SET status = 'done', result_json = ?, completed_at = datetime('now') WHERE id = ?`
+    ).run(result?.result_json ?? null, id);
+  } else if (status === "failed") {
+    db.prepare(
+      `UPDATE tasks SET status = 'failed', error_message = ?, retry_count = retry_count + 1, completed_at = datetime('now') WHERE id = ?`
+    ).run(result?.error_message ?? "Unknown error", id);
+  } else {
+    db.prepare("UPDATE tasks SET status = 'running' WHERE id = ?").run(id);
+  }
+}
+
+export function requeueFailedTask(id: string): void {
+  getDb()
+    .prepare("UPDATE tasks SET status = 'queued', error_message = NULL WHERE id = ?")
+    .run(id);
+}
+
+// ─── Inter-Agent Messages ────────────────────────────────
+export interface InterAgentMessage {
+  id: string;
+  source_agent_id: string;
+  target_agent_id: string;
+  request: string;
+  response: string | null;
+  status: string;
+  conversation_id: string | null;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export function createInterAgentMessage(data: {
+  source_agent_id: string;
+  target_agent_id: string;
+  request: string;
+  conversation_id?: string;
+}): InterAgentMessage {
+  const db = getDb();
+  const id = randomUUID();
+  db.prepare(
+    `INSERT INTO inter_agent_messages (id, source_agent_id, target_agent_id, request, conversation_id)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(id, data.source_agent_id, data.target_agent_id, data.request, data.conversation_id ?? null);
+  return db.prepare("SELECT * FROM inter_agent_messages WHERE id = ?").get(id) as InterAgentMessage;
+}
+
+export function completeInterAgentMessage(id: string, response: string): void {
+  getDb()
+    .prepare(
+      `UPDATE inter_agent_messages SET response = ?, status = 'done', completed_at = datetime('now') WHERE id = ?`
+    )
+    .run(response, id);
+}
+
+// ─── Activity Feed ───────────────────────────────────────
+export interface ActivityItem {
+  type: "task" | "message" | "relay";
+  agent_role: string;
+  agent_id: string;
+  title: string;
+  detail: string | null;
+  status: string;
+  created_at: string;
+}
+
+export function getActivityFeed(companyId: string, limit = 20): ActivityItem[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT 'task' as type, a.role as agent_role, a.id as agent_id,
+              t.title as title, t.status as status,
+              CASE WHEN t.result_json IS NOT NULL THEN substr(t.result_json, 1, 200) ELSE NULL END as detail,
+              t.created_at
+       FROM tasks t JOIN agents a ON t.agent_id = a.id
+       WHERE a.company_id = ?
+       UNION ALL
+       SELECT 'relay' as type, sa.role as agent_role, sa.id as agent_id,
+              'Asked @' || ta.role || ': ' || substr(iam.request, 1, 80) as title,
+              iam.status as status,
+              CASE WHEN iam.response IS NOT NULL THEN substr(iam.response, 1, 200) ELSE NULL END as detail,
+              iam.created_at
+       FROM inter_agent_messages iam
+       JOIN agents sa ON iam.source_agent_id = sa.id
+       JOIN agents ta ON iam.target_agent_id = ta.id
+       WHERE sa.company_id = ?
+       ORDER BY created_at DESC LIMIT ?`
+    )
+    .all(companyId, companyId, limit) as ActivityItem[];
 }

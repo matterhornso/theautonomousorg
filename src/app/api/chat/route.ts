@@ -117,18 +117,23 @@ export async function POST(request: NextRequest) {
             extractMemory(agentId, message, fullResponse);
           }
 
-          // Check for inter-agent mentions
+          // Check for inter-agent mentions and actually relay
           const mentions = fullResponse.match(/@(\w[\w\s-]*?)(?=[\s,.\n!?]|$)/g);
           if (mentions && mentions.length > 0) {
             const agents = getAgentsByCompany(agent.company_id);
-            for (const mention of mentions) {
+            const processed = new Set<string>();
+            for (const mention of mentions.slice(0, 2)) {
               const mentionedRole = mention.slice(1).trim();
+              if (processed.has(mentionedRole.toLowerCase())) continue;
+              processed.add(mentionedRole.toLowerCase());
+
               const mentionedAgent = agents.find(
                 (a) =>
                   a.role.toLowerCase() === mentionedRole.toLowerCase() &&
                   a.id !== agentId
               );
               if (mentionedAgent) {
+                // Notify user that relay is happening
                 controller.enqueue(
                   encoder.encode(
                     `data: ${JSON.stringify({
@@ -136,10 +141,53 @@ export async function POST(request: NextRequest) {
                         from: agent.role,
                         to: mentionedAgent.role,
                         agentId: mentionedAgent.id,
+                        status: "relaying",
                       },
                     })}\n\n`
                   )
                 );
+
+                // Actually relay the message
+                try {
+                  const relayRes = await fetch(
+                    `${request.nextUrl.origin}/api/agents/relay`,
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        sourceAgentId: agentId,
+                        targetRole: mentionedRole,
+                        message: fullResponse,
+                        conversationId: convId,
+                        depth: 0,
+                      }),
+                    }
+                  );
+                  const relayData = await relayRes.json();
+                  if (relayData.response) {
+                    controller.enqueue(
+                      encoder.encode(
+                        `data: ${JSON.stringify({
+                          relay: {
+                            from: mentionedAgent.role,
+                            response: relayData.response,
+                          },
+                        })}\n\n`
+                      )
+                    );
+                  }
+                } catch {
+                  controller.enqueue(
+                    encoder.encode(
+                      `data: ${JSON.stringify({
+                        relay: {
+                          from: mentionedAgent.role,
+                          response: `@${mentionedAgent.role} is unavailable right now.`,
+                        },
+                      })}\n\n`
+                    )
+                  );
+                }
               }
             }
           }

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { createCompany, createAgent } from "@/lib/db";
+import { createCompany, createAgent, createTask } from "@/lib/db";
 import { buildSystemPrompt } from "@/lib/prompts";
 import { agentRoles } from "@/app/data";
+import { getTaskTemplatesForRole } from "@/lib/task-templates";
 import type { Analysis } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
@@ -57,7 +58,22 @@ export async function POST(request: NextRequest) {
       });
 
       agents.push(agent);
+
+      // Enqueue proactive tasks for this agent
+      const taskTemplates = getTaskTemplatesForRole(role, analysis);
+      for (const template of taskTemplates) {
+        createTask({
+          agent_id: agent.id,
+          type: template.type,
+          title: template.title,
+          input_json: template.prompt,
+        });
+      }
     }
+
+    // Trigger task processing (fire-and-forget)
+    const baseUrl = request.nextUrl.origin;
+    fetch(`${baseUrl}/api/tasks/process`, { method: "POST" }).catch(() => {});
 
     return NextResponse.json({
       companyId: company.id,
