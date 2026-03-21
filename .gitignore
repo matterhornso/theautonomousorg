@@ -3,3 +3,6 @@ node_modules/
 .gstack/
 .env*
 data/*.db
+
+# clerk configuration (can include secrets)
+/.clerk/
