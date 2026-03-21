@@ -64,8 +64,8 @@ export default function Home() {
               <p className="text-base sm:text-lg text-neutral-500 leading-relaxed mb-10 max-w-2xl mx-auto">
                 Enter your company website and we&apos;ll analyze your business
                 to recommend which agents would have the highest impact.
-                Communicate with your agents via WhatsApp — no new tools to
-                learn.
+                Communicate with your agents via WhatsApp, Telegram, or the
+                admin dashboard — no new tools to learn.
               </p>
             </Reveal>
 
