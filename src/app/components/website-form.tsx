@@ -21,16 +21,7 @@ interface Analysis {
   summary: string;
 }
 
-const roleIcons: Record<string, string> = {
-  Sales: "S",
-  Marketing: "M",
-  Accounting: "A",
-  Strategy: "St",
-  Product: "P",
-  "Front-End Engineering": "FE",
-  "Back-End Engineering": "BE",
-  "AI Expert": "AI",
-};
+import { AgentIcon } from "./agent-icons";
 
 export function WebsiteForm({
   variant = "light",
@@ -160,11 +151,7 @@ export function WebsiteForm({
                       : "bg-neutral-50 opacity-60 hover:opacity-80"
                 }`}
               >
-                <div className={`w-11 h-11 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
-                  isSelected ? "bg-accent text-primary" : "bg-primary text-surface"
-                }`}>
-                  {roleIcons[rec.role] || rec.role.charAt(0)}
-                </div>
+                <AgentIcon role={rec.role} size="md" variant={isSelected ? "accent" : "dark"} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <p

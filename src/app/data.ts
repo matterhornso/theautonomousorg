@@ -93,4 +93,52 @@ export const agentRoles = [
     ],
     connectors: ["Anthropic API", "OpenAI API", "HuggingFace"],
   },
+  {
+    title: "Admin",
+    icon: "Ad",
+    description:
+      "Contract drafting, document management, vendor coordination, office operations, and executive support.",
+    skills: ["Contract drafting", "Document management", "Scheduling", "Vendor management"],
+    connectors: ["DocuSign", "Google Workspace", "Slack", "Calendly"],
+  },
+  {
+    title: "HR",
+    icon: "HR",
+    description:
+      "Recruiting pipeline management, candidate screening, onboarding workflows, culture surveys, and performance reviews.",
+    skills: ["Recruiting", "Onboarding", "Performance reviews", "Culture"],
+    connectors: ["Greenhouse", "Lever", "BambooHR", "LinkedIn"],
+  },
+  {
+    title: "Finance",
+    icon: "Fi",
+    description:
+      "Financial modeling, fundraising prep, investor reporting, budget planning, and unit economics analysis.",
+    skills: ["Financial modeling", "Investor relations", "Budgeting", "Unit economics"],
+    connectors: ["Carta", "Brex", "Mercury", "Stripe"],
+  },
+  {
+    title: "Customer Success",
+    icon: "CS",
+    description:
+      "Customer onboarding, health scoring, churn prevention, NPS surveys, and support ticket escalation.",
+    skills: ["Onboarding", "Health scoring", "Churn prevention", "NPS"],
+    connectors: ["Intercom", "Zendesk", "Gainsight", "Slack"],
+  },
+  {
+    title: "Legal",
+    icon: "Le",
+    description:
+      "Contract review, compliance monitoring, IP protection, terms of service drafting, and regulatory tracking.",
+    skills: ["Contract review", "Compliance", "IP protection", "Regulatory"],
+    connectors: ["DocuSign", "Ironclad", "LegalZoom", "Notion"],
+  },
+  {
+    title: "Data Analyst",
+    icon: "DA",
+    description:
+      "Dashboard creation, SQL queries, cohort analysis, A/B test evaluation, and business intelligence reporting.",
+    skills: ["SQL & analytics", "Dashboards", "Cohort analysis", "A/B testing"],
+    connectors: ["Metabase", "Looker", "BigQuery", "Mixpanel"],
+  },
 ];

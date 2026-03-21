@@ -3,6 +3,7 @@ import { Navbar } from "./components/navbar";
 import { AgentShowcase } from "./components/agent-showcase";
 import { agentRoles } from "./data";
 import { WebsiteForm } from "./components/website-form";
+import { AgentIcon } from "./components/agent-icons";
 
 const steps = [
   {
@@ -146,9 +147,7 @@ export default function Home() {
                       key={role.title}
                       className="flex items-center gap-4 p-4 bg-white border border-neutral-200/60 rounded-xl hover:shadow-sm transition-all"
                     >
-                      <div className="w-11 h-11 bg-primary rounded-lg flex items-center justify-center text-surface text-xs font-bold shrink-0">
-                        {role.icon}
-                      </div>
+                      <AgentIcon role={role.title} size="md" />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm">{role.title}</p>
                         <p className="text-xs text-neutral-500 truncate">

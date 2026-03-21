@@ -2,17 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getCompaniesByUser, getAgentsByCompany } from "@/lib/db";
 import Link from "next/link";
-
-const roleIcons: Record<string, string> = {
-  Sales: "S",
-  Marketing: "M",
-  Accounting: "A",
-  Strategy: "St",
-  Product: "P",
-  "Front-End Engineering": "FE",
-  "Back-End Engineering": "BE",
-  "AI Expert": "AI",
-};
+import { AgentIcon } from "@/app/components/agent-icons";
 
 export default async function DashboardIndex() {
   const { userId } = await auth();
@@ -85,9 +75,7 @@ export default async function DashboardIndex() {
                       key={agent.id}
                       className="flex items-center gap-1.5 px-2 py-1 bg-neutral-50 rounded-lg"
                     >
-                      <div className="w-5 h-5 bg-primary rounded flex items-center justify-center text-surface text-[8px] font-bold">
-                        {roleIcons[agent.role] || agent.role.charAt(0)}
-                      </div>
+                      <AgentIcon role={agent.role} size="sm" />
                       <span className="text-xs text-neutral-600">
                         {agent.role}
                       </span>

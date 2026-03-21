@@ -16,6 +16,12 @@ Available agent roles:
 6. Front-End Engineering — React/Next.js, UI components, performance, accessibility
 7. Back-End Engineering — API design, databases, infrastructure, security
 8. AI Expert — Model selection, prompt engineering, RAG pipelines, fine-tuning
+9. Admin — Contract drafting, document management, vendor coordination, operations
+10. HR — Recruiting, candidate screening, onboarding, performance reviews
+11. Finance — Financial modeling, fundraising prep, investor reporting, budgeting
+12. Customer Success — Customer onboarding, health scoring, churn prevention, NPS
+13. Legal — Contract review, compliance monitoring, IP protection, regulatory tracking
+14. Data Analyst — Dashboards, SQL queries, cohort analysis, A/B test evaluation
 
 Your analysis should:
 1. Identify the company name, industry, and what they do

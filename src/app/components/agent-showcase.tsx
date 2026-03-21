@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Reveal } from "./reveal";
 import { agentRoles } from "../data";
+import { AgentIcon } from "./agent-icons";
 
 export function AgentShowcase() {
   const [activeRole, setActiveRole] = useState(0);
@@ -57,9 +58,7 @@ export function AgentShowcase() {
       <Reveal delay={150}>
         <div className="bg-neutral-800/50 border border-neutral-700/50 rounded-2xl p-8 lg:p-10 backdrop-blur-sm">
           <div className="flex items-center gap-4 mb-6">
-            <div className="w-14 h-14 bg-accent rounded-xl flex items-center justify-center text-primary text-lg font-bold">
-              {agentRoles[activeRole].icon}
-            </div>
+            <AgentIcon role={agentRoles[activeRole].title} size="lg" variant="accent" />
             <div>
               <h3 className="text-2xl font-semibold">
                 {agentRoles[activeRole].title} Agent

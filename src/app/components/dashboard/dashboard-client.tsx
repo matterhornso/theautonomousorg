@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { AgentIcon } from "../agent-icons";
 
 interface AgentInfo {
   id: string;
@@ -23,16 +24,6 @@ interface ChatMessage {
   content: string;
 }
 
-const roleIcons: Record<string, string> = {
-  Sales: "S",
-  Marketing: "M",
-  Accounting: "A",
-  Strategy: "St",
-  Product: "P",
-  "Front-End Engineering": "FE",
-  "Back-End Engineering": "BE",
-  "AI Expert": "AI",
-};
 
 export function DashboardClient({
   company,
@@ -200,15 +191,7 @@ export function DashboardClient({
                   : "hover:bg-neutral-800/50"
               }`}
             >
-              <div
-                className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
-                  activeAgent?.id === agent.id
-                    ? "bg-accent text-primary"
-                    : "bg-neutral-800 text-neutral-400"
-                }`}
-              >
-                {roleIcons[agent.role] || agent.role.charAt(0)}
-              </div>
+              <AgentIcon role={agent.role} size="sm" variant={activeAgent?.id === agent.id ? "accent" : "dark"} />
               <div className="min-w-0">
                 <p className="text-sm font-medium truncate">{agent.role}</p>
                 <p className="text-xs text-neutral-500 truncate">
@@ -237,9 +220,7 @@ export function DashboardClient({
           <>
             {/* Agent header */}
             <header className="px-6 py-4 border-b border-neutral-200 bg-white flex items-center gap-4">
-              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-surface text-xs font-bold">
-                {roleIcons[activeAgent.role] || activeAgent.role.charAt(0)}
-              </div>
+              <AgentIcon role={activeAgent.role} size="md" />
               <div>
                 <h3 className="font-semibold">{activeAgent.role} Agent</h3>
                 <div className="flex items-center gap-3 text-xs text-neutral-500">
@@ -269,9 +250,8 @@ export function DashboardClient({
             <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
               {messages.length === 0 && !streamingText && (
                 <div className="flex flex-col items-center justify-center h-full text-center">
-                  <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-surface text-xl font-bold mb-4">
-                    {roleIcons[activeAgent.role] ||
-                      activeAgent.role.charAt(0)}
+                  <div className="mb-4">
+                    <AgentIcon role={activeAgent.role} size="lg" />
                   </div>
                   <h3 className="text-lg font-semibold mb-1">
                     {activeAgent.role} Agent
@@ -408,9 +388,7 @@ export function DashboardClient({
                     className="p-4 border border-neutral-200 rounded-xl text-left hover:border-accent hover:shadow-sm transition-all bg-white"
                   >
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center text-surface text-xs font-bold">
-                        {roleIcons[agent.role] || agent.role.charAt(0)}
-                      </div>
+                      <AgentIcon role={agent.role} size="sm" />
                       <span className="font-medium text-sm">{agent.role}</span>
                     </div>
                     <p className="text-xs text-neutral-500">
