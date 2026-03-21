@@ -41,13 +41,8 @@
 - **Priority:** P2
 - **Depends on:** Postgres migration (worker needs persistent DB access)
 
-## Onboarding Provisioning Animation
-- **What:** Animated screen showing agents "coming online" during provisioning
-- **Why:** The 2-5 second provisioning wait is a delight opportunity. Show each agent card flipping from "Queued" → "Configuring" → "Online".
-- **How:** Create /provisioning/[id] route. WebSocket or polling for agent status. Staggered card animations. Auto-redirect to dashboard when all ready.
-- **Effort:** ~1h CC time
-- **Priority:** P3
-- **Depends on:** Nothing
+## ~~Onboarding Provisioning Animation~~ — DONE (0bf72dc, 2026-03-21)
+Built: /provisioning/[companyId] with staggered agent cards, auto-redirect to dashboard.
 
 ## Agent Skill Marketplace
 - **What:** Third-party developers can build and sell agent skills on the platform
@@ -57,13 +52,8 @@
 - **Priority:** P4 (future)
 - **Depends on:** Stable agent architecture, meaningful user base
 
-## Custom Agent Builder
-- **What:** Users define their own agent roles with custom instructions, skills, and connectors
-- **Why:** 14 pre-built roles won't cover every business need. Power users want custom agents.
-- **How:** Agent builder UI (name, instructions, skill selection, connector config). Save as custom role in DB.
-- **Effort:** ~4h CC time
-- **Priority:** P3
-- **Depends on:** MCP integrations (need real connectors to configure)
+## ~~Custom Agent Builder~~ — DONE (0bf72dc, 2026-03-21)
+Built: /dashboard/[companyId]/builder with full UI, POST /api/agents/custom, auto-enqueues initial task.
 
 ## Enterprise SSO (SAML/OIDC)
 - **What:** Enterprise customers authenticate via their identity provider
@@ -73,21 +63,11 @@
 - **Priority:** P3
 - **Depends on:** Clerk enterprise plan
 
-## Self-Serve API
-- **What:** REST API for programmatic agent access (create agents, send messages, get task results)
-- **Why:** Developers want to integrate agents into their own workflows and tools
-- **How:** API key management. Rate limiting. OpenAPI spec. SDK generation.
-- **Effort:** ~4h CC time
-- **Priority:** P3
-- **Depends on:** Stable agent architecture, billing (API usage metering)
+## ~~Self-Serve API~~ — DONE (0bf72dc, 2026-03-21)
+Built: /api/v1/agents, /api/v1/chat, /api/v1/tasks with Bearer token auth. API key management via /api/keys.
 
-## Agent Performance Analytics
-- **What:** Dashboard showing agent effectiveness metrics (tasks completed, response quality, user satisfaction)
-- **Why:** Users need to know if agents are delivering value. Required for enterprise justification.
-- **How:** Track task completion rate, average response time, user ratings. Dashboard with charts.
-- **Effort:** ~3h CC time
-- **Priority:** P3
-- **Depends on:** Meaningful usage data (need users running agents for weeks)
+## ~~Agent Performance Analytics~~ — DONE (0bf72dc, 2026-03-21)
+Built: /dashboard/[companyId]/analytics with overview cards, task pipeline chart, per-agent performance table.
 
 ## Mobile App
 - **What:** React Native app for managing agents on mobile
