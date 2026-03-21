@@ -221,7 +221,7 @@ export function WebsiteForm({
                   });
                   const data = await res.json();
                   if (res.ok && data.companyId) {
-                    router.push(`/dashboard/${data.companyId}`);
+                    router.push(`/provisioning/${data.companyId}`);
                   } else {
                     setError(data.error || "Failed to provision agents");
                     setProvisioning(false);

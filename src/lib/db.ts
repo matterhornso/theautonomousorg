@@ -127,6 +127,15 @@ function initSchema(db: Database.Database) {
       UNIQUE(company_id, month)
     );
 
+    CREATE TABLE IF NOT EXISTS api_keys (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL REFERENCES companies(id),
+      key_hash TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      last_used_at TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS inter_agent_messages (
       id TEXT PRIMARY KEY,
       source_agent_id TEXT NOT NULL REFERENCES agents(id),
@@ -378,6 +387,44 @@ export function upsertUserProfile(
   }
 
   return getUserProfile(userId)!;
+}
+
+// ─── API Keys ────────────────────────────────────────────
+export interface ApiKey {
+  id: string;
+  company_id: string;
+  key_hash: string;
+  name: string;
+  last_used_at: string | null;
+  created_at: string;
+}
+
+export function createApiKey(companyId: string, keyHash: string, name: string): ApiKey {
+  const db = getDb();
+  const id = randomUUID();
+  db.prepare(
+    "INSERT INTO api_keys (id, company_id, key_hash, name) VALUES (?, ?, ?, ?)"
+  ).run(id, companyId, keyHash, name);
+  return db.prepare("SELECT * FROM api_keys WHERE id = ?").get(id) as ApiKey;
+}
+
+export function getApiKeyByHash(keyHash: string): ApiKey | undefined {
+  const db = getDb();
+  const key = db.prepare("SELECT * FROM api_keys WHERE key_hash = ?").get(keyHash) as ApiKey | undefined;
+  if (key) {
+    db.prepare("UPDATE api_keys SET last_used_at = datetime('now') WHERE id = ?").run(key.id);
+  }
+  return key;
+}
+
+export function getApiKeysByCompany(companyId: string): ApiKey[] {
+  return getDb()
+    .prepare("SELECT * FROM api_keys WHERE company_id = ? ORDER BY created_at DESC")
+    .all(companyId) as ApiKey[];
+}
+
+export function deleteApiKey(id: string): void {
+  getDb().prepare("DELETE FROM api_keys WHERE id = ?").run(id);
 }
 
 // ─── Subscriptions & Billing ─────────────────────────────
