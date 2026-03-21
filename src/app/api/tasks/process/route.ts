@@ -5,6 +5,7 @@ import {
   updateTaskStatus,
   getAgent,
   setMemory,
+  incrementUsage,
 } from "@/lib/db";
 
 const client = new Anthropic();
@@ -59,6 +60,9 @@ export async function POST() {
 
     // Mark as done with result
     updateTaskStatus(task.id, "done", { result_json: resultText });
+
+    // Track usage
+    incrementUsage(agent.company_id, "task_count");
 
     // Store result as agent memory for future conversations
     setMemory(

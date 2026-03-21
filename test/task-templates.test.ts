@@ -1,0 +1,79 @@
+import { describe, it, expect } from "vitest";
+import { getTaskTemplatesForRole } from "@/lib/task-templates";
+import type { Analysis } from "@/lib/types";
+
+const mockAnalysis: Analysis = {
+  company: {
+    name: "TestCo",
+    industry: "SaaS",
+    description: "A project management tool for small teams",
+    stage: "startup",
+  },
+  recommendations: [
+    {
+      role: "Sales",
+      impact: "high",
+      reason: "Need outbound",
+      example: "Email sequences",
+    },
+  ],
+  summary: "TestCo needs sales help",
+};
+
+describe("Task Templates", () => {
+  it("returns Sales-specific templates", () => {
+    const templates = getTaskTemplatesForRole("Sales", mockAnalysis);
+    expect(templates.length).toBe(2);
+    expect(templates[0].type).toBe("icp_research");
+    expect(templates[1].type).toBe("outbound_sequences");
+    expect(templates[0].prompt).toContain("TestCo");
+  });
+
+  it("returns Marketing-specific templates", () => {
+    const templates = getTaskTemplatesForRole("Marketing", mockAnalysis);
+    expect(templates.length).toBe(2);
+    expect(templates[0].type).toBe("seo_audit");
+    expect(templates[0].prompt).toContain("SaaS");
+  });
+
+  it("returns Strategy-specific templates", () => {
+    const templates = getTaskTemplatesForRole("Strategy", mockAnalysis);
+    expect(templates.length).toBe(1);
+    expect(templates[0].type).toBe("competitive_landscape");
+  });
+
+  it("returns Product-specific templates", () => {
+    const templates = getTaskTemplatesForRole("Product", mockAnalysis);
+    expect(templates.length).toBe(1);
+    expect(templates[0].type).toBe("user_personas");
+  });
+
+  it("returns generic template for unknown roles", () => {
+    const templates = getTaskTemplatesForRole("Customer Success", mockAnalysis);
+    expect(templates.length).toBe(1);
+    expect(templates[0].type).toBe("introduction");
+    expect(templates[0].prompt).toContain("TestCo");
+  });
+
+  it("includes company name in all prompts", () => {
+    const roles = [
+      "Sales",
+      "Marketing",
+      "Strategy",
+      "Product",
+      "Accounting",
+      "HR",
+    ];
+    for (const role of roles) {
+      const templates = getTaskTemplatesForRole(role, mockAnalysis);
+      for (const t of templates) {
+        expect(t.prompt).toContain("TestCo");
+      }
+    }
+  });
+
+  it("includes industry context in prompts", () => {
+    const templates = getTaskTemplatesForRole("Sales", mockAnalysis);
+    expect(templates[0].prompt).toContain("SaaS");
+  });
+});

@@ -105,6 +105,28 @@ function initSchema(db: Database.Database) {
       completed_at TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL REFERENCES companies(id),
+      stripe_customer_id TEXT,
+      stripe_subscription_id TEXT,
+      plan TEXT NOT NULL DEFAULT 'free',
+      status TEXT NOT NULL DEFAULT 'active',
+      current_period_end TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(company_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS usage_records (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL REFERENCES companies(id),
+      month TEXT NOT NULL,
+      task_count INTEGER DEFAULT 0,
+      message_count INTEGER DEFAULT 0,
+      UNIQUE(company_id, month)
+    );
+
     CREATE TABLE IF NOT EXISTS inter_agent_messages (
       id TEXT PRIMARY KEY,
       source_agent_id TEXT NOT NULL REFERENCES agents(id),
@@ -358,6 +380,116 @@ export function upsertUserProfile(
   return getUserProfile(userId)!;
 }
 
+// ─── Subscriptions & Billing ─────────────────────────────
+export interface Subscription {
+  id: string;
+  company_id: string;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  plan: "free" | "growth" | "enterprise";
+  status: string;
+  current_period_end: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+const PLAN_LIMITS: Record<string, { agents: number; tasks: number }> = {
+  free: { agents: 1, tasks: 100 },
+  growth: { agents: 5, tasks: -1 },
+  enterprise: { agents: -1, tasks: -1 },
+};
+
+export function getSubscription(companyId: string): Subscription | undefined {
+  return getDb()
+    .prepare("SELECT * FROM subscriptions WHERE company_id = ?")
+    .get(companyId) as Subscription | undefined;
+}
+
+export function upsertSubscription(
+  companyId: string,
+  data: Partial<Omit<Subscription, "id" | "company_id" | "created_at" | "updated_at">>
+): Subscription {
+  const db = getDb();
+  const existing = getSubscription(companyId);
+  if (existing) {
+    const fields: string[] = [];
+    const values: (string | null)[] = [];
+    for (const [key, val] of Object.entries(data)) {
+      if (val !== undefined) {
+        fields.push(`${key} = ?`);
+        values.push(val as string | null);
+      }
+    }
+    if (fields.length > 0) {
+      fields.push("updated_at = datetime('now')");
+      values.push(companyId);
+      db.prepare(`UPDATE subscriptions SET ${fields.join(", ")} WHERE company_id = ?`).run(
+        ...values
+      );
+    }
+  } else {
+    const id = randomUUID();
+    db.prepare(
+      `INSERT INTO subscriptions (id, company_id, plan, status, stripe_customer_id, stripe_subscription_id)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).run(
+      id,
+      companyId,
+      data.plan || "free",
+      data.status || "active",
+      data.stripe_customer_id ?? null,
+      data.stripe_subscription_id ?? null
+    );
+  }
+  return getSubscription(companyId)!;
+}
+
+export function getUsage(companyId: string): { task_count: number; message_count: number } {
+  const month = new Date().toISOString().slice(0, 7);
+  const row = getDb()
+    .prepare("SELECT SUM(task_count) as task_count, SUM(message_count) as message_count FROM usage_records WHERE company_id = ? AND month = ?")
+    .get(companyId, month) as { task_count: number | null; message_count: number | null } | undefined;
+  return { task_count: row?.task_count || 0, message_count: row?.message_count || 0 };
+}
+
+export function incrementUsage(companyId: string, field: "task_count" | "message_count"): void {
+  const db = getDb();
+  const month = new Date().toISOString().slice(0, 7);
+  const id = randomUUID();
+  db.prepare(
+    `INSERT INTO usage_records (id, company_id, month, ${field})
+     VALUES (?, ?, ?, 1)
+     ON CONFLICT(company_id, month)
+     DO UPDATE SET ${field} = ${field} + 1`
+  ).run(id, companyId, month);
+}
+
+export function checkPlanLimits(companyId: string): {
+  canProvision: boolean;
+  canCreateTask: boolean;
+  plan: string;
+  agentCount: number;
+  agentLimit: number;
+  taskCount: number;
+  taskLimit: number;
+} {
+  const sub = getSubscription(companyId);
+  const plan = sub?.plan || "free";
+  const limits = PLAN_LIMITS[plan] || PLAN_LIMITS.free;
+  const agents = getAgentsByCompany(companyId);
+  const usage = getUsage(companyId);
+
+  return {
+    canProvision: limits.agents === -1 || agents.length < limits.agents,
+    canCreateTask: limits.tasks === -1 || usage.task_count < limits.tasks,
+    plan,
+    agentCount: agents.length,
+    agentLimit: limits.agents,
+    taskCount: usage.task_count,
+    taskLimit: limits.tasks,
+  };
+}
+
 // ─── Tasks ───────────────────────────────────────────────
 export interface Task {
   id: string;
@@ -488,23 +620,24 @@ export function getActivityFeed(companyId: string, limit = 20): ActivityItem[] {
   const db = getDb();
   return db
     .prepare(
-      `SELECT 'task' as type, a.role as agent_role, a.id as agent_id,
-              t.title as title, t.status as status,
-              CASE WHEN t.result_json IS NOT NULL THEN substr(t.result_json, 1, 200) ELSE NULL END as detail,
-              t.created_at
-       FROM tasks t JOIN agents a ON t.agent_id = a.id
-       WHERE a.company_id = ?
-       UNION ALL
-       SELECT 'relay' as type, sa.role as agent_role, sa.id as agent_id,
-              'Asked @' || ta.role || ': ' || substr(iam.request, 1, 80) as title,
-              iam.status as status,
-              CASE WHEN iam.response IS NOT NULL THEN substr(iam.response, 1, 200) ELSE NULL END as detail,
-              iam.created_at
-       FROM inter_agent_messages iam
-       JOIN agents sa ON iam.source_agent_id = sa.id
-       JOIN agents ta ON iam.target_agent_id = ta.id
-       WHERE sa.company_id = ?
-       ORDER BY created_at DESC LIMIT ?`
+      `SELECT * FROM (
+        SELECT 'task' as type, a.role as agent_role, a.id as agent_id,
+                t.title as title, t.status as status,
+                CASE WHEN t.result_json IS NOT NULL THEN substr(t.result_json, 1, 200) ELSE NULL END as detail,
+                t.created_at as created_at
+         FROM tasks t JOIN agents a ON t.agent_id = a.id
+         WHERE a.company_id = ?
+         UNION ALL
+         SELECT 'relay' as type, sa.role as agent_role, sa.id as agent_id,
+                'Asked @' || ta.role || ': ' || substr(iam.request, 1, 80) as title,
+                iam.status as status,
+                CASE WHEN iam.response IS NOT NULL THEN substr(iam.response, 1, 200) ELSE NULL END as detail,
+                iam.created_at as created_at
+         FROM inter_agent_messages iam
+         JOIN agents sa ON iam.source_agent_id = sa.id
+         JOIN agents ta ON iam.target_agent_id = ta.id
+         WHERE sa.company_id = ?
+       ) ORDER BY created_at DESC LIMIT ?`
     )
     .all(companyId, companyId, limit) as ActivityItem[];
 }
