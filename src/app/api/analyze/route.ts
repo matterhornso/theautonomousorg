@@ -2,6 +2,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getUserProfile } from "@/lib/db";
+import { checkRateLimit, getRateLimitKey, RATE_LIMITS } from "@/lib/rate-limit";
+import { validateUrl } from "@/lib/validation";
 
 const client = new Anthropic();
 
@@ -106,13 +108,26 @@ async function fetchWebsiteContent(url: string): Promise<string> {
 export async function POST(request: NextRequest) {
   try {
     const { userId } = await auth();
+
+    // Rate limit
+    const ip = request.headers.get("x-forwarded-for") || "anonymous";
+    const rateLimitResult = checkRateLimit(
+      getRateLimitKey("analyze", userId || ip),
+      RATE_LIMITS.analyze
+    );
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again in a moment." },
+        { status: 429 }
+      );
+    }
+
     const { url } = await request.json();
 
-    if (!url || typeof url !== "string") {
-      return NextResponse.json(
-        { error: "Please provide a valid URL" },
-        { status: 400 }
-      );
+    // Validate URL
+    const urlError = validateUrl(url || "");
+    if (urlError) {
+      return NextResponse.json({ error: urlError }, { status: 400 });
     }
 
     // Fetch and extract website content

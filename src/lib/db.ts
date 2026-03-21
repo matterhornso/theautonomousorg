@@ -147,6 +147,17 @@ function initSchema(db: Database.Database) {
       created_at TEXT DEFAULT (datetime('now')),
       completed_at TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS messaging_users (
+      id TEXT PRIMARY KEY,
+      company_id TEXT REFERENCES companies(id),
+      platform TEXT NOT NULL,
+      platform_user_id TEXT NOT NULL,
+      display_name TEXT,
+      default_agent_id TEXT REFERENCES agents(id),
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(platform, platform_user_id)
+    );
   `);
 }
 
@@ -687,4 +698,57 @@ export function getActivityFeed(companyId: string, limit = 20): ActivityItem[] {
        ) ORDER BY created_at DESC LIMIT ?`
     )
     .all(companyId, companyId, limit) as ActivityItem[];
+}
+
+// ─── Messaging Users ────────────────────────────────────
+export interface MessagingUser {
+  id: string;
+  company_id: string;
+  platform: string;
+  platform_user_id: string;
+  display_name: string | null;
+  default_agent_id: string | null;
+  created_at: string;
+}
+
+export function getMessagingUser(
+  platform: string,
+  platformUserId: string
+): MessagingUser | undefined {
+  return getDb()
+    .prepare(
+      "SELECT * FROM messaging_users WHERE platform = ? AND platform_user_id = ?"
+    )
+    .get(platform, platformUserId) as MessagingUser | undefined;
+}
+
+export function createMessagingUser(data: {
+  company_id: string;
+  platform: string;
+  platform_user_id: string;
+  display_name?: string;
+  default_agent_id?: string;
+}): MessagingUser {
+  const db = getDb();
+  const id = randomUUID();
+  db.prepare(
+    `INSERT INTO messaging_users (id, company_id, platform, platform_user_id, display_name, default_agent_id)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(
+    id,
+    data.company_id,
+    data.platform,
+    data.platform_user_id,
+    data.display_name ?? null,
+    data.default_agent_id ?? null
+  );
+  return db
+    .prepare("SELECT * FROM messaging_users WHERE id = ?")
+    .get(id) as MessagingUser;
+}
+
+export function updateDefaultAgent(id: string, agentId: string): void {
+  getDb()
+    .prepare("UPDATE messaging_users SET default_agent_id = ? WHERE id = ?")
+    .run(agentId, id);
 }
