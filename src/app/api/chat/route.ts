@@ -137,12 +137,32 @@ export async function POST(request: NextRequest) {
 
           const toolCalls: { id: string; name: string; input: Record<string, unknown> }[] = [];
 
+          let inToolBlock = false;
+
           for await (const event of stream) {
             if (
               event.type === "content_block_delta" &&
               event.delta.type === "text_delta"
             ) {
               const text = event.delta.text;
+
+              // Filter out tool call markup that Claude sometimes outputs as text
+              if (text.includes("<tool_call>") || text.includes("<tool_response>")) {
+                inToolBlock = true;
+              }
+              if (inToolBlock) {
+                if (text.includes("</tool_response>")) {
+                  inToolBlock = false;
+                }
+                fullResponse += text; // Still save for context but don't show
+                continue; // Don't stream to user
+              }
+
+              // Skip raw JSON tool output patterns
+              if (text.match(/^\s*\{"name":\s*"/) || text.match(/^\s*\{"arguments":/)) {
+                continue;
+              }
+
               fullResponse += text;
               controller.enqueue(
                 encoder.encode(`data: ${JSON.stringify({ text })}\n\n`)
@@ -184,7 +204,7 @@ export async function POST(request: NextRequest) {
             for (const tc of toolCalls) {
               controller.enqueue(
                 encoder.encode(
-                  `data: ${JSON.stringify({ text: `\n\n*Searching Apollo.io...*\n\n` })}\n\n`
+                  `data: ${JSON.stringify({ text: `\n\n` })}\n\n`
                 )
               );
 
@@ -203,11 +223,18 @@ export async function POST(request: NextRequest) {
             }
           }
 
+          // Clean tool markup from response before saving
+          const cleanResponse = fullResponse
+            .replace(/<tool_call>[\s\S]*?<\/tool_call>/g, "")
+            .replace(/<tool_response>[\s\S]*?<\/tool_response>/g, "")
+            .replace(/\n{3,}/g, "\n\n")
+            .trim();
+
           // Save assistant response
           addMessage({
             conversation_id: convId!,
             role: "assistant",
-            content: fullResponse,
+            content: cleanResponse || fullResponse,
           });
 
           // Deduct credits
