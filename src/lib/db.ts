@@ -9,7 +9,13 @@ import type {
   MemoryEntry,
 } from "./types";
 
-const DB_PATH = path.join(process.cwd(), "data", "autonomous.db");
+import fs from "fs";
+
+const dataDir = path.join(process.cwd(), "data");
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+const DB_PATH = path.join(dataDir, "autonomous.db");
 
 let _db: Database.Database | null = null;
 
