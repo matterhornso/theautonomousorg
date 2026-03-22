@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import {
   getAgent,
   getMessages,
@@ -9,6 +10,9 @@ import {
   getMemory,
   setMemory,
   getAgentsByCompany,
+  hasEnoughCredits,
+  deductCredits,
+  CREDITS_PER_PROMPT,
 } from "@/lib/db";
 import {
   isApolloConfigured,
@@ -30,6 +34,18 @@ export async function POST(request: NextRequest) {
       return new Response(
         JSON.stringify({ error: "Missing agentId or message" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check credits
+    const { userId } = await auth();
+    if (userId && !hasEnoughCredits(userId)) {
+      return new Response(
+        JSON.stringify({
+          error: "Insufficient credits. You need " + CREDITS_PER_PROMPT + " credits per message. Top up your credits to continue.",
+          code: "INSUFFICIENT_CREDITS",
+        }),
+        { status: 402, headers: { "Content-Type": "application/json" } }
       );
     }
 
@@ -170,6 +186,21 @@ export async function POST(request: NextRequest) {
             role: "assistant",
             content: fullResponse,
           });
+
+          // Deduct credits
+          if (userId) {
+            const result = deductCredits(
+              userId,
+              CREDITS_PER_PROMPT,
+              `Chat with ${agent.role} Agent`
+            );
+            // Send remaining balance to client
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ credits: { balance: result.balance, cost: CREDITS_PER_PROMPT } })}\n\n`
+              )
+            );
+          }
 
           // Extract memory every 5 messages
           const messageCount = getMessages(convId!, 100).length;

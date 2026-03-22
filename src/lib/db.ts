@@ -65,6 +65,26 @@ function initSchema(db: Database.Database) {
       created_at TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS credits (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL UNIQUE,
+      balance INTEGER NOT NULL DEFAULT 1000,
+      total_earned INTEGER NOT NULL DEFAULT 1000,
+      total_spent INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS credit_transactions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      amount INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      description TEXT,
+      balance_after INTEGER NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS agent_custom_skills (
       id TEXT PRIMARY KEY,
       agent_id TEXT NOT NULL REFERENCES agents(id),
@@ -407,6 +427,123 @@ export function upsertUserProfile(
   }
 
   return getUserProfile(userId)!;
+}
+
+// ─── Credits ─────────────────────────────────────────────
+export const CREDITS_PER_PROMPT = 50; // ~20 prompts per 1000 credits
+export const SIGNUP_CREDITS = 1000;
+
+export interface CreditBalance {
+  id: string;
+  user_id: string;
+  balance: number;
+  total_earned: number;
+  total_spent: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreditTransaction {
+  id: string;
+  user_id: string;
+  amount: number;
+  type: "signup" | "topup" | "usage" | "refund";
+  description: string | null;
+  balance_after: number;
+  created_at: string;
+}
+
+export function getCredits(userId: string): CreditBalance {
+  const db = getDb();
+  let row = db
+    .prepare("SELECT * FROM credits WHERE user_id = ?")
+    .get(userId) as CreditBalance | undefined;
+
+  if (!row) {
+    // Auto-create with signup bonus
+    const id = randomUUID();
+    db.prepare(
+      `INSERT INTO credits (id, user_id, balance, total_earned, total_spent)
+       VALUES (?, ?, ?, ?, 0)`
+    ).run(id, userId, SIGNUP_CREDITS, SIGNUP_CREDITS);
+
+    // Record the signup transaction
+    const txId = randomUUID();
+    db.prepare(
+      `INSERT INTO credit_transactions (id, user_id, amount, type, description, balance_after)
+       VALUES (?, ?, ?, 'signup', 'Welcome bonus — 1000 free credits', ?)`
+    ).run(txId, userId, SIGNUP_CREDITS, SIGNUP_CREDITS);
+
+    row = db
+      .prepare("SELECT * FROM credits WHERE user_id = ?")
+      .get(userId) as CreditBalance;
+  }
+
+  return row;
+}
+
+export function hasEnoughCredits(userId: string, cost: number = CREDITS_PER_PROMPT): boolean {
+  const credits = getCredits(userId);
+  return credits.balance >= cost;
+}
+
+export function deductCredits(
+  userId: string,
+  amount: number,
+  description: string
+): { success: boolean; balance: number } {
+  const db = getDb();
+  const credits = getCredits(userId);
+
+  if (credits.balance < amount) {
+    return { success: false, balance: credits.balance };
+  }
+
+  const newBalance = credits.balance - amount;
+  db.prepare(
+    `UPDATE credits SET balance = ?, total_spent = total_spent + ?, updated_at = datetime('now')
+     WHERE user_id = ?`
+  ).run(newBalance, amount, userId);
+
+  const txId = randomUUID();
+  db.prepare(
+    `INSERT INTO credit_transactions (id, user_id, amount, type, description, balance_after)
+     VALUES (?, ?, ?, 'usage', ?, ?)`
+  ).run(txId, userId, -amount, description, newBalance);
+
+  return { success: true, balance: newBalance };
+}
+
+export function addCredits(
+  userId: string,
+  amount: number,
+  type: "topup" | "refund",
+  description: string
+): number {
+  const db = getDb();
+  const credits = getCredits(userId);
+  const newBalance = credits.balance + amount;
+
+  db.prepare(
+    `UPDATE credits SET balance = ?, total_earned = total_earned + ?, updated_at = datetime('now')
+     WHERE user_id = ?`
+  ).run(newBalance, amount, userId);
+
+  const txId = randomUUID();
+  db.prepare(
+    `INSERT INTO credit_transactions (id, user_id, amount, type, description, balance_after)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(txId, userId, amount, type, description, newBalance);
+
+  return newBalance;
+}
+
+export function getCreditTransactions(userId: string, limit = 20): CreditTransaction[] {
+  return getDb()
+    .prepare(
+      "SELECT * FROM credit_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT ?"
+    )
+    .all(userId, limit) as CreditTransaction[];
 }
 
 // ─── Agent Custom Skills ─────────────────────────────────

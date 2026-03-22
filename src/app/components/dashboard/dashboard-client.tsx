@@ -65,6 +65,7 @@ export function DashboardClient({
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [streamingText, setStreamingText] = useState("");
   const [activity] = useState<ActivityItem[]>(initialActivity);
+  const [creditBalance, setCreditBalance] = useState<number | null>(null);
   const [tasks] = useState<TaskItem[]>(initialTasks);
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -77,6 +78,16 @@ export function DashboardClient({
   useEffect(() => {
     if (activeAgent) inputRef.current?.focus();
   }, [activeAgent]);
+
+  // Fetch credit balance
+  useEffect(() => {
+    fetch("/api/credits")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.balance !== undefined) setCreditBalance(data.balance);
+      })
+      .catch(() => {});
+  }, []);
 
   // Poll for task updates
   useEffect(() => {
@@ -118,7 +129,23 @@ export function DashboardClient({
           }),
         });
 
-        if (!response.ok || !response.body) throw new Error("Chat failed");
+        if (!response.ok) {
+          const errData = await response.json().catch(() => null);
+          if (errData?.code === "INSUFFICIENT_CREDITS") {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: crypto.randomUUID(),
+                role: "system",
+                content: "You're out of credits. Top up to continue chatting with your agents.",
+              },
+            ]);
+            setLoading(false);
+            return;
+          }
+          throw new Error("Chat failed");
+        }
+        if (!response.body) throw new Error("Chat failed");
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -175,6 +202,8 @@ export function DashboardClient({
                     relayFrom: parsed.relay.from,
                   },
                 ]);
+              } else if (parsed.credits) {
+                setCreditBalance(parsed.credits.balance);
               }
             } catch {
               /* skip */
@@ -223,6 +252,23 @@ export function DashboardClient({
           <p className="text-xs text-neutral-500">
             {company.industry} &middot; {company.stage}
           </p>
+          {creditBalance !== null && (
+            <div className="mt-2 flex items-center gap-1.5">
+              <div className="flex-1 h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    creditBalance > 500
+                      ? "bg-secondary"
+                      : creditBalance > 100
+                        ? "bg-accent"
+                        : "bg-red-400"
+                  }`}
+                  style={{ width: `${Math.min((creditBalance / 1000) * 100, 100)}%` }}
+                />
+              </div>
+              <span className="text-[10px] text-neutral-500">{creditBalance} credits</span>
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto py-3">
