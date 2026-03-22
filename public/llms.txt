@@ -1,0 +1,43 @@
+# The Autonomous
+
+> AI agents for every role in your company.
+
+The Autonomous is an AI platform that gives businesses an AI workforce. Users enter their company website, get personalized AI agent recommendations, and launch agents that start working immediately — researching prospects, auditing SEO, analyzing competitors — before users even ask.
+
+## Key Facts
+
+- 14 AI agent roles: Sales, Marketing, Accounting, Strategy, Product, Front-End Engineering, Back-End Engineering, AI Expert, Admin, HR, Finance, Customer Success, Legal, Data Analyst
+- 168 role-specific skills and 112 system capabilities
+- Agents work proactively (not just when asked)
+- Persistent memory across conversations
+- Inter-agent collaboration via @mentions
+- Tool integrations: Apollo.io (210M+ contacts), Instantly.ai (email campaigns), Web Search
+- Credits-based pricing: 1000 free credits on signup (~20 conversations)
+- Custom agent builder for unique business roles
+- Self-serve REST API for programmatic access
+- Built by Chainflux
+
+## Target Market
+
+Traditional small businesses getting into AI for the first time — not AI-native companies. The platform is designed so non-technical business owners can get AI agents working for their company in 2 minutes.
+
+## How It Works
+
+1. User enters their company website URL
+2. AI analyzes the business (industry, size, workflows)
+3. Platform recommends which agents would have highest impact
+4. User selects and launches agents
+5. Agents start working proactively with role-specific tasks
+6. User chats with agents via web dashboard, WhatsApp, or Telegram
+
+## Pricing
+
+- Free: 1000 credits (~20 conversations)
+- Top-up: 500 credits / $5, 2000 credits / $15, 5000 credits / $30
+
+## Links
+
+- Website: https://theautonomous.org
+- Contact: hello@theautonomous.org
+- Privacy: https://theautonomous.org/privacy
+- Terms: https://theautonomous.org/terms
