@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { checkRateLimit, getRateLimitKey, RATE_LIMITS } from "@/lib/rate-limit";
 import {
   getAgent,
   getMessages,
@@ -37,8 +38,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check credits
     const { userId } = await auth();
+
+    // Rate limit
+    const ip = request.headers.get("x-forwarded-for") || "anonymous";
+    const rl = checkRateLimit(getRateLimitKey("chat", userId || ip), RATE_LIMITS.chat);
+    if (!rl.allowed) {
+      return new Response(
+        JSON.stringify({ error: "Too many messages. Please wait a moment." }),
+        { status: 429, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check credits
     if (userId && !hasEnoughCredits(userId)) {
       return new Response(
         JSON.stringify({
