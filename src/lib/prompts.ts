@@ -1,5 +1,6 @@
 import { agentRoles } from "@/app/data";
 import { getToolkit, getConfiguredTools } from "./mcp/registry";
+import { getCustomSkills } from "./db";
 import type { Analysis } from "./types";
 
 const roleInstructions: Record<string, string> = {
@@ -120,7 +121,8 @@ const roleInstructions: Record<string, string> = {
 export function buildSystemPrompt(
   role: string,
   analysis: Analysis,
-  agentRoster: { role: string; id: string }[]
+  agentRoster: { role: string; id: string }[],
+  agentId?: string
 ): string {
   const roleData = agentRoles.find((r) => r.title === role);
   const instructions = roleInstructions[role] || `You are the ${role} agent. Help the company with ${role.toLowerCase()}-related tasks.`;
@@ -133,6 +135,12 @@ export function buildSystemPrompt(
   // Get researched toolkit for this role
   const toolkit = getToolkit(role);
   const configuredTools = getConfiguredTools();
+
+  // Get custom skills if agentId provided
+  const customSkills = agentId ? getCustomSkills(agentId) : [];
+  const customSkillsSection = customSkills.length > 0
+    ? "\n\n## Custom Skills (added by your team)\n" + customSkills.map((s) => `- ${s}`).join("\n")
+    : "";
 
   const skillsList = toolkit
     ? toolkit.skills.map((s) => `- ${s}`).join("\n")
@@ -187,5 +195,5 @@ To request help from another agent, use @AgentRole in your response (e.g., "@Acc
 - Remember context — you have persistent memory across conversations
 - Collaborate — use other agents when their expertise is needed
 - When producing work product (emails, reports, analyses), produce the COMPLETE output, not a summary
-- Be honest about what you don't know or can't do`;
+- Be honest about what you don't know or can't do${customSkillsSection}`;
 }

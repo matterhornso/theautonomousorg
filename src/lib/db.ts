@@ -65,6 +65,15 @@ function initSchema(db: Database.Database) {
       created_at TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS agent_custom_skills (
+      id TEXT PRIMARY KEY,
+      agent_id TEXT NOT NULL REFERENCES agents(id),
+      skill TEXT NOT NULL,
+      added_by TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(agent_id, skill)
+    );
+
     CREATE TABLE IF NOT EXISTS conversations (
       id TEXT PRIMARY KEY,
       agent_id TEXT NOT NULL REFERENCES agents(id),
@@ -398,6 +407,28 @@ export function upsertUserProfile(
   }
 
   return getUserProfile(userId)!;
+}
+
+// ─── Agent Custom Skills ─────────────────────────────────
+export function getCustomSkills(agentId: string): string[] {
+  const rows = getDb()
+    .prepare("SELECT skill FROM agent_custom_skills WHERE agent_id = ? ORDER BY created_at")
+    .all(agentId) as { skill: string }[];
+  return rows.map((r) => r.skill);
+}
+
+export function addCustomSkill(agentId: string, skill: string, addedBy?: string): void {
+  const db = getDb();
+  const id = randomUUID();
+  db.prepare(
+    `INSERT OR IGNORE INTO agent_custom_skills (id, agent_id, skill, added_by) VALUES (?, ?, ?, ?)`
+  ).run(id, agentId, skill, addedBy ?? null);
+}
+
+export function removeCustomSkill(agentId: string, skill: string): void {
+  getDb()
+    .prepare("DELETE FROM agent_custom_skills WHERE agent_id = ? AND skill = ?")
+    .run(agentId, skill);
 }
 
 // ─── API Keys ────────────────────────────────────────────

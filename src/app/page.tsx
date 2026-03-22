@@ -45,7 +45,7 @@ export default function Home() {
         <div className="relative z-10 max-w-[1280px] mx-auto px-6 lg:px-8 pt-28 pb-20">
           <div className="max-w-3xl mx-auto text-center">
             <Reveal>
-              <h1 className="font-[family-name:var(--font-serif)] text-[32px] sm:text-[42px] lg:text-[48px] leading-[1.1] tracking-tight mb-6">
+              <h1 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl lg:text-6xl leading-[1.08] tracking-tight mb-6">
                 Your entire company,{" "}
                 <span className="italic text-accent">autonomous.</span>
               </h1>
