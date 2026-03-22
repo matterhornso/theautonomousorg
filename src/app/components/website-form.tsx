@@ -292,7 +292,7 @@ export function WebsiteForm({
           className={`px-8 py-4 font-medium rounded-xl transition-all hover:shadow-lg active:scale-[0.98] whitespace-nowrap disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
             isDark
               ? "bg-accent text-primary hover:bg-accent-hover hover:shadow-accent/10"
-              : "bg-primary text-surface hover:bg-neutral-800 hover:shadow-primary/10"
+              : "bg-accent text-primary hover:bg-accent-hover hover:shadow-accent/10"
           }`}
         >
           {loading ? (

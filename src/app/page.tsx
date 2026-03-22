@@ -45,7 +45,7 @@ export default function Home() {
         <div className="relative z-10 max-w-[1280px] mx-auto px-6 lg:px-8 pt-28 pb-20">
           <div className="max-w-3xl mx-auto text-center">
             <Reveal>
-              <h1 className="font-[family-name:var(--font-serif)] text-[36px] sm:text-5xl lg:text-[60px] leading-[1.08] tracking-tight mb-6">
+              <h1 className="font-[family-name:var(--font-serif)] text-[32px] sm:text-[42px] lg:text-[48px] leading-[1.1] tracking-tight mb-6">
                 Your entire company,{" "}
                 <span className="italic text-accent">autonomous.</span>
               </h1>
@@ -114,7 +114,7 @@ export default function Home() {
                 </p>
               </Reveal>
               <Reveal delay={75}>
-                <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl lg:text-[56px] tracking-tight mb-6">
+                <h2 className="font-[family-name:var(--font-serif)] text-3xl sm:text-4xl lg:text-[42px] tracking-tight mb-6">
                   Every role your company needs.
                   <br />
                   <span className="text-neutral-400">Handled by AI.</span>
@@ -181,7 +181,7 @@ export default function Home() {
             </p>
           </Reveal>
           <Reveal delay={75}>
-            <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl lg:text-[56px] tracking-tight mb-16 max-w-2xl">
+            <h2 className="font-[family-name:var(--font-serif)] text-3xl sm:text-4xl lg:text-[42px] tracking-tight mb-16 max-w-2xl">
               From website to workforce
               <br />
               <span className="text-neutral-400">in four steps.</span>
@@ -224,7 +224,7 @@ export default function Home() {
               </p>
             </Reveal>
             <Reveal delay={75}>
-              <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl lg:text-[56px] tracking-tight mb-4">
+              <h2 className="font-[family-name:var(--font-serif)] text-3xl sm:text-4xl lg:text-[42px] tracking-tight mb-4">
                 Not chatbots.
                 <br />
                 <span className="text-neutral-400">Actual teammates.</span>
@@ -410,7 +410,7 @@ export default function Home() {
                 </p>
               </Reveal>
               <Reveal delay={75}>
-                <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl lg:text-[56px] tracking-tight mb-6">
+                <h2 className="font-[family-name:var(--font-serif)] text-3xl sm:text-4xl lg:text-[42px] tracking-tight mb-6">
                   Manage your team
                   <br />
                   <span className="text-neutral-400">your way.</span>
@@ -469,7 +469,7 @@ export default function Home() {
               </div>
             </Reveal>
             <Reveal delay={75}>
-              <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl lg:text-[56px] tracking-tight mb-6">
+              <h2 className="font-[family-name:var(--font-serif)] text-3xl sm:text-4xl lg:text-[42px] tracking-tight mb-6">
                 Claude Sonnet 4.6 by default.
                 <br />
                 <span className="text-neutral-400">
@@ -559,7 +559,7 @@ export default function Home() {
               </p>
             </Reveal>
             <Reveal delay={75}>
-              <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl lg:text-[56px] tracking-tight mb-4">
+              <h2 className="font-[family-name:var(--font-serif)] text-3xl sm:text-4xl lg:text-[42px] tracking-tight mb-4">
                 Pay for what you use.
               </h2>
             </Reveal>
@@ -711,7 +711,7 @@ export default function Home() {
       <section className="py-16 bg-surface-mid border-t border-neutral-200">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
           <div className="max-w-xl mx-auto text-center">
-            <h3 className="font-[family-name:var(--font-serif)] text-2xl tracking-tight mb-2">
+            <h3 className="font-semibold text-lg tracking-tight mb-2">
               Stay in the loop
             </h3>
             <p className="text-sm text-neutral-500 mb-5">

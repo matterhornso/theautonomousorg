@@ -24,7 +24,7 @@ export function AgentShowcase() {
           </p>
         </Reveal>
         <Reveal delay={75}>
-          <h2 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl lg:text-[56px] tracking-tight mb-4">
+          <h2 className="font-[family-name:var(--font-serif)] text-3xl sm:text-4xl lg:text-[42px] tracking-tight mb-4">
             Every role.
             <br />
             <span className="text-neutral-400">Every skill. Ready to go.</span>
