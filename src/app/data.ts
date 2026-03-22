@@ -155,4 +155,13 @@ export const agentRoles = [
     connectors: ["Metabase", "Looker", "BigQuery", "Mixpanel"],
     starters: ["Build a dashboard for key metrics", "Run a cohort analysis", "Evaluate our latest A/B test"],
   },
+  {
+    title: "CEO",
+    icon: "CEO",
+    description:
+      "Executive oversight, strategic direction, cross-agent orchestration, board reporting, and company-wide decision making.",
+    skills: ["Executive reporting", "Board management", "Strategic planning", "OKR tracking"],
+    connectors: ["All agents", "Activity feed", "Company metrics"],
+    starters: ["What's our company status?", "Give me a debrief on yesterday", "What should we focus on this week?", "Prepare a board update"],
+  },
 ];

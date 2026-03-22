@@ -43,6 +43,8 @@ function initSchema(db: Database.Database) {
       current_tools TEXT,
       biggest_challenges TEXT,
       automation_goals TEXT,
+      timezone TEXT DEFAULT 'UTC',
+      debrief_enabled INTEGER DEFAULT 1,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     );
@@ -136,8 +138,45 @@ function initSchema(db: Database.Database) {
       result_json TEXT,
       retry_count INTEGER DEFAULT 0,
       error_message TEXT,
+      scheduled_at TEXT,
+      cron_expression TEXT,
+      is_recurring INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       completed_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS team_members (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL REFERENCES companies(id),
+      user_id TEXT,
+      email TEXT NOT NULL,
+      phone TEXT,
+      role TEXT NOT NULL DEFAULT 'member',
+      invite_status TEXT DEFAULT 'pending',
+      invite_token TEXT UNIQUE,
+      invited_by TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      accepted_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS agent_assignments (
+      id TEXT PRIMARY KEY,
+      agent_id TEXT NOT NULL REFERENCES agents(id),
+      user_id TEXT NOT NULL,
+      assigned_by TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(agent_id, user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS debriefs (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL REFERENCES companies(id),
+      user_id TEXT NOT NULL,
+      content TEXT NOT NULL,
+      delivered_via TEXT,
+      period_start TEXT NOT NULL,
+      period_end TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
     );
 
     CREATE TABLE IF NOT EXISTS subscriptions (
@@ -925,4 +964,185 @@ export function updateDefaultAgent(id: string, agentId: string): void {
   getDb()
     .prepare("UPDATE messaging_users SET default_agent_id = ? WHERE id = ?")
     .run(agentId, id);
+}
+
+// ─── Scheduled Tasks ─────────────────────────────────────
+export function createScheduledTask(data: {
+  agent_id: string;
+  type: string;
+  title: string;
+  input_json?: string;
+  scheduled_at?: string;
+  cron_expression?: string;
+  is_recurring?: boolean;
+}): Task {
+  const db = getDb();
+  const id = randomUUID();
+  db.prepare(
+    `INSERT INTO tasks (id, agent_id, type, title, input_json, scheduled_at, cron_expression, is_recurring, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'queued')`
+  ).run(
+    id, data.agent_id, data.type, data.title,
+    data.input_json ?? null, data.scheduled_at ?? null,
+    data.cron_expression ?? null, data.is_recurring ? 1 : 0
+  );
+  return db.prepare("SELECT * FROM tasks WHERE id = ?").get(id) as Task;
+}
+
+export function getScheduledDueTasks(): Task[] {
+  return getDb()
+    .prepare(
+      `SELECT * FROM tasks WHERE is_recurring = 1 AND scheduled_at IS NOT NULL
+       AND scheduled_at <= datetime('now') AND status = 'queued'
+       ORDER BY scheduled_at ASC LIMIT 5`
+    )
+    .all() as Task[];
+}
+
+export function getScheduledTasksByCompany(companyId: string): Task[] {
+  return getDb()
+    .prepare(
+      `SELECT t.* FROM tasks t JOIN agents a ON t.agent_id = a.id
+       WHERE a.company_id = ? AND (t.is_recurring = 1 OR t.scheduled_at IS NOT NULL)
+       ORDER BY t.created_at DESC`
+    )
+    .all(companyId) as Task[];
+}
+
+// ─── Team Members ────────────────────────────────────────
+export interface TeamMember {
+  id: string;
+  company_id: string;
+  user_id: string | null;
+  email: string;
+  phone: string | null;
+  role: "owner" | "admin" | "member" | "viewer";
+  invite_status: string;
+  invite_token: string | null;
+  invited_by: string | null;
+  created_at: string;
+  accepted_at: string | null;
+}
+
+export function createTeamMember(data: {
+  company_id: string;
+  email: string;
+  phone?: string;
+  role?: string;
+  user_id?: string;
+  invited_by?: string;
+}): TeamMember {
+  const db = getDb();
+  const id = randomUUID();
+  const token = randomUUID();
+  const status = data.user_id ? "accepted" : "pending";
+  db.prepare(
+    `INSERT INTO team_members (id, company_id, user_id, email, phone, role, invite_status, invite_token, invited_by${data.user_id ? ", accepted_at" : ""})
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?${data.user_id ? ", datetime('now')" : ""})`
+  ).run(
+    id, data.company_id, data.user_id ?? null, data.email,
+    data.phone ?? null, data.role || "member", status, token,
+    data.invited_by ?? null
+  );
+  return db.prepare("SELECT * FROM team_members WHERE id = ?").get(id) as TeamMember;
+}
+
+export function getTeamMembers(companyId: string): TeamMember[] {
+  return getDb()
+    .prepare("SELECT * FROM team_members WHERE company_id = ? ORDER BY created_at")
+    .all(companyId) as TeamMember[];
+}
+
+export function getTeamMemberByUserId(companyId: string, userId: string): TeamMember | undefined {
+  return getDb()
+    .prepare("SELECT * FROM team_members WHERE company_id = ? AND user_id = ?")
+    .get(companyId, userId) as TeamMember | undefined;
+}
+
+export function acceptInvite(token: string, userId: string): TeamMember | undefined {
+  const db = getDb();
+  db.prepare(
+    "UPDATE team_members SET user_id = ?, invite_status = 'accepted', accepted_at = datetime('now') WHERE invite_token = ? AND invite_status = 'pending'"
+  ).run(userId, token);
+  return db.prepare("SELECT * FROM team_members WHERE invite_token = ?").get(token) as TeamMember | undefined;
+}
+
+export function updateTeamMemberRole(id: string, role: string): void {
+  getDb().prepare("UPDATE team_members SET role = ? WHERE id = ?").run(role, id);
+}
+
+export function removeTeamMember(id: string): void {
+  getDb().prepare("DELETE FROM team_members WHERE id = ?").run(id);
+}
+
+// ─── Agent Assignments ───────────────────────────────────
+export function assignAgent(agentId: string, userId: string, assignedBy?: string): void {
+  const db = getDb();
+  const id = randomUUID();
+  db.prepare(
+    "INSERT OR IGNORE INTO agent_assignments (id, agent_id, user_id, assigned_by) VALUES (?, ?, ?, ?)"
+  ).run(id, agentId, userId, assignedBy ?? null);
+}
+
+export function unassignAgent(agentId: string, userId: string): void {
+  getDb().prepare("DELETE FROM agent_assignments WHERE agent_id = ? AND user_id = ?").run(agentId, userId);
+}
+
+export function getAgentAssignments(agentId: string): string[] {
+  const rows = getDb()
+    .prepare("SELECT user_id FROM agent_assignments WHERE agent_id = ?")
+    .all(agentId) as { user_id: string }[];
+  return rows.map((r) => r.user_id);
+}
+
+export function getUserAssignedAgents(userId: string, companyId: string): string[] {
+  const rows = getDb()
+    .prepare(
+      `SELECT aa.agent_id FROM agent_assignments aa
+       JOIN agents a ON aa.agent_id = a.id
+       WHERE aa.user_id = ? AND a.company_id = ?`
+    )
+    .all(userId, companyId) as { agent_id: string }[];
+  return rows.map((r) => r.agent_id);
+}
+
+// ─── Debriefs ────────────────────────────────────────────
+export interface Debrief {
+  id: string;
+  company_id: string;
+  user_id: string;
+  content: string;
+  delivered_via: string | null;
+  period_start: string;
+  period_end: string;
+  created_at: string;
+}
+
+export function createDebrief(data: {
+  company_id: string;
+  user_id: string;
+  content: string;
+  period_start: string;
+  period_end: string;
+  delivered_via?: string;
+}): Debrief {
+  const db = getDb();
+  const id = randomUUID();
+  db.prepare(
+    `INSERT INTO debriefs (id, company_id, user_id, content, period_start, period_end, delivered_via)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, data.company_id, data.user_id, data.content, data.period_start, data.period_end, data.delivered_via ?? "dashboard");
+  return db.prepare("SELECT * FROM debriefs WHERE id = ?").get(id) as Debrief;
+}
+
+export function getLatestDebrief(companyId: string): Debrief | undefined {
+  return getDb()
+    .prepare("SELECT * FROM debriefs WHERE company_id = ? ORDER BY created_at DESC LIMIT 1")
+    .get(companyId) as Debrief | undefined;
+}
+
+export function getTodaysDebrief(companyId: string): Debrief | undefined {
+  return getDb()
+    .prepare("SELECT * FROM debriefs WHERE company_id = ? AND date(created_at) = date('now') LIMIT 1")
+    .get(companyId) as Debrief | undefined;
 }

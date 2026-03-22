@@ -121,6 +121,24 @@ Set up a financial tracking framework:
 Be specific to their stage and industry.`,
     },
   ],
+
+  CEO: [
+    {
+      type: "executive_assessment",
+      title: "Initial Executive Assessment",
+      promptBuilder: (a) =>
+        `You are the CEO Agent for ${a.company.name} (${a.company.industry}, ${a.company.stage} stage). ${a.company.description}
+
+Produce an initial executive assessment:
+1. Company positioning: Where does ${a.company.name} stand in the ${a.company.industry} market?
+2. Strategic priorities: What are the top 3 things the company should focus on this quarter?
+3. Agent workforce plan: Which of the AI agents currently deployed are most critical? What roles are missing?
+4. Risk assessment: What are the top 3 risks to the business right now?
+5. 90-day action plan: Concrete milestones for the next 3 months
+
+Be specific, actionable, and data-driven. This is a board-level document.`,
+    },
+  ],
 };
 
 // Generic template for roles without specific templates

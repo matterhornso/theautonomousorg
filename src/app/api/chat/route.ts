@@ -20,6 +20,7 @@ import {
   apolloTools,
   executeApolloTool,
 } from "@/lib/mcp/apollo";
+import { ceoTools, executeCeoTool } from "@/lib/mcp/ceo-tools";
 
 const client = new Anthropic();
 
@@ -108,6 +109,9 @@ export async function POST(request: NextRequest) {
     if (isApolloConfigured() && ["Sales", "Strategy"].includes(agent.role)) {
       tools.push(...apolloTools as Anthropic.Tool[]);
     }
+    if (agent.role === "CEO") {
+      tools.push(...ceoTools);
+    }
 
     // Stream response (with tool use if tools available)
     const stream = client.messages.stream({
@@ -184,7 +188,14 @@ export async function POST(request: NextRequest) {
                 )
               );
 
-              const result = await executeApolloTool(tc.name, tc.input);
+              let result: string;
+              if (tc.name.startsWith("apollo_")) {
+                result = await executeApolloTool(tc.name, tc.input);
+              } else if (tc.name === "query_all_agents" || tc.name === "get_company_metrics") {
+                result = await executeCeoTool(tc.name, tc.input, agent.company_id);
+              } else {
+                result = `Unknown tool: ${tc.name}`;
+              }
               fullResponse += `\n\n${result}`;
               controller.enqueue(
                 encoder.encode(`data: ${JSON.stringify({ text: result })}\n\n`)
