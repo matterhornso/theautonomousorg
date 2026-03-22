@@ -47,12 +47,8 @@ URL validation (format, protocol, blocks private IPs), XSS sanitization, string/
 - **Priority:** P1
 - **Depends on:** Supabase project creation
 
-## Dedicated Task Worker
-- **What:** Move task processing from API route to Railway/Fly worker
-- **Why:** No 60s timeout limit, more reliable for long research tasks
-- **Effort:** ~1h CC time
-- **Priority:** P2
-- **Depends on:** Postgres migration
+## ~~Dedicated Task Worker~~ — DONE (2026-03-22)
+Deployed on Railway. Polls Supabase tasks table every 10s. No timeout limits.
 
 ## Enterprise SSO (SAML/OIDC)
 - **What:** Enterprise customers authenticate via their identity provider
