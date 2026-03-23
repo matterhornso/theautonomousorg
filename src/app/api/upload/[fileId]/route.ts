@@ -15,6 +15,11 @@ const MIME_TYPES: Record<string, string> = {
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   txt: "text/plain",
+  mp4: "video/mp4",
+  webm: "video/webm",
+  mov: "video/quicktime",
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
 };
 
 export async function GET(
@@ -35,12 +40,20 @@ export async function GET(
     }
 
     // Path traversal protection
-    if (upload.file_path.includes("..") || upload.file_path.includes("/")) {
+    if (upload.file_path.includes("..")) {
       return NextResponse.json({ error: "Invalid file path" }, { status: 400 });
     }
 
+    // Resolve the file: could be flat (legacy) or per-company structured
     const uploadDir = path.join(process.cwd(), "data", "uploads");
     const filePath = path.join(uploadDir, upload.file_path);
+
+    // Ensure resolved path is still within uploads directory
+    const resolved = path.resolve(filePath);
+    const uploadsResolved = path.resolve(uploadDir);
+    if (!resolved.startsWith(uploadsResolved)) {
+      return NextResponse.json({ error: "Invalid file path" }, { status: 400 });
+    }
 
     if (!fs.existsSync(filePath)) {
       return NextResponse.json({ error: "File not found on disk" }, { status: 404 });

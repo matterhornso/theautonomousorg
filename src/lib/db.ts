@@ -246,10 +246,13 @@ function initSchema(db: Database.Database) {
     CREATE TABLE IF NOT EXISTS file_uploads (
       id TEXT PRIMARY KEY,
       user_id TEXT,
+      company_id TEXT,
+      agent_id TEXT,
       file_name TEXT NOT NULL,
       file_type TEXT NOT NULL,
       file_size INTEGER NOT NULL,
       file_path TEXT NOT NULL,
+      category TEXT DEFAULT 'other',
       created_at TEXT DEFAULT (datetime('now'))
     );
 
@@ -1248,26 +1251,42 @@ export function getTodaysDebrief(companyId: string): Debrief | undefined {
 export interface FileUpload {
   id: string;
   user_id: string | null;
+  company_id: string | null;
+  agent_id: string | null;
   file_name: string;
   file_type: string;
   file_size: number;
   file_path: string;
+  category: string;
   created_at: string;
 }
 
 export function createFileUpload(data: {
   id: string;
   user_id: string;
+  company_id?: string;
+  agent_id?: string;
   file_name: string;
   file_type: string;
   file_size: number;
   file_path: string;
+  category?: string;
 }): FileUpload {
   const db = getDb();
   db.prepare(
-    `INSERT INTO file_uploads (id, user_id, file_name, file_type, file_size, file_path)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  ).run(data.id, data.user_id, data.file_name, data.file_type, data.file_size, data.file_path);
+    `INSERT INTO file_uploads (id, user_id, company_id, agent_id, file_name, file_type, file_size, file_path, category)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    data.id,
+    data.user_id,
+    data.company_id ?? null,
+    data.agent_id ?? null,
+    data.file_name,
+    data.file_type,
+    data.file_size,
+    data.file_path,
+    data.category ?? "other"
+  );
   return db.prepare("SELECT * FROM file_uploads WHERE id = ?").get(data.id) as FileUpload;
 }
 
@@ -1275,6 +1294,29 @@ export function getFileUpload(id: string): FileUpload | undefined {
   return getDb()
     .prepare("SELECT * FROM file_uploads WHERE id = ?")
     .get(id) as FileUpload | undefined;
+}
+
+export function getFilesByCompany(companyId: string): FileUpload[] {
+  return getDb()
+    .prepare("SELECT * FROM file_uploads WHERE company_id = ? ORDER BY created_at DESC")
+    .all(companyId) as FileUpload[];
+}
+
+export function getFilesByAgent(agentId: string): FileUpload[] {
+  return getDb()
+    .prepare("SELECT * FROM file_uploads WHERE agent_id = ? ORDER BY created_at DESC")
+    .all(agentId) as FileUpload[];
+}
+
+export function deleteFileUpload(id: string): void {
+  getDb().prepare("DELETE FROM file_uploads WHERE id = ?").run(id);
+}
+
+export function getStorageUsageByCompany(companyId: string): number {
+  const result = getDb()
+    .prepare("SELECT COALESCE(SUM(file_size), 0) as total FROM file_uploads WHERE company_id = ?")
+    .get(companyId) as { total: number };
+  return result.total;
 }
 
 // ─── Webhooks ─────────────────────────────────────────────
