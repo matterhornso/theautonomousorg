@@ -323,6 +323,12 @@ export function getCompany(id: string): Company | undefined {
     .get(id) as Company | undefined;
 }
 
+export function claimCompanyForUser(companyId: string, userId: string): void {
+  getDb()
+    .prepare("UPDATE companies SET user_id = ? WHERE id = ? AND user_id IS NULL")
+    .run(userId, companyId);
+}
+
 // ─── Agents ──────────────────────────────────────────────
 export function createAgent(data: {
   company_id: string;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { getCompaniesByUser, getTeamMembers, createTeamMember, updateTeamMemberRole, removeTeamMember } from "@/lib/db";
+import { getCompaniesByUser, getCompany, getTeamMembers, createTeamMember, updateTeamMemberRole, removeTeamMember } from "@/lib/db";
+import { sendTeamInviteEmail } from "@/lib/email";
 
 export async function GET(request: NextRequest) {
   const { userId } = await auth();
@@ -44,6 +45,19 @@ export async function POST(request: NextRequest) {
     phone,
     role: role || "member",
     invited_by: userId,
+  });
+
+  // Send invite email (fire-and-forget — don't block the response)
+  const company = getCompany(companyId);
+  const inviteUrl = `https://theautonomous.org/sign-up?invite=${member.invite_token}`;
+  sendTeamInviteEmail({
+    to: email,
+    inviterName: "Your teammate",
+    companyName: company?.name || "your company",
+    role: role || "member",
+    inviteUrl,
+  }).catch((err) => {
+    console.error("[team] Failed to send invite email:", err);
   });
 
   return NextResponse.json(member);

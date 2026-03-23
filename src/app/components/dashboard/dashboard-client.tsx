@@ -150,13 +150,33 @@ export function DashboardClient({
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let accumulated = "";
+        let lineBuffer = "";
 
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            // If stream ends with accumulated text that never got [DONE],
+            // still add it as an assistant message
+            if (accumulated) {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  id: crypto.randomUUID(),
+                  role: "assistant",
+                  content: accumulated,
+                },
+              ]);
+              setStreamingText("");
+            }
+            break;
+          }
 
           const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split("\n");
+          // Prepend any leftover partial line from the previous chunk
+          const text = lineBuffer + chunk;
+          const lines = text.split("\n");
+          // The last element may be incomplete — buffer it for the next chunk
+          lineBuffer = lines.pop() || "";
 
           for (const line of lines) {
             if (!line.startsWith("data: ")) continue;

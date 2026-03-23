@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
-import { getCompaniesByUser } from "@/lib/db";
+import {
+  getCompaniesByUser,
+  getCompany,
+  getTeamMemberByUserId,
+  claimCompanyForUser,
+} from "@/lib/db";
 
 /**
- * Verify that a user owns the given company.
- * Returns the company list on success, or a NextResponse error on failure.
+ * Verify that a user owns the given company OR is an accepted team member.
+ * Also auto-claims unclaimed companies (provisioned without auth).
+ * Returns the companyId on success, or a NextResponse error on failure.
  */
 export function assertCompanyOwnership(
   userId: string,
@@ -21,13 +27,28 @@ export function assertCompanyOwnership(
     };
   }
 
+  // Check direct ownership first
   const companies = getCompaniesByUser(userId);
-  if (!companies.find((c) => c.id === companyId)) {
-    return {
-      ok: false,
-      response: NextResponse.json({ error: "Not found" }, { status: 404 }),
-    };
+  if (companies.find((c) => c.id === companyId)) {
+    return { ok: true, companyId };
   }
 
-  return { ok: true, companyId };
+  // Check if the company exists but has no owner (provisioned without auth)
+  // and claim it for the current user
+  const company = getCompany(companyId);
+  if (company && !company.user_id) {
+    claimCompanyForUser(companyId, userId);
+    return { ok: true, companyId };
+  }
+
+  // Check team membership (accepted invites)
+  const teamMember = getTeamMemberByUserId(companyId, userId);
+  if (teamMember && teamMember.invite_status === "accepted") {
+    return { ok: true, companyId };
+  }
+
+  return {
+    ok: false,
+    response: NextResponse.json({ error: "Not found" }, { status: 404 }),
+  };
 }

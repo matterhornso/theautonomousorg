@@ -158,6 +158,7 @@ Each agent runs in its own isolated instance with persistent memory, role-specif
 | `APOLLO_API_KEY` | No | Enables Apollo.io prospect search for Sales/Strategy |
 | `INSTANTLY_API_KEY` | No | Enables Instantly.ai email campaigns for Sales/Marketing |
 | `TELEGRAM_BOT_TOKEN` | No | Enables Telegram messaging bridge |
+| `RESEND_API_KEY` | No | Enables email delivery for team invites (via Resend) |
 | `STRIPE_SECRET_KEY` | No | Enables billing (free tier works without) |
 | `STRIPE_WEBHOOK_SECRET` | No | Stripe webhook signature verification |
 | `DATABASE_URL` | No | Postgres connection string (uses SQLite if not set) |
