@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCompaniesByUser, getAgentsByCompany } from "@/lib/db";
 import Link from "next/link";
 import { AgentIcon } from "@/app/components/agent-icons";
+import { Logo } from "@/app/components/logo";
 
 export default async function DashboardIndex() {
   const { userId } = await auth();
@@ -14,8 +15,8 @@ export default async function DashboardIndex() {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center">
         <div className="text-center max-w-md px-6">
-          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-surface text-xl font-bold mx-auto mb-6">
-            TA
+          <div className="mx-auto mb-6">
+            <Logo size="large" />
           </div>
           <h1 className="font-[family-name:var(--font-serif)] text-3xl tracking-tight mb-3">
             No agents yet

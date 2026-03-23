@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
+import { Logo } from "@/app/components/logo";
 
 const steps = [
   { id: "welcome", label: "Welcome" },
@@ -206,9 +207,7 @@ export default function OnboardingPage() {
       {/* Header */}
       <div className="pt-8 px-6 flex items-center justify-between max-w-2xl mx-auto w-full">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-primary rounded-md flex items-center justify-center">
-            <span className="text-surface text-[10px] font-bold">TA</span>
-          </div>
+          <Logo size="small" />
           <span className="text-sm font-medium text-neutral-400">
             {steps[currentStep].label}
           </span>
@@ -224,8 +223,8 @@ export default function OnboardingPage() {
           {/* Step 0: Welcome */}
           {currentStep === 0 && (
             <div className="text-center">
-              <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-surface text-xl font-bold mx-auto mb-6">
-                TA
+              <div className="mx-auto mb-6">
+                <Logo size="large" />
               </div>
               <h1 className="font-[family-name:var(--font-serif)] text-3xl tracking-tight mb-3">
                 Welcome to The Autonomous

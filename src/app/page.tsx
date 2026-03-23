@@ -5,6 +5,7 @@ import { agentRoles } from "./data";
 import { WebsiteForm } from "./components/website-form";
 import { AgentIcon } from "./components/agent-icons";
 import { NewsletterForm } from "./components/newsletter-form";
+import { Logo } from "./components/logo";
 
 const steps = [
   {
@@ -731,12 +732,7 @@ export default function Home() {
           <div className="flex flex-col md:flex-row items-start justify-between gap-8 mb-8">
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-7 h-7 bg-neutral-800 rounded-md flex items-center justify-center">
-                  <span className="text-surface text-xs font-bold">TA</span>
-                </div>
-                <span className="text-sm font-medium text-neutral-300">
-                  The Autonomous
-                </span>
+                <Logo size="small" />
               </div>
               <p className="text-xs text-neutral-500 max-w-xs">
                 AI agents for every role in your company. Enter your website,

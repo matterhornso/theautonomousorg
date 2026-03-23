@@ -7,6 +7,7 @@ import {
   UserButton,
   Show,
 } from "@clerk/nextjs";
+import { Logo } from "./logo";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -40,15 +41,8 @@ export function Navbar() {
         }`}
       >
         <div className="max-w-[1280px] mx-auto px-6 lg:px-8 h-16 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
-              <span className="text-surface text-xs font-bold tracking-tight font-[family-name:var(--font-sans)]">
-                TA
-              </span>
-            </div>
-            <span className="text-lg font-medium tracking-tight">
-              The Autonomous
-            </span>
+          <a href="/" className="flex items-center">
+            <Logo />
           </a>
 
           {/* Desktop nav */}

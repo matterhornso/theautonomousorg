@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { AgentIcon } from "@/app/components/agent-icons";
+import { Logo } from "@/app/components/logo";
 
 interface AgentStatus {
   id: string;
@@ -108,8 +109,8 @@ export default function ProvisioningPage() {
     <div className="min-h-screen bg-surface flex items-center justify-center px-6">
       <div className="max-w-md w-full text-center">
         <div className="mb-8">
-          <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center text-surface text-lg font-bold mx-auto mb-5">
-            TA
+          <div className="mx-auto mb-5">
+            <Logo size="large" />
           </div>
           <h1 className="font-[family-name:var(--font-serif)] text-3xl tracking-tight mb-2">
             {allOnline
