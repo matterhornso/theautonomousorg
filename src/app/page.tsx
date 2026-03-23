@@ -3,6 +3,7 @@ import { Navbar } from "./components/navbar";
 import { AgentShowcase } from "./components/agent-showcase";
 import { agentRoles } from "./data";
 import { WebsiteForm } from "./components/website-form";
+import { ComingSoonButton } from "./components/coming-soon-button";
 import { AgentIcon } from "./components/agent-icons";
 import { NewsletterForm } from "./components/newsletter-form";
 import { Logo } from "./components/logo";
@@ -694,15 +695,10 @@ export default function Home() {
                     ))}
                   </ul>
 
-                  <button
-                    className={`w-full py-3 rounded-xl text-sm font-medium transition-all ${
-                      plan.featured
-                        ? "bg-accent text-primary hover:bg-accent-hover"
-                        : "bg-primary text-surface hover:bg-neutral-800"
-                    }`}
-                  >
-                    {plan.cta}
-                  </button>
+                  <ComingSoonButton
+                    label={plan.cta}
+                    featured={plan.featured}
+                  />
                 </div>
               </Reveal>
             ))}
