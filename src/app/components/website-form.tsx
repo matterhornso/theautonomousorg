@@ -40,6 +40,13 @@ export function WebsiteForm({
     e.preventDefault();
     if (!url.trim() || loading) return;
 
+    // Auto-prepend https:// if user didn't include a protocol
+    let normalizedUrl = url.trim();
+    if (!/^https?:\/\//i.test(normalizedUrl)) {
+      normalizedUrl = `https://${normalizedUrl}`;
+      setUrl(normalizedUrl);
+    }
+
     setLoading(true);
     setError("");
     setAnalysis(null);
@@ -48,7 +55,7 @@ export function WebsiteForm({
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({ url: normalizedUrl }),
       });
 
       const data = await response.json();
@@ -329,7 +336,7 @@ export function WebsiteForm({
       {error && (
         <p
           className={`text-sm mt-3 ${
-            isDark ? "text-red-400" : "text-red-600"
+            isDark ? "text-red-400" : "text-[#B33A3A]"
           }`}
         >
           {error}
