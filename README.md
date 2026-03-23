@@ -285,7 +285,7 @@ Start by analyzing my company and suggesting your top 3 priorities.
 | Database | SQLite (better-sqlite3) — Postgres ready |
 | Auth | Clerk (keyless mode for dev) |
 | Billing | Stripe (optional) |
-| Testing | Vitest (66 tests) |
+| Testing | Vitest (66+ tests) |
 | Design | Instrument Serif + DM Sans, warm gold accent (#D4A853) |
 | Worker | Standalone task processor (Railway) |
 
@@ -324,13 +324,15 @@ User → Landing Page → URL Analysis (Claude) → Agent Recommendations
 - **Cron Jobs** — Schedule recurring tasks (weekly reports, daily audits)
 - **Team Access** — Multiple users connect to the same agents (owner/admin/member/viewer roles)
 - **Daily Debriefs** — 10am summary of all agent activity
-- **BYOK Connectors** — Bring your own API keys for 25+ services (Apollo, HubSpot, Slack, etc.)
+- **Integrations Hub** — 50+ tools across all roles with password-encrypted API key storage (AES-256-GCM)
+- **BYOK / BYOM** — Bring your own API keys for 25+ services, bring your own model (any OpenAI-compatible endpoint)
 - **File Uploads** — Upload invoices, resumes, reports for agents to process
 - **Webhooks** — Trigger agent tasks from external tools (HMAC-signed)
 - **Self-Serve API** — REST API with Bearer token auth (`/api/v1/agents`, `/api/v1/chat`, `/api/v1/tasks`)
-- **Credits System** — 1000 free credits on signup, 50 per prompt
+- **TA Credits** — 1,000 free credits on signup, 50 per prompt, $19 per 1,000 additional
 - **Analytics Dashboard** — Task completion rates, per-agent performance
-- **Custom Agent Builder** — Create agents with custom roles and skills
+- **Custom Agent Builder** — Create agents with custom roles, skills, and model selection
+- **Agent Status Page** — View each agent's memory, skills, tasks, actions, and connected services
 
 ## Project Structure
 
@@ -367,6 +369,7 @@ src/
 │   │   ├── skills/            # Skills showcase
 │   │   ├── debrief/           # Daily debrief
 │   │   ├── telegram/          # Telegram bot setup
+│   │   ├── integrations/      # 50+ tools with encrypted key storage
 │   │   └── settings/          # API keys + BYOK connectors
 │   ├── onboarding/            # 5-step onboarding wizard
 │   └── provisioning/          # Agent spawning animation
@@ -392,7 +395,7 @@ src/
 
 ```bash
 npm run dev          # Start dev server on port 3000
-npm test             # Run 66 Vitest tests
+npm test             # Run 66+ Vitest tests
 npm run build        # Production build
 ```
 
