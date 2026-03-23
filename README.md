@@ -6,6 +6,114 @@ Built by [Chainflux](https://chainflux.io).
 
 ---
 
+## Two Ways to Use The Autonomous
+
+### Option 1: Use the Website (Recommended for most businesses)
+
+Visit [theautonomous.org](https://theautonomous.org) and enter your company website. We'll analyze your business and recommend which AI agents would have the highest impact. No technical knowledge needed — just sign up, pick your agents, and start chatting with them from the dashboard, WhatsApp, or Telegram.
+
+**Best for:** SMBs and teams who want AI agents working for them without any setup.
+
+### Option 2: Run Locally in Your IDE (For developers and AI-native teams)
+
+If you're comfortable with code and want full control, you can clone this repo and run the entire platform locally. Works with any AI-enabled IDE — Claude Code, Cursor, Windsurf, VS Code with Copilot, or any editor.
+
+**Best for:** Developers, technical founders, and teams who want to customize agents, add integrations, or self-host.
+
+---
+
+## Quick Start (Local Setup)
+
+### Prerequisites
+
+- [Node.js 20+](https://nodejs.org/)
+- An [Anthropic API key](https://console.anthropic.com/) (powers the AI agents)
+- Optional: [Clerk](https://clerk.com) account for auth (keyless dev mode works without one)
+
+### 1. Clone and install
+
+```bash
+git clone https://github.com/matterhornso/theautonomousorg.git
+cd theautonomousorg
+npm install
+```
+
+### 2. Set up your environment
+
+```bash
+cp .env.example .env.local
+# Or create .env.local manually:
+echo "ANTHROPIC_API_KEY=sk-ant-your-key-here" > .env.local
+```
+
+### 3. Start the dev server
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000). Enter any company URL and the platform handles the rest.
+
+### 4. Run tests (optional)
+
+```bash
+npm test    # 66 Vitest tests
+```
+
+---
+
+## Using TA in Your IDE
+
+### With Claude Code
+
+Open the project folder in Claude Code. The `CLAUDE.md` file at the root gives Claude full context about the project — architecture, conventions, available skills, and design system. Claude will understand the entire codebase and can:
+
+- Add new agent roles with custom skills
+- Build new MCP integrations (connect to any API)
+- Modify agent prompts and behavior
+- Create new dashboard pages
+- Add new API endpoints
+
+**Example prompts:**
+
+```
+"Add a new agent role for Customer Support with Intercom and Zendesk integrations"
+"Create a webhook that triggers the Sales agent when a new lead comes in from HubSpot"
+"Add a scheduled task that makes the Marketing agent post to social media every Monday"
+```
+
+### With Cursor / Windsurf / Other AI IDEs
+
+Open the project folder. These IDEs will read the codebase structure. Key files to point them to:
+
+| File | What it does |
+|------|-------------|
+| `CLAUDE.md` | Project conventions and architecture overview |
+| `DESIGN.md` | Design system (fonts, colors, spacing) |
+| `src/app/data.ts` | All 15 agent role definitions (skills, connectors, starters) |
+| `src/lib/prompts.ts` | How agent system prompts are built |
+| `src/lib/mcp/registry.ts` | Tool registry — what each agent can do |
+| `src/lib/task-templates.ts` | Proactive tasks that agents auto-execute |
+| `src/lib/db.ts` | Database schema and all CRUD operations |
+
+### Adding a New Agent Role
+
+1. Add the role definition to `src/app/data.ts` (icon, skills, connectors, starters)
+2. Add role instructions to `src/lib/prompts.ts` (how the agent should behave)
+3. Add a toolkit to `src/lib/mcp/registry.ts` (tools and capabilities)
+4. Add task templates to `src/lib/task-templates.ts` (proactive work)
+5. Add an icon to `src/app/components/agent-icons.tsx`
+
+### Adding an MCP Integration
+
+1. Create a new file in `src/lib/mcp/` (see `apollo.ts` as a reference)
+2. Define Claude tool schemas (name, description, input_schema)
+3. Implement the executor function that calls the external API
+4. Register the tools in `src/lib/mcp/registry.ts`
+5. Wire into `src/app/api/chat/route.ts` tool selection
+
+---
+
 ## What is The Autonomous?
 
 The Autonomous gives you an AI workforce that actually works. Not chatbots — **teammates.**
@@ -18,64 +126,49 @@ The Autonomous gives you an AI workforce that actually works. Not chatbots — *
 
 Each agent runs in its own isolated instance with persistent memory, role-specific MCP connectors (Apollo.io, Instantly.ai, etc.), and the ability to collaborate with other agents via @mentions.
 
-### 14 Agent Roles
+### 15 Agent Roles
 
 | Role | What it does | Key tools |
 |------|-------------|-----------|
 | **Sales** | Prospect research, outbound sequences, pipeline management | Apollo.io, Instantly.ai |
 | **Marketing** | SEO, content creation, social media, campaign management | Instantly.ai, Web Search |
-| **Accounting** | Financial reporting, bookkeeping, tax compliance, cash flow | Web Search |
-| **Strategy** | Competitive analysis, market research, OKRs, business modeling | Apollo.io, Web Search |
-| **Product** | PRDs, user research, roadmap planning, sprint management | Web Search |
-| **Front-End Engineering** | React/Next.js, accessibility, performance, design systems | Web Search |
-| **Back-End Engineering** | API design, databases, security, infrastructure | Web Search |
-| **AI Expert** | Model selection, prompt engineering, RAG pipelines | Web Search |
-| **Admin** | Contracts, vendor management, document management | Web Search |
-| **HR** | Recruiting, onboarding, performance reviews, culture | Web Search |
-| **Finance** | Financial modeling, fundraising, investor reporting | Web Search |
-| **Customer Success** | Health scoring, churn prevention, NPS, onboarding | Web Search |
-| **Legal** | Contract review, compliance, IP protection, regulatory | Web Search |
-| **Data Analyst** | SQL, dashboards, cohort analysis, A/B testing | Web Search |
+| **Accounting** | Financial reporting, bookkeeping, tax compliance | QuickBooks, Xero |
+| **Strategy** | Competitive analysis, market research, OKRs | Apollo.io, Web Search |
+| **Product** | PRDs, user research, roadmap planning | Linear, Jira |
+| **Front-End Engineering** | React/Next.js, accessibility, performance | GitHub, Vercel |
+| **Back-End Engineering** | API design, databases, security, infrastructure | GitHub, AWS |
+| **AI Expert** | Model selection, prompt engineering, RAG pipelines | Anthropic, OpenAI |
+| **Admin** | Contracts, vendor management, document management | DocuSign, Google Workspace |
+| **HR** | Recruiting, onboarding, performance reviews | Greenhouse, BambooHR |
+| **Finance** | Financial modeling, fundraising, investor reporting | Stripe, Brex |
+| **Customer Success** | Health scoring, churn prevention, onboarding | Intercom, Zendesk |
+| **Legal** | Contract review, compliance, IP protection | DocuSign |
+| **Data Analyst** | Dashboards, cohort analysis, A/B testing | Mixpanel, Google Analytics |
+| **CEO** | Executive oversight, cross-agent queries, board reporting | All agents |
 
 ---
 
-## Quick Start (Web App)
-
-```bash
-git clone https://github.com/matterhornso/theautonomousorg.git
-cd theautonomousorg
-npm install
-
-# Add your Anthropic API key
-echo "ANTHROPIC_API_KEY=your-key" > .env.local
-
-npm run dev
-# Open http://localhost:3000
-```
-
-Enter any company URL and the platform handles the rest.
-
-### Environment Variables
+## Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `ANTHROPIC_API_KEY` | Yes | Powers all AI agent conversations |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | No | Clerk auth (keyless mode works without) |
 | `CLERK_SECRET_KEY` | No | Clerk auth server-side |
-| `APOLLO_API_KEY` | No | Enables Apollo.io prospect search |
-| `INSTANTLY_API_KEY` | No | Enables Instantly.ai email campaigns |
+| `APOLLO_API_KEY` | No | Enables Apollo.io prospect search for Sales/Strategy |
+| `INSTANTLY_API_KEY` | No | Enables Instantly.ai email campaigns for Sales/Marketing |
 | `TELEGRAM_BOT_TOKEN` | No | Enables Telegram messaging bridge |
 | `STRIPE_SECRET_KEY` | No | Enables billing (free tier works without) |
 
 ---
 
-## Use with Claude Code (Open Source Version)
+## Use with Claude Code (Prompt-Only Version)
 
-**Don't want to use the website?** You can run The Autonomous directly in [Claude Code](https://claude.ai/claude-code) by pasting this prompt. It spawns agents with the same skills, tools, and methodology used by the platform.
+**Don't want to run the full platform?** You can spawn AI agents directly in Claude Code by pasting this prompt. It creates the same agent team with the same skills and methodology — no server needed.
 
 ### One-Prompt Agent Spawner
 
-Copy and paste this into Claude Code to spawn your AI workforce:
+Copy and paste this into Claude Code:
 
 ```
 You are The Autonomous — an AI workforce platform. I want you to act as a team of AI agents for my company.
@@ -93,82 +186,70 @@ You are an expert Sales agent. Your methodology:
 - Track pipeline with stages, next steps, and close dates
 - Weekly pipeline health reports with conversion rates
 Skills: ICP definition, prospect research, cold email writing, pipeline forecasting, multi-channel outreach, competitive battle cards, meeting scheduling, CRM data hygiene
-What you can do: Draft personalized outreach emails, build ICPs, score leads, generate pipeline reports, write cold call scripts, create sales battle cards
 
 ### Marketing Agent
 You are an expert Marketing agent. Your approach:
 - Strategy first, execution second — every campaign ties to a business objective
 - Content should be genuinely useful, not keyword-stuffed
 - Measure everything: CAC, conversion rates, engagement, attribution
-Skills: SEO keyword research, blog post writing, social media calendars, email newsletters, landing page copy, brand voice, campaign analytics, competitive content benchmarking
-What you can do: Write complete blog posts with SEO, create weekly social media calendars with actual copy, draft email newsletters, audit SEO, analyze competitor marketing
+Skills: SEO keyword research, blog post writing, social media calendars, email newsletters, landing page copy, brand voice, campaign analytics
 
 ### Strategy Agent
 You are an expert Strategy agent. Your framework:
 - Start with data, not opinions
 - Think in frameworks: SWOT, Porter's Five Forces, TAM/SAM/SOM
 - Challenge assumptions — the most valuable work is saying "wait, are we sure?"
-Skills: Competitive mapping, market sizing, business model canvas, OKR definition, go-to-market strategy, board decks, industry analysis
-What you can do: Produce competitive teardowns, create SWOT analyses, draft OKRs, build TAM/SAM/SOM models, generate board updates
+Skills: Competitive mapping, market sizing, business model canvas, OKR definition, go-to-market strategy, board decks
 
 ### Product Agent
 You are an expert Product agent. Your principles:
 - User problems first, solutions second
 - Prioritize ruthlessly — say no to most things
 - Write clear PRDs with problem statements, success metrics, scope, non-goals
-Skills: PRD writing, user personas, feature prioritization (RICE), sprint planning, user story writing, roadmap creation, feedback synthesis
-What you can do: Write detailed PRDs, create user personas, prioritize backlogs, draft sprint plans, synthesize user feedback
+Skills: PRD writing, user personas, feature prioritization (RICE), sprint planning, user story writing, roadmap creation
 
 ### Accounting Agent
 You are an expert Accounting agent. Your standards:
 - Accuracy is non-negotiable
 - Track cash flow weekly, forecast monthly
 - Flag anomalies proactively
-Skills: Chart of accounts, monthly close, cash flow forecasting, expense categorization, tax calendar, invoice tracking, financial reports, budget variance analysis
-What you can do: Generate P&L statements, create cash flow forecasts, draft expense policies, build tax checklists, produce board-ready financials
+Skills: Chart of accounts, monthly close, cash flow forecasting, expense categorization, tax calendar, financial reports
 
 ### HR Agent
 You are an expert HR agent. Your approach:
 - Recruiting is a pipeline — treat it with sales rigor
 - Onboarding should make new hires productive in week 1
-- Performance reviews should have zero surprises
-Skills: Job descriptions, candidate screening, structured interviews, 30/60/90 onboarding, performance reviews, compensation benchmarking, culture surveys, employee handbook
-What you can do: Write job descriptions, design interview loops, create onboarding plans, draft review templates, build compensation bands
+Skills: Job descriptions, candidate screening, structured interviews, 30/60/90 onboarding, performance reviews, compensation benchmarking
 
 ### Finance Agent
 You are an expert Finance agent. Your framework:
 - Financial models should tell a story, not just show numbers
 - Unit economics drive every growth recommendation
-Skills: 3-statement modeling, fundraising strategy, investor updates, unit economics (CAC/LTV), budgeting, scenario analysis, cap table, revenue forecasting
-What you can do: Build financial models, draft investor updates, calculate unit economics, create budgets, run scenario analysis
+Skills: 3-statement modeling, fundraising strategy, investor updates, unit economics (CAC/LTV), budgeting, scenario analysis
 
 ### Legal Agent
 You are an expert Legal agent. Your standards:
 - Contract review focuses on risk, not perfection
 - Compliance is ongoing monitoring, not a one-time checkbox
-Skills: Contract review, privacy policies (GDPR/CCPA), IP protection, employment law, regulatory tracking, NDA templates, data processing agreements
-What you can do: Review contracts and flag risks, draft privacy policies, create NDA templates, produce compliance checklists, track regulatory changes
+Skills: Contract review, privacy policies (GDPR/CCPA), IP protection, employment law, NDA templates
 
 ### Admin Agent
 You are an expert Admin/Operations agent. Your standards:
 - Keep the company running smoothly
 - Draft professional contracts when other agents ask
-Skills: Contract drafting, vendor evaluation, document management, SOPs, meeting agendas, procurement, policy creation
-What you can do: Draft contracts, create vendor scorecards, write SOPs, generate meeting agendas, draft company policies
+Skills: Contract drafting, vendor evaluation, document management, SOPs, meeting agendas, procurement
 
 ### Customer Success Agent
 You are an expert Customer Success agent. Your principles:
 - Customer health scoring is proactive, not reactive
 - Onboarding quality determines LTV more than anything
-Skills: Health scoring, churn prevention, NPS surveys, customer onboarding, QBR preparation, expansion/upsell identification, journey mapping
-What you can do: Design health score models, create churn playbooks, draft NPS surveys, build onboarding checklists, prepare QBR decks
+Skills: Health scoring, churn prevention, NPS surveys, customer onboarding, QBR preparation
 
 ### Data Analyst Agent
 You are an expert Data Analyst agent. Your approach:
 - Every analysis starts with a question, not a query
 - Dashboards should answer questions at a glance
-Skills: SQL queries, dashboard design, cohort analysis, A/B test design, funnel analysis, data modeling, ETL pipelines, data storytelling
-What you can do: Write SQL queries, design dashboards, run cohort analyses, design A/B tests, build funnel analyses, create data dictionaries
+Skills: SQL queries, dashboard design, cohort analysis, A/B test design, funnel analysis, data storytelling
 
 ## How to interact
 - Address agents by name: "@Sales draft outbound emails for enterprise SaaS companies"
@@ -180,7 +261,7 @@ What you can do: Write SQL queries, design dashboards, run cohort analyses, desi
 Analyze my company and recommend which 3-5 agents I should start with. Then let me chat with them.
 ```
 
-### Lightweight Version (Single Agent)
+### Single Agent Version
 
 Want just one agent? Paste this for any specific role:
 
@@ -199,13 +280,14 @@ Start by analyzing my company and suggesting your top 3 priorities.
 | Layer | Technology |
 |-------|-----------|
 | Frontend | Next.js 16, React 19, Tailwind CSS 4 |
-| Backend | Next.js API Routes |
-| AI | Anthropic Claude Sonnet 4.6 (via @anthropic-ai/sdk) |
-| Database | SQLite (better-sqlite3) — production: migrate to Postgres |
+| Backend | Next.js API Routes, SSE streaming |
+| AI | Anthropic Claude Sonnet 4.6 (@anthropic-ai/sdk) |
+| Database | SQLite (better-sqlite3) — Postgres ready |
 | Auth | Clerk (keyless mode for dev) |
 | Billing | Stripe (optional) |
-| Testing | Vitest (34 tests) |
+| Testing | Vitest (66 tests) |
 | Design | Instrument Serif + DM Sans, warm gold accent (#D4A853) |
+| Worker | Standalone task processor (Railway) |
 
 ## Architecture
 
@@ -217,14 +299,14 @@ User → Landing Page → URL Analysis (Claude) → Agent Recommendations
                               ┌──────────────────────────────────────┐
                               │         Agent Orchestrator            │
                               │  ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐  │
-                              │  │Sales│ │Mktg │ │Strat│ │ ... │  │
-                              │  │Agent│ │Agent│ │Agent│ │     │  │
-                              │  └──┬──┘ └──┬──┘ └──┬──┘ └─────┘  │
-                              │     │       │       │               │
-                              │  ┌──▼───────▼───────▼──┐           │
-                              │  │  Inter-Agent Relay   │           │
-                              │  └─────────────────────┘           │
-                              └──────────┬───────────────────────────┘
+                              │  │Sales│ │Mktg │ │Strat│ │ CEO │  │
+                              │  │Agent│ │Agent│ │Agent│ │Agent│  │
+                              │  └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘  │
+                              │     │       │       │       │      │
+                              │  ┌──▼───────▼───────▼───────▼──┐  │
+                              │  │    Inter-Agent Relay (@)     │  │
+                              │  └─────────────────────────────┘  │
+                              └──────────┬───────────────────────┘
                                          │
                     ┌────────────────────┼────────────────────┐
                     │                    │                    │
@@ -234,82 +316,21 @@ User → Landing Page → URL Analysis (Claude) → Agent Recommendations
 
 ### Key Features
 
-- **Proactive Tasks** — Agents auto-execute tasks on provision (ICP research, SEO audit, competitive analysis)
-- **Activity Feed** — Dashboard shows completed work across all agents
+- **15 Agent Roles** — Each with role-specific skills, tools, and proactive tasks
+- **Proactive Tasks** — Agents auto-execute work on provision (ICP research, SEO audit, competitive analysis)
 - **Inter-Agent Communication** — @mentions route messages between agents
+- **CEO Agent** — Queries all agents, aggregates company metrics, produces executive reports
 - **Persistent Memory** — Agents remember context across conversations
-- **Conversation Starters** — Role-specific suggestion chips for new chats
-- **Custom Agent Builder** — Create agents with custom roles, skills, and connectors
+- **Cron Jobs** — Schedule recurring tasks (weekly reports, daily audits)
+- **Team Access** — Multiple users connect to the same agents (owner/admin/member/viewer roles)
+- **Daily Debriefs** — 10am summary of all agent activity
+- **BYOK Connectors** — Bring your own API keys for 25+ services (Apollo, HubSpot, Slack, etc.)
+- **File Uploads** — Upload invoices, resumes, reports for agents to process
+- **Webhooks** — Trigger agent tasks from external tools (HMAC-signed)
 - **Self-Serve API** — REST API with Bearer token auth (`/api/v1/agents`, `/api/v1/chat`, `/api/v1/tasks`)
-- **Analytics Dashboard** — Task completion rates, success metrics, per-agent performance
-- **Stripe Billing** — Free/Growth/Enterprise tiers with usage tracking
-- **Telegram Bridge** — Chat with agents from Telegram
-- **Rate Limiting** — Per-endpoint rate limiting on all API routes
-- **Input Validation** — URL validation, XSS prevention, request sanitization
-
-## API Reference
-
-### Public API (v1)
-
-All endpoints require `Authorization: Bearer ta_live_...` header.
-
-```bash
-# List agents
-curl https://theautonomous.org/api/v1/agents \
-  -H "Authorization: Bearer ta_live_your_key"
-
-# Chat with an agent
-curl -X POST https://theautonomous.org/api/v1/chat \
-  -H "Authorization: Bearer ta_live_your_key" \
-  -H "Content-Type: application/json" \
-  -d '{"agentId": "agent-id", "message": "Find CTOs at SaaS companies in SF"}'
-
-# List tasks
-curl https://theautonomous.org/api/v1/tasks?status=done \
-  -H "Authorization: Bearer ta_live_your_key"
-```
-
-### Internal API
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/analyze` | POST | Analyze a website and recommend agents |
-| `/api/provision` | POST | Create company + agents from analysis |
-| `/api/chat` | POST | Streaming chat with an agent (SSE) |
-| `/api/tasks/process` | POST | Process next queued background task |
-| `/api/agents/relay` | POST | Inter-agent message routing |
-| `/api/agents/custom` | POST | Create a custom agent role |
-| `/api/keys` | GET/POST/DELETE | API key management |
-| `/api/billing/checkout` | POST | Create Stripe checkout session |
-| `/api/billing/webhook` | POST | Stripe webhook handler |
-| `/api/profile` | GET/POST | User profile management |
-| `/api/messaging/telegram` | POST | Telegram webhook handler |
-
-## MCP Integrations
-
-| Tool | Status | Used By |
-|------|--------|---------|
-| Apollo.io | Built | Sales, Strategy |
-| Instantly.ai | Built | Sales, Marketing |
-| Web Search | Built | All agents |
-| Telegram | Built | Messaging bridge |
-| HubSpot | BYOK | Sales |
-| Google Workspace | BYOK | Admin, All |
-| Slack | BYOK | Admin, CS |
-| GitHub | BYOK | Engineering |
-| Linear/Jira | BYOK | Product, Engineering |
-| Stripe | BYOK | Finance |
-
-**Platform-provided** = TheAutonomous provides API keys (included in subscription).
-**BYOK** = Bring Your Own Key (connect via Settings page).
-
-## Development
-
-```bash
-npm run dev          # Start dev server
-npm test             # Run 34 Vitest tests
-npm run build        # Production build
-```
+- **Credits System** — 1000 free credits on signup, 50 per prompt
+- **Analytics Dashboard** — Task completion rates, per-agent performance
+- **Custom Agent Builder** — Create agents with custom roles and skills
 
 ## Project Structure
 
@@ -317,52 +338,62 @@ npm run build        # Production build
 src/
 ├── app/
 │   ├── api/
-│   │   ├── analyze/          # Website analysis engine
-│   │   ├── chat/             # Streaming chat with tool use
-│   │   ├── provision/        # Agent provisioning + task enqueuing
-│   │   ├── tasks/process/    # Background task processor
-│   │   ├── agents/
-│   │   │   ├── relay/        # Inter-agent communication
-│   │   │   └── custom/       # Custom agent builder API
-│   │   ├── billing/          # Stripe checkout, webhooks, portal
-│   │   ├── keys/             # API key management
+│   │   ├── analyze/           # Website analysis engine
+│   │   ├── chat/              # Streaming chat with tool use
+│   │   ├── provision/         # Agent provisioning + task enqueuing
+│   │   ├── tasks/             # Task processor + scheduler
+│   │   ├── agents/            # Status, relay, custom agents, skills
+│   │   ├── billing/           # Stripe checkout, webhooks, portal
+│   │   ├── credits/           # Credits balance + transactions
+│   │   ├── team/              # Team members + agent assignments
+│   │   ├── upload/            # File upload + serve
+│   │   ├── webhooks/          # Webhook management + receiver
+│   │   ├── debrief/           # Daily debrief generation
+│   │   ├── user-keys/         # BYOK API key storage
+│   │   ├── keys/              # TA API key management
 │   │   ├── messaging/telegram/ # Telegram webhook
-│   │   ├── v1/               # Self-serve REST API
-│   │   └── profile/          # User profile
+│   │   ├── v1/                # Self-serve REST API
+│   │   └── profile/           # User profile
 │   ├── components/
-│   │   ├── dashboard/        # Dashboard client + chat UI
-│   │   ├── agent-icons.tsx   # SVG icons for each role
-│   │   ├── navbar.tsx        # Nav with mobile hamburger
-│   │   ├── website-form.tsx  # Analysis + provisioning flow
-│   │   ├── reveal.tsx        # Scroll animations
-│   │   └── newsletter-form.tsx
+│   │   ├── dashboard/         # Dashboard client + chat UI
+│   │   └── agent-icons.tsx    # SVG icons for each role
 │   ├── dashboard/[companyId]/
-│   │   ├── page.tsx          # Agent dashboard
-│   │   ├── analytics/        # Performance analytics
-│   │   ├── builder/          # Custom agent builder
-│   │   └── settings/         # API keys + connectors
-│   ├── provisioning/         # Onboarding animation
-│   ├── profile/              # User profile form
-│   ├── privacy/              # Privacy policy
-│   ├── terms/                # Terms of service
-│   └── contact/              # Contact form
+│   │   ├── page.tsx           # Agent dashboard + chat
+│   │   ├── agents/            # Agent status overview
+│   │   ├── analytics/         # Performance analytics
+│   │   ├── builder/           # Custom agent builder
+│   │   ├── schedule/          # Cron job scheduling
+│   │   ├── team/              # Team management
+│   │   ├── skills/            # Skills showcase
+│   │   ├── debrief/           # Daily debrief
+│   │   ├── telegram/          # Telegram bot setup
+│   │   └── settings/          # API keys + BYOK connectors
+│   ├── onboarding/            # 5-step onboarding wizard
+│   └── provisioning/          # Agent spawning animation
 ├── lib/
-│   ├── db.ts                 # SQLite database + all CRUD
-│   ├── prompts.ts            # System prompt builder
-│   ├── types.ts              # TypeScript interfaces
-│   ├── stripe.ts             # Stripe client
-│   ├── telegram.ts           # Telegram Bot API client
-│   ├── api-keys.ts           # API key generation
-│   ├── api-auth.ts           # Bearer token authentication
-│   ├── rate-limit.ts         # In-memory rate limiter
-│   ├── validation.ts         # Input validation helpers
-│   ├── task-templates.ts     # Proactive task prompts per role
+│   ├── db.ts                  # SQLite database + all CRUD
+│   ├── prompts.ts             # System prompt builder
+│   ├── task-processor.ts      # Shared task execution logic
+│   ├── task-templates.ts      # Proactive task prompts per role
+│   ├── auth-helpers.ts        # Company ownership validation
+│   ├── suggested-platforms.ts # 25+ BYOK platform definitions
+│   ├── debrief.ts             # Debrief generation
 │   └── mcp/
-│       ├── registry.ts       # Tool registry (14 roles × tools)
-│       ├── apollo.ts         # Apollo.io integration
-│       ├── instantly.ts      # Instantly.ai integration
-│       └── web-search.ts     # Web search + URL fetch
-└── proxy.ts                  # Clerk middleware
+│       ├── registry.ts        # Tool registry (15 roles × tools)
+│       ├── apollo.ts          # Apollo.io integration
+│       ├── instantly.ts       # Instantly.ai integration
+│       ├── web-search.ts      # Web search + URL fetch
+│       └── ceo-tools.ts       # CEO cross-agent queries
+├── proxy.ts                   # Clerk auth middleware
+└── worker.ts                  # Background task worker (Railway)
+```
+
+## Development
+
+```bash
+npm run dev          # Start dev server on port 3000
+npm test             # Run 66 Vitest tests
+npm run build        # Production build
 ```
 
 ## License
