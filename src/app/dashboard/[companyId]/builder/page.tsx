@@ -229,34 +229,42 @@ export default function AgentBuilderPage() {
               Model
             </h2>
             <div className="grid sm:grid-cols-2 gap-2">
-              {[
-                { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6 (default)" },
-                { id: "gpt-4o", label: "GPT-4o" },
-                { id: "gemini-pro", label: "Gemini Pro" },
-                { id: "custom", label: "Custom (paste API endpoint)" },
-              ].map((model) => (
-                <button
-                  key={model.id}
-                  type="button"
-                  onClick={() => setSelectedModel(model.id)}
-                  className={`px-3 py-2.5 rounded-lg text-xs font-medium text-left transition-all ${
-                    selectedModel === model.id
-                      ? "bg-accent/10 border border-accent/30 text-accent"
-                      : "bg-white border border-neutral-200 text-neutral-600 hover:border-neutral-300"
-                  }`}
-                >
-                  {model.label}
-                </button>
-              ))}
+              <button
+                type="button"
+                onClick={() => setSelectedModel("claude-sonnet-4-6")}
+                className={`px-3 py-2.5 rounded-lg text-xs font-medium text-left transition-all ${
+                  selectedModel === "claude-sonnet-4-6"
+                    ? "bg-accent/10 border border-accent/30 text-accent"
+                    : "bg-white border border-neutral-200 text-neutral-600 hover:border-neutral-300"
+                }`}
+              >
+                Claude Sonnet 4.6 (default)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedModel("custom")}
+                className={`px-3 py-2.5 rounded-lg text-xs font-medium text-left transition-all ${
+                  selectedModel === "custom"
+                    ? "bg-accent/10 border border-accent/30 text-accent"
+                    : "bg-white border border-neutral-200 text-neutral-600 hover:border-neutral-300"
+                }`}
+              >
+                Bring your own model
+              </button>
             </div>
             {selectedModel === "custom" && (
-              <input
-                type="url"
-                value={customEndpoint}
-                onChange={(e) => setCustomEndpoint(e.target.value)}
-                placeholder="https://api.example.com/v1/chat/completions"
-                className="w-full mt-3 px-4 py-3 bg-white border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
-              />
+              <div className="mt-3 space-y-2">
+                <input
+                  type="url"
+                  value={customEndpoint}
+                  onChange={(e) => setCustomEndpoint(e.target.value)}
+                  placeholder="OpenAI-compatible API endpoint (e.g. https://api.openai.com/v1)"
+                  className="w-full px-4 py-3 bg-white border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
+                />
+                <p className="text-xs text-neutral-400">
+                  Any OpenAI-compatible endpoint works — GPT-4o, Gemini, Llama, Mistral, or your own fine-tuned model. Add your API key in Settings.
+                </p>
+              </div>
             )}
           </section>
 
