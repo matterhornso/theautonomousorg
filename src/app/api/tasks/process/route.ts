@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import {
   getNextQueuedTask,
   updateTaskStatus,
+  logAgentAction,
   getAgent,
   setMemory,
   incrementUsage,
@@ -60,6 +61,15 @@ export async function POST() {
 
     // Mark as done with result
     updateTaskStatus(task.id, "done", { result_json: resultText });
+
+    // Log agent action
+    logAgentAction({
+      agent_id: task.agent_id,
+      action_type: "task_completed",
+      title: `Completed: ${task.title}`,
+      detail: resultText.slice(0, 200),
+      source: "task_processor",
+    });
 
     // Track usage
     incrementUsage(agent.company_id, "task_count");

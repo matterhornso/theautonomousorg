@@ -102,6 +102,16 @@ function initSchema(db: Database.Database) {
       UNIQUE(agent_id, skill)
     );
 
+    CREATE TABLE IF NOT EXISTS agent_actions (
+      id TEXT PRIMARY KEY,
+      agent_id TEXT NOT NULL REFERENCES agents(id),
+      action_type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      detail TEXT,
+      source TEXT DEFAULT 'system',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS conversations (
       id TEXT PRIMARY KEY,
       agent_id TEXT NOT NULL REFERENCES agents(id),
@@ -231,6 +241,31 @@ function initSchema(db: Database.Database) {
       default_agent_id TEXT REFERENCES agents(id),
       created_at TEXT DEFAULT (datetime('now')),
       UNIQUE(platform, platform_user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS file_uploads (
+      id TEXT PRIMARY KEY,
+      user_id TEXT,
+      file_name TEXT NOT NULL,
+      file_type TEXT NOT NULL,
+      file_size INTEGER NOT NULL,
+      file_path TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS webhooks (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL REFERENCES companies(id),
+      agent_id TEXT NOT NULL REFERENCES agents(id),
+      name TEXT NOT NULL,
+      description TEXT,
+      secret TEXT,
+      task_type TEXT DEFAULT 'webhook',
+      task_title_template TEXT DEFAULT 'Webhook: {name}',
+      is_active INTEGER DEFAULT 1,
+      last_triggered_at TEXT,
+      trigger_count INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
     );
   `);
 }
@@ -589,6 +624,49 @@ export function getCreditTransactions(userId: string, limit = 20): CreditTransac
       "SELECT * FROM credit_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT ?"
     )
     .all(userId, limit) as CreditTransaction[];
+}
+
+// ─── Agent Actions (Action Log) ──────────────────────────
+export interface AgentAction {
+  id: string;
+  agent_id: string;
+  action_type: string;
+  title: string;
+  detail: string | null;
+  source: string;
+  created_at: string;
+}
+
+export function logAgentAction(data: {
+  agent_id: string;
+  action_type: string;
+  title: string;
+  detail?: string;
+  source?: string;
+}): void {
+  const db = getDb();
+  const id = randomUUID();
+  db.prepare(
+    `INSERT INTO agent_actions (id, agent_id, action_type, title, detail, source)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(id, data.agent_id, data.action_type, data.title, data.detail ?? null, data.source ?? "system");
+}
+
+export function getAgentActions(agentId: string, limit = 20): AgentAction[] {
+  return getDb()
+    .prepare("SELECT * FROM agent_actions WHERE agent_id = ? ORDER BY created_at DESC LIMIT ?")
+    .all(agentId, limit) as AgentAction[];
+}
+
+export function getCompanyActions(companyId: string, limit = 50): AgentAction[] {
+  return getDb()
+    .prepare(
+      `SELECT aa.* FROM agent_actions aa
+       JOIN agents a ON aa.agent_id = a.id
+       WHERE a.company_id = ?
+       ORDER BY aa.created_at DESC LIMIT ?`
+    )
+    .all(companyId, limit) as AgentAction[];
 }
 
 // ─── Agent Custom Skills ─────────────────────────────────
@@ -1145,4 +1223,106 @@ export function getTodaysDebrief(companyId: string): Debrief | undefined {
   return getDb()
     .prepare("SELECT * FROM debriefs WHERE company_id = ? AND date(created_at) = date('now') LIMIT 1")
     .get(companyId) as Debrief | undefined;
+}
+
+// ─── File Uploads ────────────────────────────────────────
+export interface FileUpload {
+  id: string;
+  user_id: string | null;
+  file_name: string;
+  file_type: string;
+  file_size: number;
+  file_path: string;
+  created_at: string;
+}
+
+export function createFileUpload(data: {
+  id: string;
+  user_id: string;
+  file_name: string;
+  file_type: string;
+  file_size: number;
+  file_path: string;
+}): FileUpload {
+  const db = getDb();
+  db.prepare(
+    `INSERT INTO file_uploads (id, user_id, file_name, file_type, file_size, file_path)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(data.id, data.user_id, data.file_name, data.file_type, data.file_size, data.file_path);
+  return db.prepare("SELECT * FROM file_uploads WHERE id = ?").get(data.id) as FileUpload;
+}
+
+export function getFileUpload(id: string): FileUpload | undefined {
+  return getDb()
+    .prepare("SELECT * FROM file_uploads WHERE id = ?")
+    .get(id) as FileUpload | undefined;
+}
+
+// ─── Webhooks ─────────────────────────────────────────────
+export interface Webhook {
+  id: string;
+  company_id: string;
+  agent_id: string;
+  name: string;
+  description: string | null;
+  secret: string | null;
+  task_type: string;
+  task_title_template: string;
+  is_active: number;
+  last_triggered_at: string | null;
+  trigger_count: number;
+  created_at: string;
+}
+
+export function createWebhook(data: {
+  company_id: string;
+  agent_id: string;
+  name: string;
+  description?: string;
+  secret?: string;
+  task_type?: string;
+  task_title_template?: string;
+}): Webhook {
+  const db = getDb();
+  const id = randomUUID();
+  db.prepare(
+    `INSERT INTO webhooks (id, company_id, agent_id, name, description, secret, task_type, task_title_template)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    id,
+    data.company_id,
+    data.agent_id,
+    data.name,
+    data.description ?? null,
+    data.secret ?? null,
+    data.task_type ?? "webhook",
+    data.task_title_template ?? "Webhook: {name}"
+  );
+  return db.prepare("SELECT * FROM webhooks WHERE id = ?").get(id) as Webhook;
+}
+
+export function getWebhook(id: string): Webhook | undefined {
+  return getDb()
+    .prepare("SELECT * FROM webhooks WHERE id = ?")
+    .get(id) as Webhook | undefined;
+}
+
+export function getWebhooksByCompany(companyId: string): Webhook[] {
+  return getDb()
+    .prepare("SELECT * FROM webhooks WHERE company_id = ? ORDER BY created_at DESC")
+    .all(companyId) as Webhook[];
+}
+
+export function incrementWebhookTrigger(id: string): void {
+  getDb()
+    .prepare(
+      `UPDATE webhooks SET trigger_count = trigger_count + 1, last_triggered_at = datetime('now') WHERE id = ?`
+    )
+    .run(id);
+}
+
+export function deactivateWebhook(id: string): void {
+  getDb()
+    .prepare("UPDATE webhooks SET is_active = 0 WHERE id = ?")
+    .run(id);
 }

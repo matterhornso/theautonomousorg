@@ -139,6 +139,114 @@ Produce an initial executive assessment:
 Be specific, actionable, and data-driven. This is a board-level document.`,
     },
   ],
+
+  HR: [
+    {
+      type: "hiring_pipeline",
+      title: "Hiring Pipeline Review",
+      promptBuilder: (a) =>
+        `You are the HR Agent for ${a.company.name} (${a.company.industry}). ${a.company.description}
+
+Review and recommend for our hiring pipeline:
+1. Based on our company stage (${a.company.stage}) and industry, what roles should we be hiring for?
+2. Draft job descriptions for the top 2 priority roles
+3. Suggest interview question frameworks for each role
+4. Recommend compensation ranges based on market data
+5. Outline a 30/60/90 day onboarding plan template
+
+Be specific to our industry and stage.`,
+    },
+  ],
+
+  Finance: [
+    {
+      type: "monthly_financial_review",
+      title: "Monthly Financial Review",
+      promptBuilder: (a) =>
+        `You are the Finance Agent for ${a.company.name} (${a.company.industry}, ${a.company.stage} stage). ${a.company.description}
+
+Produce a monthly financial review framework:
+1. Key metrics to track: revenue, MRR/ARR, burn rate, runway, CAC, LTV
+2. Recommended dashboard structure for a ${a.company.stage} company
+3. Cash flow projection template for the next 3 months
+4. Budget allocation recommendations by department
+5. Financial risks and mitigation strategies
+
+Be specific to our stage and industry.`,
+    },
+  ],
+
+  "Customer Success": [
+    {
+      type: "customer_health_check",
+      title: "Customer Health Assessment Framework",
+      promptBuilder: (a) =>
+        `You are the Customer Success Agent for ${a.company.name} (${a.company.industry}). ${a.company.description}
+
+Build a customer health assessment framework:
+1. Define health scoring criteria (usage, engagement, support tickets, NPS)
+2. Create an early warning system for churn risk
+3. Design a customer onboarding checklist (first 7 days, 30 days, 90 days)
+4. Draft a QBR template for customer reviews
+5. Recommend expansion/upsell triggers based on usage patterns
+
+Make it specific to ${a.company.industry} customers.`,
+    },
+  ],
+
+  Legal: [
+    {
+      type: "compliance_audit",
+      title: "Compliance & Legal Framework",
+      promptBuilder: (a) =>
+        `You are the Legal Agent for ${a.company.name} (${a.company.industry}). ${a.company.description}
+
+Produce a compliance and legal framework:
+1. Key regulatory requirements for a ${a.company.industry} company
+2. Essential legal documents checklist (ToS, privacy policy, DPA, NDA templates)
+3. Data protection compliance requirements (GDPR, CCPA as applicable)
+4. IP protection strategy (trademarks, patents, trade secrets)
+5. Employment law considerations for our stage
+
+Be specific to our industry and jurisdiction.`,
+    },
+  ],
+
+  Admin: [
+    {
+      type: "operations_setup",
+      title: "Operations & Admin Framework",
+      promptBuilder: (a) =>
+        `You are the Admin Agent for ${a.company.name} (${a.company.industry}). ${a.company.description}
+
+Set up an operations framework:
+1. Standard operating procedures (SOPs) for core business processes
+2. Vendor management checklist and evaluation criteria
+3. Document management structure and naming conventions
+4. Meeting cadence recommendations (daily standups, weekly syncs, monthly reviews)
+5. Company policy templates (remote work, expenses, time off)
+
+Be specific to a ${a.company.stage} ${a.company.industry} company.`,
+    },
+  ],
+
+  "Data Analyst": [
+    {
+      type: "analytics_setup",
+      title: "Analytics & KPI Framework",
+      promptBuilder: (a) =>
+        `You are the Data Analyst Agent for ${a.company.name} (${a.company.industry}). ${a.company.description}
+
+Build an analytics framework:
+1. Define the North Star metric for ${a.company.name}
+2. Supporting metrics by department (sales, marketing, product, finance)
+3. Dashboard layout recommendations with KPI hierarchy
+4. Data collection requirements — what to track and where
+5. Reporting cadence (daily, weekly, monthly) with audience for each
+
+Make it specific to our industry and stage.`,
+    },
+  ],
 };
 
 // Generic template for roles without specific templates

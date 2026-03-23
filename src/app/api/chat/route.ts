@@ -14,7 +14,10 @@ import {
   hasEnoughCredits,
   deductCredits,
   CREDITS_PER_PROMPT,
+  getFileUpload,
 } from "@/lib/db";
+import fs from "fs";
+import pathModule from "path";
 import {
   isApolloConfigured,
   apolloTools,
@@ -92,6 +95,48 @@ export async function POST(request: NextRequest) {
       role: m.role as "user" | "assistant",
       content: m.content,
     }));
+
+    // Check for uploaded file references in the user message and build file context
+    let fileContext = "";
+    const fileUrlPattern = /\/api\/upload\/([a-f0-9-]{36})/g;
+    const fileMatches = message.matchAll(fileUrlPattern);
+    for (const match of fileMatches) {
+      const fileId = match[1];
+      const upload = getFileUpload(fileId);
+      if (upload) {
+        const isTextFile = ["text/plain", "text/csv"].includes(upload.file_type);
+        const isImage = upload.file_type.startsWith("image/");
+        const isPdf = upload.file_type === "application/pdf";
+
+        if (isTextFile) {
+          try {
+            const filePath = pathModule.join(process.cwd(), "data", "uploads", upload.file_path);
+            const content = fs.readFileSync(filePath, "utf-8");
+            const truncated = content.length > 50000 ? content.slice(0, 50000) + "\n\n[...truncated, file too large to show in full]" : content;
+            fileContext += `\n\n--- Uploaded File: ${upload.file_name} (${upload.file_type}, ${(upload.file_size / 1024).toFixed(1)}KB) ---\n${truncated}\n--- End of File ---`;
+          } catch {
+            fileContext += `\n\n[File uploaded: ${upload.file_name} (${upload.file_type}) — could not read contents]`;
+          }
+        } else if (isPdf) {
+          fileContext += `\n\n[PDF uploaded: ${upload.file_name} (${(upload.file_size / 1024).toFixed(1)}KB) — PDF contents cannot be read inline, but the file is available at /api/upload/${fileId}]`;
+        } else if (isImage) {
+          fileContext += `\n\n[Image uploaded: ${upload.file_name} (${upload.file_type}, ${(upload.file_size / 1024).toFixed(1)}KB) — available at /api/upload/${fileId}]`;
+        } else {
+          fileContext += `\n\n[File uploaded: ${upload.file_name} (${upload.file_type}, ${(upload.file_size / 1024).toFixed(1)}KB) — available at /api/upload/${fileId}]`;
+        }
+      }
+    }
+
+    // If file context was found, append it to the last user message in apiMessages
+    if (fileContext && apiMessages.length > 0) {
+      const lastIdx = apiMessages.length - 1;
+      if (apiMessages[lastIdx].role === "user") {
+        apiMessages[lastIdx] = {
+          ...apiMessages[lastIdx],
+          content: apiMessages[lastIdx].content + fileContext,
+        };
+      }
+    }
 
     // Load agent memory
     const memories = getMemory(agentId);

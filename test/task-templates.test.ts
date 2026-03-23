@@ -48,11 +48,17 @@ describe("Task Templates", () => {
     expect(templates[0].type).toBe("user_personas");
   });
 
-  it("returns generic template for unknown roles", () => {
+  it("returns specific template for Customer Success", () => {
     const templates = getTaskTemplatesForRole("Customer Success", mockAnalysis);
     expect(templates.length).toBe(1);
-    expect(templates[0].type).toBe("introduction");
+    expect(templates[0].type).toBe("customer_health_check");
     expect(templates[0].prompt).toContain("TestCo");
+  });
+
+  it("returns generic template for truly unknown roles", () => {
+    const templates = getTaskTemplatesForRole("Totally Unknown Role", mockAnalysis);
+    expect(templates.length).toBe(1);
+    expect(templates[0].type).toBe("introduction");
   });
 
   it("includes company name in all prompts", () => {
