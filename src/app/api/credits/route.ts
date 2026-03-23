@@ -7,6 +7,7 @@ import {
   CREDITS_PER_PROMPT,
   SIGNUP_CREDITS,
 } from "@/lib/db";
+import { stripe, isStripeConfigured, CREDIT_PACKS } from "@/lib/stripe";
 
 // GET: Get credit balance and transaction history
 export async function GET(request: NextRequest) {
@@ -30,6 +31,13 @@ export async function GET(request: NextRequest) {
     promptsRemaining,
     creditsPerPrompt: CREDITS_PER_PROMPT,
     signupBonus: SIGNUP_CREDITS,
+    creditPacks: CREDIT_PACKS.map((p) => ({
+      id: p.id,
+      name: p.name,
+      credits: p.credits,
+      price: `$${(p.price_cents / 100).toFixed(2)}`,
+      description: p.description,
+    })),
     transactions: transactions.map((t) => ({
       id: t.id,
       amount: t.amount,
@@ -41,22 +49,88 @@ export async function GET(request: NextRequest) {
   });
 }
 
-// POST: Top up credits (Razorpay integration placeholder)
+// POST: Purchase credits via Stripe or legacy top-up
 export async function POST(request: NextRequest) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { action, amount, paymentId } = (await request.json()) as {
+  const body = (await request.json()) as {
     action: string;
+    packId?: string;
+    companyId?: string;
     amount?: number;
     paymentId?: string;
   };
 
-  if (action === "topup") {
-    // Razorpay integration placeholder
-    // In production: verify paymentId with Razorpay API, then credit
+  // ── Stripe credit purchase flow ──────────────────────────
+  if (body.action === "checkout") {
+    if (!isStripeConfigured() || !stripe) {
+      return NextResponse.json(
+        {
+          error:
+            "Stripe is not configured. Contact hello@theautonomous.org for credit top-ups.",
+        },
+        { status: 503 }
+      );
+    }
+
+    const pack = CREDIT_PACKS.find((p) => p.id === body.packId);
+    if (!pack) {
+      return NextResponse.json(
+        {
+          error: "Invalid credit pack",
+          available: CREDIT_PACKS.map((p) => p.id),
+        },
+        { status: 400 }
+      );
+    }
+
+    const companyId = body.companyId;
+    if (!companyId) {
+      return NextResponse.json(
+        { error: "companyId is required" },
+        { status: 400 }
+      );
+    }
+
+    const successUrl = `${request.nextUrl.origin}/dashboard/${companyId}?credits=purchased`;
+    const cancelUrl = `${request.nextUrl.origin}/dashboard/${companyId}`;
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            unit_amount: pack.price_cents,
+            product_data: {
+              name: pack.name,
+              description: pack.description,
+            },
+          },
+          quantity: 1,
+        },
+      ],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: {
+        type: "credit_purchase",
+        userId,
+        companyId,
+        packId: pack.id,
+        credits: String(pack.credits),
+      },
+    });
+
+    return NextResponse.json({ url: session.url });
+  }
+
+  // ── Legacy top-up flow (manual / Razorpay placeholder) ───
+  if (body.action === "topup") {
+    const { amount, paymentId } = body;
+
     if (!amount || amount <= 0) {
       return NextResponse.json(
         { error: "Invalid credit amount" },
@@ -65,27 +139,21 @@ export async function POST(request: NextRequest) {
     }
 
     if (!paymentId) {
-      // Return Razorpay checkout configuration
-      // This would create an order via Razorpay API
       return NextResponse.json({
         status: "payment_required",
-        message: "Razorpay integration coming soon. For now, contact us for credit top-ups.",
-        pricing: {
-          "500 credits (~10 prompts)": "$5",
-          "2000 credits (~40 prompts)": "$15",
-          "5000 credits (~100 prompts)": "$30",
-          "15000 credits (~300 prompts)": "$75",
-        },
+        message:
+          "Use action: 'checkout' with a packId to purchase credits via Stripe.",
+        availablePacks: CREDIT_PACKS.map((p) => ({
+          id: p.id,
+          name: p.name,
+          credits: p.credits,
+          price: `$${(p.price_cents / 100).toFixed(2)}`,
+        })),
         contact: "hello@theautonomous.org",
       });
     }
 
-    // When Razorpay is integrated:
-    // 1. Verify payment with Razorpay API
-    // 2. If valid, credit the amount
-    // const verified = await verifyRazorpayPayment(paymentId);
-    // if (!verified) return error
-
+    // Manual top-up with verified paymentId (admin use)
     const newBalance = addCredits(
       userId,
       amount,

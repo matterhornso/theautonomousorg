@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { stripe, STRIPE_PRICES, isStripeConfigured } from "@/lib/stripe";
-import { getCompaniesByUser, getSubscription, upsertSubscription } from "@/lib/db";
+import {
+  getCompaniesByUser,
+  getSubscription,
+  upsertSubscription,
+} from "@/lib/db";
 
 export async function POST(request: NextRequest) {
   if (!isStripeConfigured() || !stripe) {
     return NextResponse.json(
-      { error: "Billing is not configured yet. Contact us for enterprise pricing." },
+      {
+        error:
+          "Billing is not configured yet. Contact us for enterprise pricing.",
+      },
       { status: 503 }
     );
   }

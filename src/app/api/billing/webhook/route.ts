@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe, isStripeConfigured } from "@/lib/stripe";
-import { upsertSubscription } from "@/lib/db";
+import { upsertSubscription, addCredits } from "@/lib/db";
 
 export async function POST(request: NextRequest) {
   if (!isStripeConfigured() || !stripe) {
@@ -32,6 +32,29 @@ export async function POST(request: NextRequest) {
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object;
+      const metadataType = session.metadata?.type;
+
+      // ── Credit purchase ────────────────────────────────
+      if (metadataType === "credit_purchase") {
+        const userId = session.metadata?.userId;
+        const credits = Number(session.metadata?.credits);
+        const packId = session.metadata?.packId;
+
+        if (userId && credits > 0) {
+          addCredits(
+            userId,
+            credits,
+            "topup",
+            `Stripe credit purchase: ${packId} (${credits} credits)`
+          );
+          console.log(
+            `[stripe] Credited ${credits} to user ${userId} (pack: ${packId})`
+          );
+        }
+        break;
+      }
+
+      // ── Subscription checkout ──────────────────────────
       const companyId = session.metadata?.companyId;
       const plan = session.metadata?.plan;
       if (companyId && plan) {
@@ -48,7 +71,11 @@ export async function POST(request: NextRequest) {
     }
 
     case "customer.subscription.updated": {
-      const subData = event.data.object as unknown as { metadata?: { companyId?: string }; status?: string; current_period_end?: number };
+      const subData = event.data.object as unknown as {
+        metadata?: { companyId?: string };
+        status?: string;
+        current_period_end?: number;
+      };
       if (subData.metadata?.companyId) {
         upsertSubscription(subData.metadata.companyId, {
           status: subData.status || "active",
@@ -61,7 +88,9 @@ export async function POST(request: NextRequest) {
     }
 
     case "customer.subscription.deleted": {
-      const subData = event.data.object as unknown as { metadata?: { companyId?: string } };
+      const subData = event.data.object as unknown as {
+        metadata?: { companyId?: string };
+      };
       const companyId = subData.metadata?.companyId;
       if (companyId) {
         upsertSubscription(companyId, {

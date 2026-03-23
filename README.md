@@ -159,6 +159,12 @@ Each agent runs in its own isolated instance with persistent memory, role-specif
 | `INSTANTLY_API_KEY` | No | Enables Instantly.ai email campaigns for Sales/Marketing |
 | `TELEGRAM_BOT_TOKEN` | No | Enables Telegram messaging bridge |
 | `STRIPE_SECRET_KEY` | No | Enables billing (free tier works without) |
+| `STRIPE_WEBHOOK_SECRET` | No | Stripe webhook signature verification |
+| `DATABASE_URL` | No | Postgres connection string (uses SQLite if not set) |
+
+### Railway Deployment
+
+For persistent data on Railway, add a volume mount at `/app/data` in your service settings. Without a volume, SQLite data is lost on each redeploy. Alternatively, set `DATABASE_URL` to a Postgres connection string (e.g. Supabase) and switch to the Postgres database layer (`src/lib/db-postgres.ts`).
 
 ---
 
