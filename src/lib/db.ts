@@ -253,6 +253,19 @@ function initSchema(db: Database.Database) {
       created_at TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS user_api_keys (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL REFERENCES companies(id),
+      service_name TEXT NOT NULL,
+      display_name TEXT NOT NULL,
+      api_key_encrypted TEXT NOT NULL,
+      config_json TEXT,
+      is_active INTEGER DEFAULT 1,
+      last_used_at TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(company_id, service_name)
+    );
+
     CREATE TABLE IF NOT EXISTS webhooks (
       id TEXT PRIMARY KEY,
       company_id TEXT NOT NULL REFERENCES companies(id),
@@ -1325,4 +1338,140 @@ export function deactivateWebhook(id: string): void {
   getDb()
     .prepare("UPDATE webhooks SET is_active = 0 WHERE id = ?")
     .run(id);
+}
+
+// ─── User API Keys (External Service Keys) ──────────────
+export interface UserApiKey {
+  id: string;
+  company_id: string;
+  service_name: string;
+  display_name: string;
+  is_active: number;
+  last_used_at: string | null;
+  created_at: string;
+}
+
+export function storeUserApiKey(
+  companyId: string,
+  serviceName: string,
+  displayName: string,
+  apiKey: string,
+  config?: Record<string, unknown>
+): UserApiKey {
+  const db = getDb();
+  const id = randomUUID();
+  // MVP: store plain text — production would use encryption
+  db.prepare(
+    `INSERT INTO user_api_keys (id, company_id, service_name, display_name, api_key_encrypted, config_json)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(company_id, service_name)
+     DO UPDATE SET display_name = excluded.display_name, api_key_encrypted = excluded.api_key_encrypted, config_json = excluded.config_json, is_active = 1`
+  ).run(id, companyId, serviceName, displayName, apiKey, config ? JSON.stringify(config) : null);
+  return db
+    .prepare("SELECT id, company_id, service_name, display_name, is_active, last_used_at, created_at FROM user_api_keys WHERE company_id = ? AND service_name = ?")
+    .get(companyId, serviceName) as UserApiKey;
+}
+
+export function getUserApiKey(companyId: string, serviceName: string): string | undefined {
+  const row = getDb()
+    .prepare("SELECT api_key_encrypted FROM user_api_keys WHERE company_id = ? AND service_name = ? AND is_active = 1")
+    .get(companyId, serviceName) as { api_key_encrypted: string } | undefined;
+  return row?.api_key_encrypted;
+}
+
+export function getUserApiKeys(companyId: string): UserApiKey[] {
+  return getDb()
+    .prepare("SELECT id, company_id, service_name, display_name, is_active, last_used_at, created_at FROM user_api_keys WHERE company_id = ? ORDER BY created_at DESC")
+    .all(companyId) as UserApiKey[];
+}
+
+export function deleteUserApiKey(companyId: string, serviceName: string): void {
+  getDb()
+    .prepare("DELETE FROM user_api_keys WHERE company_id = ? AND service_name = ?")
+    .run(companyId, serviceName);
+}
+
+export function updateUserApiKeyLastUsed(companyId: string, serviceName: string): void {
+  getDb()
+    .prepare("UPDATE user_api_keys SET last_used_at = datetime('now') WHERE company_id = ? AND service_name = ?")
+    .run(companyId, serviceName);
+}
+
+// ─── Batch Queries (for agent status page) ──────────────────
+
+export function getMemoryByAgentIds(agentIds: string[]): Record<string, MemoryEntry[]> {
+  if (agentIds.length === 0) return {};
+  const placeholders = agentIds.map(() => "?").join(",");
+  const rows = getDb()
+    .prepare(`SELECT * FROM memory WHERE agent_id IN (${placeholders}) ORDER BY updated_at DESC`)
+    .all(...agentIds) as (MemoryEntry & { agent_id: string })[];
+  const result: Record<string, MemoryEntry[]> = {};
+  for (const id of agentIds) result[id] = [];
+  for (const row of rows) {
+    if (result[row.agent_id] && result[row.agent_id].length < 20) {
+      result[row.agent_id].push(row);
+    }
+  }
+  return result;
+}
+
+export function getCustomSkillsByAgentIds(agentIds: string[]): Record<string, string[]> {
+  if (agentIds.length === 0) return {};
+  const placeholders = agentIds.map(() => "?").join(",");
+  const rows = getDb()
+    .prepare(`SELECT agent_id, skill FROM agent_custom_skills WHERE agent_id IN (${placeholders}) ORDER BY created_at`)
+    .all(...agentIds) as { agent_id: string; skill: string }[];
+  const result: Record<string, string[]> = {};
+  for (const id of agentIds) result[id] = [];
+  for (const row of rows) {
+    result[row.agent_id]?.push(row.skill);
+  }
+  return result;
+}
+
+export function getTasksByAgentIds(agentIds: string[]): Record<string, Task[]> {
+  if (agentIds.length === 0) return {};
+  const placeholders = agentIds.map(() => "?").join(",");
+  const rows = getDb()
+    .prepare(`SELECT * FROM tasks WHERE agent_id IN (${placeholders}) ORDER BY created_at DESC`)
+    .all(...agentIds) as (Task & { agent_id: string })[];
+  const result: Record<string, Task[]> = {};
+  for (const id of agentIds) result[id] = [];
+  for (const row of rows) {
+    result[row.agent_id]?.push(row);
+  }
+  return result;
+}
+
+export function getActionsByAgentIds(agentIds: string[], limit = 10): Record<string, AgentAction[]> {
+  if (agentIds.length === 0) return {};
+  const placeholders = agentIds.map(() => "?").join(",");
+  const rows = getDb()
+    .prepare(`SELECT * FROM agent_actions WHERE agent_id IN (${placeholders}) ORDER BY created_at DESC`)
+    .all(...agentIds) as AgentAction[];
+  const result: Record<string, AgentAction[]> = {};
+  for (const id of agentIds) result[id] = [];
+  for (const row of rows) {
+    if (result[row.agent_id] && result[row.agent_id].length < limit) {
+      result[row.agent_id].push(row);
+    }
+  }
+  return result;
+}
+
+export function getConversationCountsByAgentIds(agentIds: string[]): Record<string, { conversations: number; messages: number }> {
+  if (agentIds.length === 0) return {};
+  const placeholders = agentIds.map(() => "?").join(",");
+  const convRows = getDb()
+    .prepare(`SELECT agent_id, COUNT(*) as cnt FROM conversations WHERE agent_id IN (${placeholders}) GROUP BY agent_id`)
+    .all(...agentIds) as { agent_id: string; cnt: number }[];
+  const msgRows = getDb()
+    .prepare(`SELECT c.agent_id, COUNT(m.id) as cnt FROM messages m JOIN conversations c ON m.conversation_id = c.id WHERE c.agent_id IN (${placeholders}) GROUP BY c.agent_id`)
+    .all(...agentIds) as { agent_id: string; cnt: number }[];
+
+  const result: Record<string, { conversations: number; messages: number }> = {};
+  for (const id of agentIds) result[id] = { conversations: 0, messages: 0 };
+  for (const row of convRows) result[row.agent_id] = { ...result[row.agent_id], conversations: row.cnt };
+  for (const row of msgRows) result[row.agent_id] = { ...result[row.agent_id], messages: row.cnt };
+  return result;
 }

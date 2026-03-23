@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import {
-  getCompaniesByUser,
   getAgentsByCompany,
-  getMemory,
-  getCustomSkills,
-  getTasksByAgent,
-  getAgentActions,
-  getConversationsByAgent,
-  getMessages,
   getUserApiKeys,
+  getMemoryByAgentIds,
+  getCustomSkillsByAgentIds,
+  getTasksByAgentIds,
+  getActionsByAgentIds,
+  getConversationCountsByAgentIds,
 } from "@/lib/db";
+import { assertCompanyOwnership } from "@/lib/auth-helpers";
 import { getToolkit } from "@/lib/mcp/registry";
 import { suggestedPlatforms } from "@/lib/suggested-platforms";
 
@@ -21,41 +20,34 @@ export async function GET(request: NextRequest) {
   }
 
   const companyId = request.nextUrl.searchParams.get("companyId");
-  if (!companyId) {
-    return NextResponse.json(
-      { error: "companyId required" },
-      { status: 400 }
-    );
-  }
+  const ownership = assertCompanyOwnership(userId, companyId);
+  if (!ownership.ok) return ownership.response;
 
-  const companies = getCompaniesByUser(userId);
-  if (!companies.find((c) => c.id === companyId)) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
+  const agents = getAgentsByCompany(ownership.companyId);
+  const agentIds = agents.map((a) => a.id);
 
-  const agents = getAgentsByCompany(companyId);
-  const userKeys = getUserApiKeys(companyId);
+  // Batch all queries (6 queries total instead of 225)
+  const [memoryMap, skillsMap, tasksMap, actionsMap, countsMap] = [
+    getMemoryByAgentIds(agentIds),
+    getCustomSkillsByAgentIds(agentIds),
+    getTasksByAgentIds(agentIds),
+    getActionsByAgentIds(agentIds, 10),
+    getConversationCountsByAgentIds(agentIds),
+  ];
+
+  const userKeys = getUserApiKeys(ownership.companyId);
   const connectedServiceNames = userKeys.map((k) => k.display_name);
 
   const result = agents.map((agent) => {
-    const memory = getMemory(agent.id);
-    const customSkills = getCustomSkills(agent.id);
-    const tasks = getTasksByAgent(agent.id);
-    const actions = getAgentActions(agent.id, 10);
-    const conversations = getConversationsByAgent(agent.id);
+    const memory = memoryMap[agent.id] || [];
+    const customSkills = skillsMap[agent.id] || [];
+    const tasks = tasksMap[agent.id] || [];
+    const actions = actionsMap[agent.id] || [];
+    const counts = countsMap[agent.id] || { conversations: 0, messages: 0 };
 
-    // Count total messages across all conversations
-    let messageCount = 0;
-    for (const conv of conversations.slice(0, 10)) {
-      const msgs = getMessages(conv.id);
-      messageCount += msgs.length;
-    }
-
-    // Get built-in skills from registry
     const toolkit = getToolkit(agent.role);
     const builtInSkills = toolkit?.skills || [];
 
-    // Find which connected services are relevant to this agent
     const relevantPlatforms = suggestedPlatforms.filter((p) =>
       p.relevantAgents.includes(agent.role)
     );
@@ -90,8 +82,8 @@ export async function GET(request: NextRequest) {
         created_at: a.created_at,
       })),
       connectedServices: agentConnectedServices,
-      conversationCount: conversations.length,
-      messageCount,
+      conversationCount: counts.conversations,
+      messageCount: counts.messages,
     };
   });
 

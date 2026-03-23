@@ -5,6 +5,7 @@ import {
   createTask,
   incrementWebhookTrigger,
 } from "@/lib/db";
+import { processNextTask } from "@/lib/task-processor";
 
 function verifySecret(
   payload: string,
@@ -75,12 +76,9 @@ export async function POST(
     // Update webhook trigger stats
     incrementWebhookTrigger(webhook.id);
 
-    // Trigger task processing (fire-and-forget)
-    const baseUrl =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      request.nextUrl.origin;
-    fetch(`${baseUrl}/api/tasks/process`, { method: "POST" }).catch(() => {
-      // Silently ignore — task is queued and will be picked up
+    // Process the task directly (no self-fetch)
+    processNextTask().catch(() => {
+      // Task is queued and will be picked up by the worker if this fails
     });
 
     return NextResponse.json({

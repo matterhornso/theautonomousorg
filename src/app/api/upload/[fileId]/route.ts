@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { getFileUpload } from "@/lib/db";
 import path from "path";
 import fs from "fs";
@@ -21,11 +22,21 @@ export async function GET(
   { params }: { params: Promise<{ fileId: string }> }
 ) {
   try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { fileId } = await params;
     const upload = getFileUpload(fileId);
 
     if (!upload) {
       return NextResponse.json({ error: "File not found" }, { status: 404 });
+    }
+
+    // Path traversal protection
+    if (upload.file_path.includes("..") || upload.file_path.includes("/")) {
+      return NextResponse.json({ error: "Invalid file path" }, { status: 400 });
     }
 
     const uploadDir = path.join(process.cwd(), "data", "uploads");
