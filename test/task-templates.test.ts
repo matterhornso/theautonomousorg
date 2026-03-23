@@ -82,4 +82,41 @@ describe("Task Templates", () => {
     const templates = getTaskTemplatesForRole("Sales", mockAnalysis);
     expect(templates[0].prompt).toContain("SaaS");
   });
+
+  it("returns CEO-specific templates", () => {
+    const templates = getTaskTemplatesForRole("CEO", mockAnalysis);
+    expect(templates.length).toBe(1);
+    expect(templates[0].type).toBe("executive_assessment");
+    expect(templates[0].prompt).toContain("TestCo");
+  });
+
+  it("returns HR-specific templates", () => {
+    const templates = getTaskTemplatesForRole("HR", mockAnalysis);
+    expect(templates.length).toBe(1);
+    expect(templates[0].type).toBe("hiring_pipeline");
+  });
+
+  it("returns Finance-specific templates", () => {
+    const templates = getTaskTemplatesForRole("Finance", mockAnalysis);
+    expect(templates.length).toBe(1);
+    expect(templates[0].type).toBe("monthly_financial_review");
+  });
+
+  it("returns Legal-specific templates", () => {
+    const templates = getTaskTemplatesForRole("Legal", mockAnalysis);
+    expect(templates.length).toBe(1);
+    expect(templates[0].type).toBe("compliance_audit");
+  });
+
+  it("returns Admin-specific templates", () => {
+    const templates = getTaskTemplatesForRole("Admin", mockAnalysis);
+    expect(templates.length).toBe(1);
+    expect(templates[0].type).toBe("operations_setup");
+  });
+
+  it("returns Data Analyst-specific templates", () => {
+    const templates = getTaskTemplatesForRole("Data Analyst", mockAnalysis);
+    expect(templates.length).toBe(1);
+    expect(templates[0].type).toBe("analytics_setup");
+  });
 });
