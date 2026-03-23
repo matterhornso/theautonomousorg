@@ -244,7 +244,7 @@ export function DashboardClient({
       <aside className="w-72 bg-primary text-surface flex flex-col shrink-0">
         <div className="px-5 py-5 border-b border-neutral-800">
           <div className="flex items-center gap-2 mb-1">
-            <div className="w-7 h-7 bg-accent rounded-md flex items-center justify-center text-primary text-[10px] font-bold">
+            <div className="w-7 h-7 bg-accent rounded-md flex items-center justify-center text-primary text-xs font-bold">
               {company.name.charAt(0)}
             </div>
             <h2 className="font-semibold text-sm truncate">{company.name}</h2>
@@ -266,7 +266,7 @@ export function DashboardClient({
                   style={{ width: `${Math.min((creditBalance / 1000) * 100, 100)}%` }}
                 />
               </div>
-              <span className="text-[10px] text-neutral-500">{creditBalance} credits</span>
+              <span className="text-xs text-neutral-500">{creditBalance} credits</span>
             </div>
           )}
         </div>
@@ -308,7 +308,7 @@ export function DashboardClient({
             </div>
           </button>
 
-          <p className="px-5 mt-3 text-[10px] text-neutral-500 uppercase tracking-wider mb-2">
+          <p className="px-5 mt-3 text-xs text-neutral-500 uppercase tracking-wider mb-2">
             Agents
           </p>
           {agents.map((agent) => (
@@ -461,7 +461,7 @@ export function DashboardClient({
                         <span className="text-sm font-medium flex-1">
                           {task.title}
                         </span>
-                        <span className="text-[10px] text-neutral-400 uppercase">
+                        <span className="text-xs text-neutral-400 uppercase">
                           {task.status}
                         </span>
                       </button>
@@ -529,7 +529,7 @@ export function DashboardClient({
                       }`}
                     >
                       {msg.relayFrom && (
-                        <p className="text-[10px] text-accent font-medium uppercase tracking-wider mb-1">
+                        <p className="text-xs text-accent font-medium uppercase tracking-wider mb-1">
                           @{msg.relayFrom} responded
                         </p>
                       )}
@@ -630,7 +630,7 @@ export function DashboardClient({
                   )}
                 </button>
               </div>
-              <p className="text-[10px] text-neutral-400 text-center mt-2">
+              <p className="text-xs text-neutral-400 text-center mt-2">
                 Enter to send &middot; Shift+Enter for new line &middot; Use
                 @Role to mention other agents
               </p>
@@ -703,7 +703,7 @@ export function DashboardClient({
                                 {agent?.role} Agent
                               </span>
                               <span
-                                className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                                className={`text-xs px-1.5 py-0.5 rounded font-medium ${
                                   task.status === "done"
                                     ? "bg-secondary/10 text-secondary"
                                     : task.status === "running"

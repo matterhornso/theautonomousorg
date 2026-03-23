@@ -1,7 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
+import {
+  suggestedPlatforms,
+  type SuggestedPlatform,
+} from "@/lib/suggested-platforms";
+
+// ─── Types ──────────────────────────────────────────────
 
 interface ApiKeyInfo {
   id: string;
@@ -11,109 +17,68 @@ interface ApiKeyInfo {
   created_at: string;
 }
 
-interface ConnectorConfig {
-  name: string;
-  envVar: string;
-  description: string;
-  docsUrl: string;
-  category: "sales" | "marketing" | "crm" | "finance" | "comms" | "dev" | "analytics";
-  platformProvided: boolean;
+interface ConnectedService {
+  id: string;
+  service_name: string;
+  display_name: string;
+  is_active: number;
+  last_used_at: string | null;
+  created_at: string;
+  key_hint: string;
 }
 
-const connectors: ConnectorConfig[] = [
-  {
-    name: "Apollo.io",
-    envVar: "APOLLO_API_KEY",
-    description: "Search 210M+ contacts, find prospects, enrich leads",
-    docsUrl: "https://docs.apollo.io",
-    category: "sales",
-    platformProvided: true,
-  },
-  {
-    name: "Instantly.ai",
-    envVar: "INSTANTLY_API_KEY",
-    description: "Email outreach campaigns, sequence automation, deliverability",
-    docsUrl: "https://developer.instantly.ai",
-    category: "marketing",
-    platformProvided: true,
-  },
-  {
-    name: "HubSpot",
-    envVar: "HUBSPOT_API_KEY",
-    description: "CRM, deal tracking, contact management",
-    docsUrl: "https://developers.hubspot.com",
-    category: "crm",
-    platformProvided: false,
-  },
-  {
-    name: "Slack",
-    envVar: "SLACK_BOT_TOKEN",
-    description: "Team messaging, channel notifications, workflow updates",
-    docsUrl: "https://api.slack.com",
-    category: "comms",
-    platformProvided: false,
-  },
-  {
-    name: "GitHub",
-    envVar: "GITHUB_TOKEN",
-    description: "Repository access, PR management, code review",
-    docsUrl: "https://docs.github.com/en/rest",
-    category: "dev",
-    platformProvided: false,
-  },
-  {
-    name: "Linear",
-    envVar: "LINEAR_API_KEY",
-    description: "Issue tracking, sprint planning, roadmap management",
-    docsUrl: "https://developers.linear.app",
-    category: "dev",
-    platformProvided: false,
-  },
-  {
-    name: "Stripe",
-    envVar: "USER_STRIPE_API_KEY",
-    description: "Payment processing, subscription management, revenue data",
-    docsUrl: "https://stripe.com/docs/api",
-    category: "finance",
-    platformProvided: false,
-  },
-  {
-    name: "Google Workspace",
-    envVar: "GOOGLE_CLIENT_ID",
-    description: "Docs, Sheets, Calendar, Gmail access",
-    docsUrl: "https://developers.google.com/workspace",
-    category: "comms",
-    platformProvided: false,
-  },
-];
-
-const categoryLabels: Record<string, string> = {
-  sales: "Sales & Prospecting",
-  marketing: "Marketing & Outreach",
-  crm: "CRM",
-  finance: "Finance",
-  comms: "Communication",
-  dev: "Development",
-  analytics: "Analytics",
-};
+// ─── Component ──────────────────────────────────────────
 
 export default function SettingsPage() {
   const params = useParams();
   const router = useRouter();
   const companyId = params.companyId as string;
 
+  // TA API Keys state
   const [apiKeys, setApiKeys] = useState<ApiKeyInfo[]>([]);
   const [newKeyName, setNewKeyName] = useState("");
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
-  useEffect(() => {
+  // Connected services state
+  const [connectedServices, setConnectedServices] = useState<
+    ConnectedService[]
+  >([]);
+  const [expandedService, setExpandedService] = useState<string | null>(null);
+  const [keyInputs, setKeyInputs] = useState<Record<string, string>>({});
+  const [savingService, setSavingService] = useState<string | null>(null);
+  const [disconnecting, setDisconnecting] = useState<string | null>(null);
+
+  // Custom API state
+  const [customName, setCustomName] = useState("");
+  const [customServiceName, setCustomServiceName] = useState("");
+  const [customKey, setCustomKey] = useState("");
+  const [savingCustom, setSavingCustom] = useState(false);
+
+  // ─── Data fetching ──────────────────────────────────────
+
+  const fetchApiKeys = useCallback(() => {
     fetch(`/api/keys?companyId=${companyId}`)
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) setApiKeys(data);
       });
   }, [companyId]);
+
+  const fetchConnectedServices = useCallback(() => {
+    fetch(`/api/user-keys?companyId=${companyId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setConnectedServices(data);
+      });
+  }, [companyId]);
+
+  useEffect(() => {
+    fetchApiKeys();
+    fetchConnectedServices();
+  }, [fetchApiKeys, fetchConnectedServices]);
+
+  // ─── TA API Key handlers ────────────────────────────────
 
   const createKey = async () => {
     if (!newKeyName.trim()) return;
@@ -127,11 +92,7 @@ export default function SettingsPage() {
     if (data.key) {
       setCreatedKey(data.key);
       setNewKeyName("");
-      // Refresh key list
-      const list = await fetch(`/api/keys?companyId=${companyId}`).then((r) =>
-        r.json()
-      );
-      if (Array.isArray(list)) setApiKeys(list);
+      fetchApiKeys();
     }
     setCreating(false);
   };
@@ -145,7 +106,98 @@ export default function SettingsPage() {
     setApiKeys((prev) => prev.filter((k) => k.id !== keyId));
   };
 
-  const categories = [...new Set(connectors.map((c) => c.category))];
+  // ─── Connected service handlers ─────────────────────────
+
+  const connectService = async (platform: SuggestedPlatform) => {
+    const apiKey = keyInputs[platform.serviceName];
+    if (!apiKey?.trim()) return;
+
+    setSavingService(platform.serviceName);
+    try {
+      await fetch("/api/user-keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId,
+          serviceName: platform.serviceName,
+          displayName: platform.displayName,
+          apiKey: apiKey.trim(),
+        }),
+      });
+      setKeyInputs((prev) => ({ ...prev, [platform.serviceName]: "" }));
+      setExpandedService(null);
+      fetchConnectedServices();
+    } finally {
+      setSavingService(null);
+    }
+  };
+
+  const disconnectService = async (serviceName: string) => {
+    setDisconnecting(serviceName);
+    try {
+      await fetch("/api/user-keys", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId, serviceName }),
+      });
+      fetchConnectedServices();
+    } finally {
+      setDisconnecting(null);
+    }
+  };
+
+  const connectCustom = async () => {
+    if (!customName.trim() || !customKey.trim()) return;
+    setSavingCustom(true);
+    const svcName = customServiceName.trim()
+      ? customServiceName.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_")
+      : customName.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_");
+    try {
+      await fetch("/api/user-keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId,
+          serviceName: svcName,
+          displayName: customName.trim(),
+          apiKey: customKey.trim(),
+        }),
+      });
+      setCustomName("");
+      setCustomServiceName("");
+      setCustomKey("");
+      fetchConnectedServices();
+    } finally {
+      setSavingCustom(false);
+    }
+  };
+
+  // ─── Derived data ───────────────────────────────────────
+
+  const connectedServiceNames = new Set(
+    connectedServices.map((s) => s.service_name)
+  );
+
+  // Group suggested platforms by category (excluding "Custom" and already-connected ones for the suggestion list)
+  const categories = [
+    ...new Set(
+      suggestedPlatforms
+        .filter((p) => p.category !== "Custom")
+        .map((p) => p.category)
+    ),
+  ];
+
+  function formatDate(dateStr: string | null): string {
+    if (!dateStr) return "Never";
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
+
+  // ─── Render ─────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-surface pt-8 pb-16 px-6">
@@ -178,7 +230,7 @@ export default function SettingsPage() {
           {createdKey && (
             <div className="mb-4 p-4 bg-accent/10 border border-accent/20 rounded-xl">
               <p className="text-sm font-medium mb-1">
-                Your new API key (save it — won&apos;t be shown again):
+                Your new API key (save it &mdash; won&apos;t be shown again):
               </p>
               <code className="text-xs bg-white px-3 py-1.5 rounded-lg border border-neutral-200 font-[family-name:var(--font-mono)] select-all block mt-1">
                 {createdKey}
@@ -207,7 +259,7 @@ export default function SettingsPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-[10px] text-neutral-400">
+                    <span className="text-xs text-neutral-400">
                       {key.last_used_at
                         ? `Used ${key.last_used_at}`
                         : "Never used"}
@@ -256,73 +308,239 @@ export default function SettingsPage() {
           </details>
         </section>
 
-        {/* ─── Connectors ────────────────────────────────── */}
+        {/* ─── Connected Services ────────────────────────── */}
         <section>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400 mb-1">
-            Connectors
+          <h2 className="font-[family-name:var(--font-serif)] text-xl tracking-tight mb-1">
+            Connected Services
           </h2>
           <p className="text-sm text-neutral-500 mb-6">
-            Core tools (Apollo, Instantly) are provided by TheAutonomous —
-            included in your plan. Connect your own accounts for additional
-            integrations.
+            Connect your accounts so agents can take action on your behalf.
+            Keys are stored securely and only used when agents need them.
           </p>
 
-          {categories.map((cat) => (
-            <div key={cat} className="mb-8">
+          {/* Currently connected */}
+          {connectedServices.length > 0 && (
+            <div className="mb-8">
               <h3 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">
-                {categoryLabels[cat] || cat}
+                Active Connections
               </h3>
               <div className="space-y-2">
-                {connectors
-                  .filter((c) => c.category === cat)
-                  .map((connector) => (
-                    <div
-                      key={connector.name}
-                      className="flex items-center justify-between p-4 bg-white border border-neutral-200 rounded-xl"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-2 h-2 rounded-full ${
-                            connector.platformProvided
-                              ? "bg-secondary"
-                              : "bg-neutral-300"
-                          }`}
-                        />
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium">
-                              {connector.name}
-                            </p>
-                            {connector.platformProvided && (
-                              <span className="text-[10px] px-1.5 py-0.5 bg-secondary/10 text-secondary rounded font-medium">
-                                Included
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-neutral-500">
-                            {connector.description}
+                {connectedServices.map((svc) => (
+                  <div
+                    key={svc.id}
+                    className="flex items-center justify-between p-4 bg-white border border-secondary/30 rounded-xl"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-secondary" />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium">
+                            {svc.display_name}
                           </p>
+                          <span className="text-xs px-1.5 py-0.5 bg-secondary/10 text-secondary rounded font-medium">
+                            Connected
+                          </span>
                         </div>
+                        <p className="text-xs text-neutral-400 font-[family-name:var(--font-mono)]">
+                          {svc.key_hint}
+                        </p>
                       </div>
-                      {connector.platformProvided ? (
-                        <span className="text-xs text-secondary font-medium">
-                          Active
-                        </span>
-                      ) : (
-                        <a
-                          href={connector.docsUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-accent hover:underline"
-                        >
-                          Connect &rarr;
-                        </a>
-                      )}
                     </div>
-                  ))}
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-neutral-400">
+                        {svc.last_used_at
+                          ? `Last used ${formatDate(svc.last_used_at)}`
+                          : "Never used"}
+                      </span>
+                      <button
+                        onClick={() => disconnectService(svc.service_name)}
+                        disabled={disconnecting === svc.service_name}
+                        className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
+                      >
+                        {disconnecting === svc.service_name
+                          ? "Removing..."
+                          : "Disconnect"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
+          )}
+
+          {/* Suggested services by category */}
+          {categories.map((category) => {
+            const platforms = suggestedPlatforms.filter(
+              (p) =>
+                p.category === category &&
+                !connectedServiceNames.has(p.serviceName)
+            );
+            if (platforms.length === 0) return null;
+
+            return (
+              <div key={category} className="mb-8">
+                <h3 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">
+                  {category}
+                </h3>
+                <div className="space-y-2">
+                  {platforms.map((platform) => {
+                    const isExpanded =
+                      expandedService === platform.serviceName;
+                    const isSaving =
+                      savingService === platform.serviceName;
+
+                    return (
+                      <div
+                        key={platform.serviceName}
+                        className="bg-white border border-neutral-200 rounded-xl overflow-hidden"
+                      >
+                        <div className="flex items-center justify-between p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-2 h-2 rounded-full bg-neutral-300" />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-medium">
+                                  {platform.displayName}
+                                </p>
+                              </div>
+                              <p className="text-xs text-neutral-500">
+                                {platform.description}
+                              </p>
+                              <p className="text-xs text-neutral-400 mt-0.5">
+                                Used by:{" "}
+                                {platform.relevantAgents.join(", ")}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() =>
+                              setExpandedService(
+                                isExpanded
+                                  ? null
+                                  : platform.serviceName
+                              )
+                            }
+                            className="text-xs text-accent hover:underline shrink-0"
+                          >
+                            {isExpanded
+                              ? "Cancel"
+                              : "Connect \u2192"}
+                          </button>
+                        </div>
+
+                        {/* Expanded connect form */}
+                        {isExpanded && (
+                          <div className="px-4 pb-4 border-t border-neutral-100 pt-3 space-y-3">
+                            <div className="p-3 bg-neutral-50 rounded-lg">
+                              <p className="text-xs font-medium text-neutral-600 mb-1">
+                                How to get your API key:
+                              </p>
+                              <p className="text-xs text-neutral-500">
+                                {platform.keyInstructions}
+                              </p>
+                              {platform.docsUrl && (
+                                <a
+                                  href={platform.docsUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-accent hover:underline mt-1 inline-block"
+                                >
+                                  View documentation &rarr;
+                                </a>
+                              )}
+                            </div>
+                            <div className="flex gap-2">
+                              <input
+                                type="password"
+                                value={
+                                  keyInputs[platform.serviceName] || ""
+                                }
+                                onChange={(e) =>
+                                  setKeyInputs((prev) => ({
+                                    ...prev,
+                                    [platform.serviceName]:
+                                      e.target.value,
+                                  }))
+                                }
+                                placeholder={`Paste your ${platform.displayName} API key`}
+                                className="flex-1 px-3 py-2 bg-white border border-neutral-200 rounded-lg text-sm font-[family-name:var(--font-mono)] focus:outline-none focus:ring-2 focus:ring-accent/50"
+                              />
+                              <button
+                                onClick={() =>
+                                  connectService(platform)
+                                }
+                                disabled={
+                                  isSaving ||
+                                  !keyInputs[
+                                    platform.serviceName
+                                  ]?.trim()
+                                }
+                                className="px-4 py-2 bg-primary text-surface text-sm font-medium rounded-lg hover:bg-neutral-800 disabled:opacity-50"
+                              >
+                                {isSaving ? "Saving..." : "Save"}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Custom API */}
+          <div className="mb-8">
+            <h3 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">
+              Custom Integration
+            </h3>
+            <div className="bg-white border border-neutral-200 rounded-xl p-4 space-y-3">
+              <div>
+                <p className="text-sm font-medium">Custom API</p>
+                <p className="text-xs text-neutral-500">
+                  Connect any service not listed above. Your agents will use
+                  the key when interacting with this API.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  value={customName}
+                  onChange={(e) => setCustomName(e.target.value)}
+                  placeholder="Display name (e.g. Airtable)"
+                  className="px-3 py-2 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/50"
+                />
+                <input
+                  type="text"
+                  value={customServiceName}
+                  onChange={(e) => setCustomServiceName(e.target.value)}
+                  placeholder="Service ID (e.g. airtable) — optional"
+                  className="px-3 py-2 bg-white border border-neutral-200 rounded-lg text-sm font-[family-name:var(--font-mono)] focus:outline-none focus:ring-2 focus:ring-accent/50"
+                />
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  value={customKey}
+                  onChange={(e) => setCustomKey(e.target.value)}
+                  placeholder="Paste your API key"
+                  className="flex-1 px-3 py-2 bg-white border border-neutral-200 rounded-lg text-sm font-[family-name:var(--font-mono)] focus:outline-none focus:ring-2 focus:ring-accent/50"
+                />
+                <button
+                  onClick={connectCustom}
+                  disabled={
+                    savingCustom ||
+                    !customName.trim() ||
+                    !customKey.trim()
+                  }
+                  className="px-4 py-2 bg-primary text-surface text-sm font-medium rounded-lg hover:bg-neutral-800 disabled:opacity-50"
+                >
+                  {savingCustom ? "Saving..." : "Save"}
+                </button>
+              </div>
+            </div>
+          </div>
         </section>
       </div>
     </div>

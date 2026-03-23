@@ -240,7 +240,7 @@ export default function SkillsPage() {
                         {skill}
                         <button
                           onClick={() => removeSkill(skill)}
-                          className="hover:text-red-500 transition-colors"
+                          className="hover:text-[#B33A3A] transition-colors"
                         >
                           <svg
                             className="w-3.5 h-3.5"

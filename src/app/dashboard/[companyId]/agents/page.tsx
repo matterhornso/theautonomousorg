@@ -85,10 +85,38 @@ export default function AgentStatusPage() {
             Loading agent data...
           </div>
         ) : agents.length === 0 ? (
-          <div className="text-sm text-neutral-400 py-12 text-center">
-            No agents found for this company.
+          <div className="py-16 text-center">
+            <div className="text-3xl mb-3">🤖</div>
+            <p className="text-sm font-medium text-neutral-600 mb-1">No agents yet</p>
+            <p className="text-xs text-neutral-400 mb-4">Agents will appear here once your company is provisioned.</p>
+            <button
+              onClick={() => router.push(`/dashboard/${companyId}`)}
+              className="text-xs text-accent hover:underline"
+            >
+              Go to dashboard
+            </button>
           </div>
         ) : (
+          <>
+          {/* Summary bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+            <div className="p-4 bg-white border border-neutral-200 rounded-xl">
+              <p className="text-lg font-semibold">{agents.length}</p>
+              <p className="text-xs text-neutral-400">Active Agents</p>
+            </div>
+            <div className="p-4 bg-white border border-neutral-200 rounded-xl">
+              <p className="text-lg font-semibold">{agents.reduce((sum, a) => sum + a.tasks.filter(t => t.status === "done").length, 0)}</p>
+              <p className="text-xs text-neutral-400">Tasks Done</p>
+            </div>
+            <div className="p-4 bg-white border border-neutral-200 rounded-xl">
+              <p className="text-lg font-semibold">{agents.reduce((sum, a) => sum + a.tasks.filter(t => t.status === "running" || t.status === "queued").length, 0)}</p>
+              <p className="text-xs text-neutral-400">Active Tasks</p>
+            </div>
+            <div className="p-4 bg-white border border-neutral-200 rounded-xl">
+              <p className="text-lg font-semibold">{agents.reduce((sum, a) => sum + a.memory.length, 0)}</p>
+              <p className="text-xs text-neutral-400">Total Memories</p>
+            </div>
+          </div>
           <div className="space-y-3">
             {agents.map((agent) => {
               const isExpanded = expandedAgent === agent.id;
@@ -110,7 +138,8 @@ export default function AgentStatusPage() {
                   {/* Header row */}
                   <button
                     onClick={() => toggleAgent(agent.id)}
-                    className="w-full flex items-center gap-4 p-4 text-left hover:bg-neutral-50 transition-colors"
+                    aria-expanded={isExpanded}
+                    className="w-full flex items-center gap-4 p-4 text-left hover:bg-neutral-50 transition-colors focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none"
                   >
                     <AgentIcon role={agent.role} size="md" variant="dark" />
                     <div className="flex-1 min-w-0">
@@ -119,7 +148,7 @@ export default function AgentStatusPage() {
                           {agent.role}
                         </h3>
                         <span
-                          className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                          className={`text-xs px-1.5 py-0.5 rounded font-medium ${
                             agent.status === "active"
                               ? "bg-secondary/10 text-secondary"
                               : "bg-neutral-100 text-neutral-500"
@@ -128,22 +157,22 @@ export default function AgentStatusPage() {
                           {agent.status}
                         </span>
                       </div>
-                      <div className="flex items-center gap-4 mt-0.5">
-                        <span className="text-[11px] text-neutral-400">
-                          {agent.memory.length} memories
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 mt-0.5">
+                        <span className="text-xs text-neutral-400">
+                          {doneTasks} tasks done
                         </span>
-                        <span className="text-[11px] text-neutral-400">
+                        <span className="text-xs text-neutral-400">
                           {agent.skills.length + agent.customSkills.length}{" "}
                           skills
                         </span>
-                        <span className="text-[11px] text-neutral-400">
-                          {doneTasks} tasks done
+                        <span className="hidden sm:inline text-xs text-neutral-400">
+                          {agent.memory.length} memories
                         </span>
-                        <span className="text-[11px] text-neutral-400">
+                        <span className="hidden sm:inline text-xs text-neutral-400">
                           {agent.messageCount} messages
                         </span>
                         {agent.connectedServices.length > 0 && (
-                          <span className="text-[11px] text-accent">
+                          <span className="text-xs text-accent">
                             {agent.connectedServices.length} connected
                           </span>
                         )}
@@ -175,10 +204,11 @@ export default function AgentStatusPage() {
                           Memory ({agent.memory.length})
                         </h4>
                         {agent.memory.length === 0 ? (
-                          <p className="text-xs text-neutral-400">
-                            No memory entries yet. This agent will build memory
-                            as you chat.
-                          </p>
+                          <div className="p-4 bg-neutral-50 rounded-lg text-center">
+                            <p className="text-xs font-medium text-neutral-500 mb-1">This agent is ready to learn</p>
+                            <p className="text-xs text-neutral-400 mb-2">Memory builds as you chat with the agent.</p>
+                            <button onClick={() => router.push(`/dashboard/${companyId}`)} className="text-xs text-accent hover:underline">Start a conversation</button>
+                          </div>
                         ) : (
                           <div className="space-y-1.5 max-h-48 overflow-y-auto">
                             {agent.memory.map((m, i) => (
@@ -186,7 +216,7 @@ export default function AgentStatusPage() {
                                 key={i}
                                 className="p-2.5 bg-neutral-50 rounded-lg"
                               >
-                                <p className="text-[10px] font-medium text-neutral-500 uppercase tracking-wider mb-0.5">
+                                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-0.5">
                                   {m.key}
                                 </p>
                                 <p className="text-xs text-neutral-700 line-clamp-2">
@@ -207,7 +237,7 @@ export default function AgentStatusPage() {
                           {agent.skills.map((skill) => (
                             <span
                               key={skill}
-                              className="text-[11px] px-2 py-1 bg-neutral-100 text-neutral-600 rounded-md"
+                              className="text-xs px-2 py-1 bg-neutral-100 text-neutral-600 rounded-md"
                             >
                               {skill}
                             </span>
@@ -215,7 +245,7 @@ export default function AgentStatusPage() {
                           {agent.customSkills.map((skill) => (
                             <span
                               key={skill}
-                              className="text-[11px] px-2 py-1 bg-accent/10 text-accent rounded-md"
+                              className="text-xs px-2 py-1 bg-accent/10 text-accent rounded-md"
                             >
                               {skill}
                             </span>
@@ -233,7 +263,7 @@ export default function AgentStatusPage() {
                             {agent.connectedServices.map((svc) => (
                               <span
                                 key={svc}
-                                className="text-[11px] px-2 py-1 bg-secondary/10 text-secondary rounded-md flex items-center gap-1"
+                                className="text-xs px-2 py-1 bg-secondary/10 text-secondary rounded-md flex items-center gap-1"
                               >
                                 <span className="w-1.5 h-1.5 rounded-full bg-secondary" />
                                 {svc}
@@ -259,9 +289,11 @@ export default function AgentStatusPage() {
                           )}
                         </h4>
                         {agent.tasks.length === 0 ? (
-                          <p className="text-xs text-neutral-400">
-                            No tasks assigned yet.
-                          </p>
+                          <div className="p-4 bg-neutral-50 rounded-lg text-center">
+                            <p className="text-xs font-medium text-neutral-500 mb-1">Give this agent work to do</p>
+                            <p className="text-xs text-neutral-400 mb-2">Schedule tasks or ask the agent directly in chat.</p>
+                            <button onClick={() => router.push(`/dashboard/${companyId}/schedule`)} className="text-xs text-accent hover:underline">Schedule a task</button>
+                          </div>
                         ) : (
                           <div className="space-y-1.5 max-h-48 overflow-y-auto">
                             {agent.tasks.slice(0, 10).map((task) => (
@@ -285,17 +317,17 @@ export default function AgentStatusPage() {
                                     {task.title}
                                   </p>
                                   <div className="flex items-center gap-2">
-                                    <span className="text-[10px] text-neutral-400">
+                                    <span className="text-xs text-neutral-400">
                                       {task.status}
                                     </span>
                                     {task.is_recurring === 1 && (
-                                      <span className="text-[10px] text-accent">
+                                      <span className="text-xs text-accent">
                                         ↻ {task.cron_expression || "recurring"}
                                       </span>
                                     )}
                                   </div>
                                 </div>
-                                <span className="text-[10px] text-neutral-400 shrink-0">
+                                <span className="text-xs text-neutral-400 shrink-0">
                                   {new Date(
                                     task.created_at
                                   ).toLocaleDateString("en-US", {
@@ -306,7 +338,7 @@ export default function AgentStatusPage() {
                               </div>
                             ))}
                             {agent.tasks.length > 10 && (
-                              <p className="text-[10px] text-neutral-400 text-center py-1">
+                              <p className="text-xs text-neutral-400 text-center py-1">
                                 +{agent.tasks.length - 10} more tasks
                               </p>
                             )}
@@ -320,9 +352,9 @@ export default function AgentStatusPage() {
                           Recent Actions
                         </h4>
                         {agent.actions.length === 0 ? (
-                          <p className="text-xs text-neutral-400">
-                            No actions recorded yet.
-                          </p>
+                          <div className="p-4 bg-neutral-50 rounded-lg text-center">
+                            <p className="text-xs text-neutral-400">Activity will appear here once the agent starts working.</p>
+                          </div>
                         ) : (
                           <div className="space-y-1.5 max-h-36 overflow-y-auto">
                             {agent.actions.slice(0, 5).map((action, i) => (
@@ -330,7 +362,7 @@ export default function AgentStatusPage() {
                                 key={i}
                                 className="flex items-center gap-3 p-2 bg-neutral-50 rounded-lg"
                               >
-                                <span className="text-[10px] text-neutral-400 shrink-0 w-16">
+                                <span className="text-xs text-neutral-400 shrink-0 w-16">
                                   {new Date(
                                     action.created_at
                                   ).toLocaleDateString("en-US", {
@@ -348,12 +380,12 @@ export default function AgentStatusPage() {
                       </div>
 
                       {/* Stats bar */}
-                      <div className="flex items-center gap-6 pt-2 border-t border-neutral-100">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2 border-t border-neutral-100">
                         <div>
                           <p className="text-lg font-semibold">
                             {agent.conversationCount}
                           </p>
-                          <p className="text-[10px] text-neutral-400 uppercase tracking-wider">
+                          <p className="text-xs text-neutral-400 uppercase tracking-wider">
                             Conversations
                           </p>
                         </div>
@@ -361,13 +393,13 @@ export default function AgentStatusPage() {
                           <p className="text-lg font-semibold">
                             {agent.messageCount}
                           </p>
-                          <p className="text-[10px] text-neutral-400 uppercase tracking-wider">
+                          <p className="text-xs text-neutral-400 uppercase tracking-wider">
                             Messages
                           </p>
                         </div>
                         <div>
                           <p className="text-lg font-semibold">{doneTasks}</p>
-                          <p className="text-[10px] text-neutral-400 uppercase tracking-wider">
+                          <p className="text-xs text-neutral-400 uppercase tracking-wider">
                             Tasks Done
                           </p>
                         </div>
@@ -375,7 +407,7 @@ export default function AgentStatusPage() {
                           <p className="text-lg font-semibold">
                             {agent.memory.length}
                           </p>
-                          <p className="text-[10px] text-neutral-400 uppercase tracking-wider">
+                          <p className="text-xs text-neutral-400 uppercase tracking-wider">
                             Memories
                           </p>
                         </div>
@@ -386,6 +418,7 @@ export default function AgentStatusPage() {
               );
             })}
           </div>
+          </>
         )}
       </div>
     </div>

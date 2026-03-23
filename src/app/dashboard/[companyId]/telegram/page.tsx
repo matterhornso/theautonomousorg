@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 export default function TelegramSetupPage() {
@@ -12,6 +12,28 @@ export default function TelegramSetupPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const [alreadyConnected, setAlreadyConnected] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  const checkConnection = useCallback(() => {
+    fetch(`/api/user-keys?companyId=${companyId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setAlreadyConnected(data.some((k: { service_name: string }) => k.service_name === "telegram_bot"));
+        }
+      })
+      .finally(() => setLoading(false));
+  }, [companyId]);
+
+  useEffect(() => { checkConnection(); }, [checkConnection]);
+
+  const copyCommand = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const saveToken = async () => {
     if (!botToken.trim()) return;
@@ -56,6 +78,28 @@ export default function TelegramSetupPage() {
           below to create a bot and connect it.
         </p>
 
+        {loading ? (
+          <div className="text-sm text-neutral-400 py-12 text-center">Loading...</div>
+        ) : alreadyConnected && !saved ? (
+          <div className="mb-8 p-6 bg-white border border-secondary/30 rounded-xl">
+            <div className="flex items-center gap-3 mb-3">
+              <span className="w-3 h-3 rounded-full bg-secondary" />
+              <h3 className="text-sm font-semibold">Telegram bot is connected</h3>
+            </div>
+            <p className="text-sm text-neutral-500 mb-4">
+              Your team can message agents on Telegram. Send{" "}
+              <code className="px-1 py-0.5 bg-neutral-100 rounded text-xs">/start</code>{" "}
+              to your bot to begin, or <code className="px-1 py-0.5 bg-neutral-100 rounded text-xs">@Sales</code> to reach a specific agent.
+            </p>
+            <button
+              onClick={() => { setAlreadyConnected(false); }}
+              className="text-xs text-neutral-500 hover:text-primary transition-colors"
+            >
+              Reconnect with a different bot
+            </button>
+          </div>
+        ) : null}
+
         {saved && (
           <div className="mb-8 p-4 bg-secondary/10 border border-secondary/30 rounded-xl">
             <p className="text-sm font-medium text-secondary">
@@ -68,11 +112,17 @@ export default function TelegramSetupPage() {
               </code>{" "}
               to your bot to begin.
             </p>
+            <button
+              onClick={() => router.push(`/dashboard/${companyId}`)}
+              className="mt-3 text-xs text-accent hover:underline"
+            >
+              Back to dashboard to start chatting
+            </button>
           </div>
         )}
 
-        {/* Step-by-step guide */}
-        <div className="space-y-6">
+        {/* Step-by-step guide (hidden when already connected) */}
+        {(!alreadyConnected || saved === false) && <div className="space-y-6">
           {/* Step 1 */}
           <div className="flex gap-4">
             <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-surface text-sm font-semibold flex items-center justify-center">
@@ -121,10 +171,10 @@ export default function TelegramSetupPage() {
                     /newbot
                   </code>
                   <button
-                    onClick={() => navigator.clipboard.writeText("/newbot")}
+                    onClick={() => copyCommand("/newbot")}
                     className="text-xs text-accent hover:underline"
                   >
-                    Copy
+                    {copied ? "Copied!" : "Copy"}
                   </button>
                 </div>
                 <div className="text-xs text-neutral-500 space-y-1.5">
@@ -177,7 +227,7 @@ export default function TelegramSetupPage() {
                 We&apos;ll use this to receive messages from your team and route
                 them to the right agent.
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="password"
                   value={botToken}
@@ -194,46 +244,11 @@ export default function TelegramSetupPage() {
                 </button>
               </div>
               {error && (
-                <p className="text-xs text-red-500 mt-2">{error}</p>
+                <p className="text-xs text-[#B33A3A] mt-2">{error}</p>
               )}
             </div>
           </div>
-        </div>
-
-        {/* How it works section */}
-        <div className="mt-12 border-t border-neutral-200 pt-8">
-          <h2 className="font-[family-name:var(--font-serif)] text-xl tracking-tight mb-4">
-            How Telegram agents work
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-4 bg-white border border-neutral-200 rounded-xl">
-              <div className="text-lg mb-2">💬</div>
-              <h3 className="text-sm font-semibold mb-1">Message any agent</h3>
-              <p className="text-xs text-neutral-500">
-                Send <code className="bg-neutral-100 px-1 rounded">@Sales</code>{" "}
-                or <code className="bg-neutral-100 px-1 rounded">@Marketing</code>{" "}
-                followed by your message to route it to the right agent.
-              </p>
-            </div>
-            <div className="p-4 bg-white border border-neutral-200 rounded-xl">
-              <div className="text-lg mb-2">🤖</div>
-              <h3 className="text-sm font-semibold mb-1">Auto-responses</h3>
-              <p className="text-xs text-neutral-500">
-                Agents reply directly in the chat. They remember context from
-                previous conversations and have access to your company data.
-              </p>
-            </div>
-            <div className="p-4 bg-white border border-neutral-200 rounded-xl">
-              <div className="text-lg mb-2">👥</div>
-              <h3 className="text-sm font-semibold mb-1">Team access</h3>
-              <p className="text-xs text-neutral-500">
-                Send <code className="bg-neutral-100 px-1 rounded">/agents</code>{" "}
-                to see available agents. Any team member can connect by messaging
-                the bot.
-              </p>
-            </div>
-          </div>
-        </div>
+        </div>}
       </div>
     </div>
   );

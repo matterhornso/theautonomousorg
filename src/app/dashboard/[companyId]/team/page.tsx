@@ -231,7 +231,7 @@ export default function TeamPage() {
                         </span>
                       )}
                       <span
-                        className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                        className={`text-xs px-1.5 py-0.5 rounded font-medium ${
                           member.invite_status === "accepted"
                             ? "bg-secondary/10 text-secondary"
                             : "bg-accent/10 text-accent"
@@ -255,7 +255,7 @@ export default function TeamPage() {
                   {member.role !== "owner" && (
                     <button
                       onClick={() => handleRemove(member.id)}
-                      className="text-xs text-red-500 hover:text-red-700"
+                      className="text-xs text-[#B33A3A] hover:text-red-700"
                     >
                       Remove
                     </button>

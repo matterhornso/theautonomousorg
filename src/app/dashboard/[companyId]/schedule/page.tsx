@@ -233,7 +233,7 @@ export default function SchedulePage() {
                           </span>
                         )}
                         <span
-                          className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                          className={`text-xs px-1.5 py-0.5 rounded font-medium ${
                             task.status === "queued"
                               ? "bg-accent/10 text-accent"
                               : task.status === "done"
@@ -247,7 +247,7 @@ export default function SchedulePage() {
                     </div>
                     <button
                       onClick={() => handleCancel(task.id)}
-                      className="text-xs text-red-500 hover:text-red-700 transition-colors"
+                      className="text-xs text-[#B33A3A] hover:text-red-700 transition-colors"
                     >
                       Cancel
                     </button>

@@ -104,7 +104,7 @@ export default async function AnalyticsPage({
             <p className="font-[family-name:var(--font-serif)] text-3xl">
               {usage.task_count + usage.message_count}
             </p>
-            <p className="text-[10px] text-neutral-400 mt-0.5">
+            <p className="text-xs text-neutral-400 mt-0.5">
               {usage.task_count} tasks &middot; {usage.message_count} messages
             </p>
           </div>
@@ -182,19 +182,19 @@ export default async function AnalyticsPage({
                     <p className="text-lg font-semibold text-secondary">
                       {stat.completed}
                     </p>
-                    <p className="text-[10px] text-neutral-400">Done</p>
+                    <p className="text-xs text-neutral-400">Done</p>
                   </div>
                   <div>
                     <p className="text-lg font-semibold text-red-400">
                       {stat.failed}
                     </p>
-                    <p className="text-[10px] text-neutral-400">Failed</p>
+                    <p className="text-xs text-neutral-400">Failed</p>
                   </div>
                   <div>
                     <p className="text-lg font-semibold">
                       {stat.successRate}%
                     </p>
-                    <p className="text-[10px] text-neutral-400">Success</p>
+                    <p className="text-xs text-neutral-400">Success</p>
                   </div>
                 </div>
               </div>

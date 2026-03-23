@@ -239,7 +239,7 @@ export default function AgentBuilderPage() {
                     {selectedSkills.map((s) => (
                       <span
                         key={s}
-                        className="px-2 py-0.5 bg-neutral-100 rounded text-[10px] text-neutral-600"
+                        className="px-2 py-0.5 bg-neutral-100 rounded text-xs text-neutral-600"
                       >
                         {s}
                       </span>
@@ -251,7 +251,7 @@ export default function AgentBuilderPage() {
                     {selectedConnectors.map((c) => (
                       <span
                         key={c}
-                        className="px-2 py-0.5 bg-accent/10 rounded text-[10px] text-accent"
+                        className="px-2 py-0.5 bg-accent/10 rounded text-xs text-accent"
                       >
                         {c}
                       </span>

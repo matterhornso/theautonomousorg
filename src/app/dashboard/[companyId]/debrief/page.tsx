@@ -123,7 +123,7 @@ export default function DebriefPage() {
                 </p>
               </div>
               <span
-                className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                   debrief.delivered_via === "dashboard"
                     ? "bg-secondary/10 text-secondary"
                     : "bg-accent/10 text-accent"
