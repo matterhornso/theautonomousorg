@@ -182,29 +182,37 @@ export async function POST(request: NextRequest) {
 
           const toolCalls: { id: string; name: string; input: Record<string, unknown> }[] = [];
 
-          let inToolBlock = false;
+          let toolBlockBuffer = "";
 
           for await (const event of stream) {
             if (
               event.type === "content_block_delta" &&
               event.delta.type === "text_delta"
             ) {
-              const text = event.delta.text;
+              let text = event.delta.text;
 
               // Filter out tool call markup that Claude sometimes outputs as text
-              if (text.includes("<tool_call>") || text.includes("<tool_response>")) {
-                inToolBlock = true;
-              }
-              if (inToolBlock) {
-                if (text.includes("</tool_response>")) {
-                  inToolBlock = false;
+              // Use a buffer approach to handle tags split across chunks
+              if (toolBlockBuffer) {
+                toolBlockBuffer += text;
+                if (toolBlockBuffer.includes("</tool_response>") || toolBlockBuffer.includes("</tool_call>")) {
+                  // Strip the tool block and continue with any text after the closing tag
+                  const afterResponse = toolBlockBuffer.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, "").replace(/<tool_response>[\s\S]*?<\/tool_response>/g, "");
+                  toolBlockBuffer = "";
+                  if (afterResponse.trim()) {
+                    text = afterResponse;
+                  } else {
+                    continue;
+                  }
+                } else if (toolBlockBuffer.length > 10000) {
+                  // Safety: if buffer gets too large without closing tag, flush it
+                  toolBlockBuffer = "";
                 }
-                fullResponse += text; // Still save for context but don't show
-                continue; // Don't stream to user
-              }
-
-              // Skip raw JSON tool output patterns
-              if (text.match(/^\s*\{"name":\s*"/) || text.match(/^\s*\{"arguments":/)) {
+                else {
+                  continue; // Still accumulating tool block
+                }
+              } else if (text.includes("<tool_call>") || text.includes("<tool_response>")) {
+                toolBlockBuffer = text;
                 continue;
               }
 

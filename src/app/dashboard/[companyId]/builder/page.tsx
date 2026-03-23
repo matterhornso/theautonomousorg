@@ -27,6 +27,8 @@ export default function AgentBuilderPage() {
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [customSkill, setCustomSkill] = useState("");
   const [selectedConnectors, setSelectedConnectors] = useState<string[]>([]);
+  const [selectedModel, setSelectedModel] = useState("claude-sonnet-4-6");
+  const [customEndpoint, setCustomEndpoint] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
 
@@ -69,6 +71,7 @@ export default function AgentBuilderPage() {
           instructions: instructions.trim(),
           skills: selectedSkills,
           connectors: selectedConnectors,
+          model: selectedModel === "custom" ? customEndpoint : selectedModel,
         }),
       });
 
@@ -218,6 +221,43 @@ export default function AgentBuilderPage() {
                 </button>
               ))}
             </div>
+          </section>
+
+          {/* Model */}
+          <section>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400 mb-3">
+              Model
+            </h2>
+            <div className="grid sm:grid-cols-2 gap-2">
+              {[
+                { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6 (default)" },
+                { id: "gpt-4o", label: "GPT-4o" },
+                { id: "gemini-pro", label: "Gemini Pro" },
+                { id: "custom", label: "Custom (paste API endpoint)" },
+              ].map((model) => (
+                <button
+                  key={model.id}
+                  type="button"
+                  onClick={() => setSelectedModel(model.id)}
+                  className={`px-3 py-2.5 rounded-lg text-xs font-medium text-left transition-all ${
+                    selectedModel === model.id
+                      ? "bg-accent/10 border border-accent/30 text-accent"
+                      : "bg-white border border-neutral-200 text-neutral-600 hover:border-neutral-300"
+                  }`}
+                >
+                  {model.label}
+                </button>
+              ))}
+            </div>
+            {selectedModel === "custom" && (
+              <input
+                type="url"
+                value={customEndpoint}
+                onChange={(e) => setCustomEndpoint(e.target.value)}
+                placeholder="https://api.example.com/v1/chat/completions"
+                className="w-full mt-3 px-4 py-3 bg-white border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
+              />
+            )}
           </section>
 
           {/* Preview */}

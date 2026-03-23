@@ -44,11 +44,16 @@ export default function AgentStatusPage() {
   const fetchAgentStatuses = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/agents/status?companyId=${companyId}`);
+      const url = `/api/agents/status?companyId=${companyId}`;
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         setAgents(data);
+      } else {
+        console.error(`[AgentStatus] fetch failed: ${res.status} ${res.statusText}`, await res.text().catch(() => ""));
       }
+    } catch (err) {
+      console.error("[AgentStatus] fetch error:", err);
     } finally {
       setLoading(false);
     }
@@ -86,7 +91,11 @@ export default function AgentStatusPage() {
           </div>
         ) : agents.length === 0 ? (
           <div className="py-16 text-center">
-            <div className="text-3xl mb-3">🤖</div>
+            <div className="mb-3 flex justify-center">
+              <svg className="w-10 h-10 text-neutral-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128H9m6 0a5.98 5.98 0 00-.786-3.07M9 19.128A9.38 9.38 0 016.375 19.5a9.337 9.337 0 01-4.121-.952 4.125 4.125 0 017.533-2.493M9 19.128v-.003c0-1.113.285-2.16.786-3.07m0 0a5.96 5.96 0 014.428 0M12 9.75a3 3 0 100-6 3 3 0 000 6zm-1.5 3.75a5.96 5.96 0 013 0" />
+              </svg>
+            </div>
             <p className="text-sm font-medium text-neutral-600 mb-1">No agents yet</p>
             <p className="text-xs text-neutral-400 mb-4">Agents will appear here once your company is provisioned.</p>
             <button

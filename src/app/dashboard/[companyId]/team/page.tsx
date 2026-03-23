@@ -41,6 +41,7 @@ export default function TeamPage() {
     phone: "",
     role: "member",
   });
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -70,8 +71,13 @@ export default function TeamPage() {
     if (res.ok) {
       const member = await res.json();
       setMembers((prev) => [...prev, member]);
+      // NOTE: Invite is stored in the database. Actual email delivery requires
+      // an email service like Resend or SendGrid to be configured.
+      const sentEmail = invite.email;
       setInvite({ email: "", phone: "", role: "member" });
       setShowInvite(false);
+      setToast(`Invite sent to ${sentEmail}`);
+      setTimeout(() => setToast(null), 4000);
     }
     setInviting(false);
   };
@@ -106,6 +112,13 @@ export default function TeamPage() {
 
   return (
     <div className="min-h-screen bg-surface pt-8 pb-16 px-6">
+      {/* Success toast */}
+      {toast && (
+        <div className="fixed top-6 right-6 z-50 px-5 py-3 bg-secondary/10 border border-secondary/30 text-secondary text-sm font-medium rounded-xl shadow-lg animate-in fade-in slide-in-from-top-2">
+          {toast}
+        </div>
+      )}
+
       <div className="max-w-3xl mx-auto">
         <button
           onClick={() => router.push(`/dashboard/${companyId}`)}

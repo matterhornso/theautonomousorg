@@ -16,14 +16,21 @@ import { suggestedPlatforms } from "@/lib/suggested-platforms";
 export async function GET(request: NextRequest) {
   const { userId } = await auth();
   if (!userId) {
+    console.error("[agents/status] No userId from auth — Clerk may not be passing credentials");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const companyId = request.nextUrl.searchParams.get("companyId");
+  console.log(`[agents/status] userId=${userId}, companyId=${companyId}`);
+
   const ownership = assertCompanyOwnership(userId, companyId);
-  if (!ownership.ok) return ownership.response;
+  if (!ownership.ok) {
+    console.error(`[agents/status] Ownership check failed for userId=${userId}, companyId=${companyId}`);
+    return ownership.response;
+  }
 
   const agents = getAgentsByCompany(ownership.companyId);
+  console.log(`[agents/status] Found ${agents.length} agents for companyId=${ownership.companyId}`);
   const agentIds = agents.map((a) => a.id);
 
   // Batch all queries (6 queries total instead of 225)
@@ -46,7 +53,12 @@ export async function GET(request: NextRequest) {
     const counts = countsMap[agent.id] || { conversations: 0, messages: 0 };
 
     const toolkit = getToolkit(agent.role);
-    const builtInSkills = toolkit?.skills || [];
+    // For custom agents without a registry toolkit, fall back to skills_json
+    // or provide a default set of generic skills
+    const defaultCustomSkills = ["Research", "Writing", "Analysis", "Communication", "Planning"];
+    const builtInSkills = toolkit?.skills
+      || JSON.parse(agent.skills_json || "null")
+      || defaultCustomSkills;
 
     const relevantPlatforms = suggestedPlatforms.filter((p) =>
       p.relevantAgents.includes(agent.role)

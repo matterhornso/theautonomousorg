@@ -23,7 +23,12 @@ export async function GET(request: NextRequest) {
   }
 
   const toolkit = getToolkit(agent.role);
-  const builtInSkills = toolkit?.skills || JSON.parse(agent.skills_json || "[]");
+  // For custom agents without a registry toolkit, fall back to skills_json
+  // or provide a default set of generic skills
+  const defaultCustomSkills = ["Research", "Writing", "Analysis", "Communication", "Planning"];
+  const parsedSkillsJson = JSON.parse(agent.skills_json || "[]") as string[];
+  const builtInSkills = toolkit?.skills
+    || (parsedSkillsJson.length > 0 ? parsedSkillsJson : defaultCustomSkills);
   const capabilities = toolkit?.systemCapabilities || [];
   const customSkills = getCustomSkills(agentId);
 
