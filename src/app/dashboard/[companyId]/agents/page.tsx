@@ -1,0 +1,393 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { AgentIcon } from "@/app/components/agent-icons";
+
+interface AgentStatus {
+  id: string;
+  role: string;
+  status: string;
+  system_prompt: string;
+  created_at: string;
+  memory: { key: string; value: string }[];
+  skills: string[];
+  customSkills: string[];
+  tasks: {
+    id: string;
+    type: string;
+    title: string;
+    status: string;
+    created_at: string;
+    is_recurring: number;
+    cron_expression: string | null;
+  }[];
+  actions: {
+    title: string;
+    action_type: string;
+    created_at: string;
+  }[];
+  connectedServices: string[];
+  conversationCount: number;
+  messageCount: number;
+}
+
+export default function AgentStatusPage() {
+  const params = useParams();
+  const router = useRouter();
+  const companyId = params.companyId as string;
+
+  const [agents, setAgents] = useState<AgentStatus[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
+
+  const fetchAgentStatuses = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/agents/status?companyId=${companyId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAgents(data);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [companyId]);
+
+  useEffect(() => {
+    fetchAgentStatuses();
+  }, [fetchAgentStatuses]);
+
+  const toggleAgent = (id: string) => {
+    setExpandedAgent((prev) => (prev === id ? null : id));
+  };
+
+  return (
+    <div className="min-h-screen bg-surface pt-8 pb-16 px-6">
+      <div className="max-w-4xl mx-auto">
+        <button
+          onClick={() => router.push(`/dashboard/${companyId}`)}
+          className="text-sm text-neutral-500 hover:text-primary transition-colors mb-6"
+        >
+          &larr; Back to dashboard
+        </button>
+
+        <h1 className="font-[family-name:var(--font-serif)] text-3xl tracking-tight mb-2">
+          Agent Status
+        </h1>
+        <p className="text-neutral-500 text-sm mb-8">
+          See what each agent has: memory, skills, tools, scheduled tasks, and
+          recent activity.
+        </p>
+
+        {loading ? (
+          <div className="text-sm text-neutral-400 py-12 text-center">
+            Loading agent data...
+          </div>
+        ) : agents.length === 0 ? (
+          <div className="text-sm text-neutral-400 py-12 text-center">
+            No agents found for this company.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {agents.map((agent) => {
+              const isExpanded = expandedAgent === agent.id;
+              const doneTasks = agent.tasks.filter(
+                (t) => t.status === "done"
+              ).length;
+              const runningTasks = agent.tasks.filter(
+                (t) => t.status === "running" || t.status === "queued"
+              ).length;
+              const recurringTasks = agent.tasks.filter(
+                (t) => t.is_recurring
+              ).length;
+
+              return (
+                <div
+                  key={agent.id}
+                  className="bg-white border border-neutral-200 rounded-xl overflow-hidden"
+                >
+                  {/* Header row */}
+                  <button
+                    onClick={() => toggleAgent(agent.id)}
+                    className="w-full flex items-center gap-4 p-4 text-left hover:bg-neutral-50 transition-colors"
+                  >
+                    <AgentIcon role={agent.role} size="md" variant="dark" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-semibold truncate">
+                          {agent.role}
+                        </h3>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                            agent.status === "active"
+                              ? "bg-secondary/10 text-secondary"
+                              : "bg-neutral-100 text-neutral-500"
+                          }`}
+                        >
+                          {agent.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4 mt-0.5">
+                        <span className="text-[11px] text-neutral-400">
+                          {agent.memory.length} memories
+                        </span>
+                        <span className="text-[11px] text-neutral-400">
+                          {agent.skills.length + agent.customSkills.length}{" "}
+                          skills
+                        </span>
+                        <span className="text-[11px] text-neutral-400">
+                          {doneTasks} tasks done
+                        </span>
+                        <span className="text-[11px] text-neutral-400">
+                          {agent.messageCount} messages
+                        </span>
+                        {agent.connectedServices.length > 0 && (
+                          <span className="text-[11px] text-accent">
+                            {agent.connectedServices.length} connected
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <svg
+                      className={`w-4 h-4 text-neutral-400 transition-transform ${
+                        isExpanded ? "rotate-180" : ""
+                      }`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+                      />
+                    </svg>
+                  </button>
+
+                  {/* Expanded details */}
+                  {isExpanded && (
+                    <div className="border-t border-neutral-100 p-4 space-y-5">
+                      {/* Memory */}
+                      <div>
+                        <h4 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
+                          Memory ({agent.memory.length})
+                        </h4>
+                        {agent.memory.length === 0 ? (
+                          <p className="text-xs text-neutral-400">
+                            No memory entries yet. This agent will build memory
+                            as you chat.
+                          </p>
+                        ) : (
+                          <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                            {agent.memory.map((m, i) => (
+                              <div
+                                key={i}
+                                className="p-2.5 bg-neutral-50 rounded-lg"
+                              >
+                                <p className="text-[10px] font-medium text-neutral-500 uppercase tracking-wider mb-0.5">
+                                  {m.key}
+                                </p>
+                                <p className="text-xs text-neutral-700 line-clamp-2">
+                                  {m.value}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Skills */}
+                      <div>
+                        <h4 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
+                          Skills ({agent.skills.length + agent.customSkills.length})
+                        </h4>
+                        <div className="flex flex-wrap gap-1.5">
+                          {agent.skills.map((skill) => (
+                            <span
+                              key={skill}
+                              className="text-[11px] px-2 py-1 bg-neutral-100 text-neutral-600 rounded-md"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                          {agent.customSkills.map((skill) => (
+                            <span
+                              key={skill}
+                              className="text-[11px] px-2 py-1 bg-accent/10 text-accent rounded-md"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Connected Services */}
+                      {agent.connectedServices.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
+                            Connected Services
+                          </h4>
+                          <div className="flex flex-wrap gap-1.5">
+                            {agent.connectedServices.map((svc) => (
+                              <span
+                                key={svc}
+                                className="text-[11px] px-2 py-1 bg-secondary/10 text-secondary rounded-md flex items-center gap-1"
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-secondary" />
+                                {svc}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tasks */}
+                      <div>
+                        <h4 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
+                          Tasks ({agent.tasks.length})
+                          {runningTasks > 0 && (
+                            <span className="text-secondary ml-1">
+                              {runningTasks} active
+                            </span>
+                          )}
+                          {recurringTasks > 0 && (
+                            <span className="text-accent ml-1">
+                              {recurringTasks} recurring
+                            </span>
+                          )}
+                        </h4>
+                        {agent.tasks.length === 0 ? (
+                          <p className="text-xs text-neutral-400">
+                            No tasks assigned yet.
+                          </p>
+                        ) : (
+                          <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                            {agent.tasks.slice(0, 10).map((task) => (
+                              <div
+                                key={task.id}
+                                className="flex items-center gap-3 p-2 bg-neutral-50 rounded-lg"
+                              >
+                                <span
+                                  className={`w-2 h-2 rounded-full shrink-0 ${
+                                    task.status === "done"
+                                      ? "bg-secondary"
+                                      : task.status === "running"
+                                        ? "bg-accent animate-pulse"
+                                        : task.status === "failed"
+                                          ? "bg-red-400"
+                                          : "bg-neutral-300"
+                                  }`}
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-medium truncate">
+                                    {task.title}
+                                  </p>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-neutral-400">
+                                      {task.status}
+                                    </span>
+                                    {task.is_recurring === 1 && (
+                                      <span className="text-[10px] text-accent">
+                                        ↻ {task.cron_expression || "recurring"}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <span className="text-[10px] text-neutral-400 shrink-0">
+                                  {new Date(
+                                    task.created_at
+                                  ).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                  })}
+                                </span>
+                              </div>
+                            ))}
+                            {agent.tasks.length > 10 && (
+                              <p className="text-[10px] text-neutral-400 text-center py-1">
+                                +{agent.tasks.length - 10} more tasks
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Recent Actions */}
+                      <div>
+                        <h4 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
+                          Recent Actions
+                        </h4>
+                        {agent.actions.length === 0 ? (
+                          <p className="text-xs text-neutral-400">
+                            No actions recorded yet.
+                          </p>
+                        ) : (
+                          <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                            {agent.actions.slice(0, 5).map((action, i) => (
+                              <div
+                                key={i}
+                                className="flex items-center gap-3 p-2 bg-neutral-50 rounded-lg"
+                              >
+                                <span className="text-[10px] text-neutral-400 shrink-0 w-16">
+                                  {new Date(
+                                    action.created_at
+                                  ).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                  })}
+                                </span>
+                                <p className="text-xs text-neutral-600 truncate">
+                                  {action.title}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Stats bar */}
+                      <div className="flex items-center gap-6 pt-2 border-t border-neutral-100">
+                        <div>
+                          <p className="text-lg font-semibold">
+                            {agent.conversationCount}
+                          </p>
+                          <p className="text-[10px] text-neutral-400 uppercase tracking-wider">
+                            Conversations
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-lg font-semibold">
+                            {agent.messageCount}
+                          </p>
+                          <p className="text-[10px] text-neutral-400 uppercase tracking-wider">
+                            Messages
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-lg font-semibold">{doneTasks}</p>
+                          <p className="text-[10px] text-neutral-400 uppercase tracking-wider">
+                            Tasks Done
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-lg font-semibold">
+                            {agent.memory.length}
+                          </p>
+                          <p className="text-[10px] text-neutral-400 uppercase tracking-wider">
+                            Memories
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
