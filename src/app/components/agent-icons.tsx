@@ -103,21 +103,41 @@ export function AgentIcon({
   size?: "sm" | "md" | "lg";
   variant?: "dark" | "light" | "accent";
 }) {
-  const sizeClasses = {
-    sm: "w-8 h-8",
-    md: "w-10 h-10",
-    lg: "w-14 h-14",
+  const sizeStyles: Record<string, React.CSSProperties> = {
+    sm: { width: 28, height: 28 },
+    md: { width: 36, height: 36 },
+    lg: { width: 48, height: 48 },
   };
 
-  const variantClasses = {
-    dark: "bg-primary text-surface",
-    light: "bg-neutral-100 text-primary",
-    accent: "bg-accent text-primary",
+  const variantStyles: Record<string, React.CSSProperties> = {
+    dark: {
+      border: "1.5px solid #D4A853",
+      backgroundColor: "#FFFFFF",
+      color: "#0A0A0B",
+    },
+    light: {
+      border: "1.5px solid #D4A853",
+      backgroundColor: "#0A0A0B",
+      color: "#FFFFFF",
+    },
+    accent: {
+      border: "1.5px solid #D4A853",
+      backgroundColor: "#D4A853",
+      color: "#FFFFFF",
+    },
   };
 
   return (
     <div
-      className={`${sizeClasses[size]} ${variantClasses[variant]} rounded-xl flex items-center justify-center shrink-0`}
+      style={{
+        ...sizeStyles[size],
+        ...variantStyles[variant],
+        borderRadius: 6,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}
     >
       {agentIcons[role] || (
         <span className="text-xs font-bold">{role.charAt(0)}</span>
