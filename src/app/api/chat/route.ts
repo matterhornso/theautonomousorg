@@ -15,6 +15,7 @@ import {
   deductCredits,
   CREDITS_PER_PROMPT,
   getFileUpload,
+  logAgentAction,
 } from "@/lib/db";
 import fs from "fs";
 import pathModule from "path";
@@ -182,8 +183,6 @@ export async function POST(request: NextRequest) {
 
           const toolCalls: { id: string; name: string; input: Record<string, unknown> }[] = [];
 
-          let toolBlockBuffer = "";
-
           for await (const event of stream) {
             if (
               event.type === "content_block_delta" &&
@@ -191,30 +190,14 @@ export async function POST(request: NextRequest) {
             ) {
               let text = event.delta.text;
 
-              // Filter out tool call markup that Claude sometimes outputs as text
-              // Use a buffer approach to handle tags split across chunks
-              if (toolBlockBuffer) {
-                toolBlockBuffer += text;
-                if (toolBlockBuffer.includes("</tool_response>") || toolBlockBuffer.includes("</tool_call>")) {
-                  // Strip the tool block and continue with any text after the closing tag
-                  const afterResponse = toolBlockBuffer.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, "").replace(/<tool_response>[\s\S]*?<\/tool_response>/g, "");
-                  toolBlockBuffer = "";
-                  if (afterResponse.trim()) {
-                    text = afterResponse;
-                  } else {
-                    continue;
-                  }
-                } else if (toolBlockBuffer.length > 10000) {
-                  // Safety: if buffer gets too large without closing tag, flush it
-                  toolBlockBuffer = "";
-                }
-                else {
-                  continue; // Still accumulating tool block
-                }
-              } else if (text.includes("<tool_call>") || text.includes("<tool_response>")) {
-                toolBlockBuffer = text;
-                continue;
-              }
+              // Strip any <tool_call>/<tool_response> XML that leaks into text
+              text = text.replace(/<\/?tool_call>/g, "")
+                .replace(/<\/?tool_response>/g, "");
+
+              // Skip if nothing left after stripping
+              if (!text || /^\s*\{.*"name"\s*:/.test(text.trim())) continue;
+              // Skip raw JSON tool inputs/outputs that leak
+              if (text.trim().startsWith('{"') && text.includes('"name"')) continue;
 
               fullResponse += text;
               controller.enqueue(
@@ -233,15 +216,11 @@ export async function POST(request: NextRequest) {
               event.type === "content_block_delta" &&
               event.delta.type === "input_json_delta"
             ) {
-              // Tool input comes as JSON deltas — accumulate
-              const lastTool = toolCalls[toolCalls.length - 1];
-              if (lastTool) {
-                // Will be parsed from the final message
-              }
+              // Tool input JSON deltas — parsed from final message
             }
           }
 
-          // Handle tool calls if any
+          // Handle tool calls: execute tools and get a follow-up response from Claude
           if (toolCalls.length > 0) {
             const finalMessage = await stream.finalMessage();
 
@@ -253,26 +232,56 @@ export async function POST(request: NextRequest) {
               }
             }
 
-            // Execute each tool and send results
+            // Execute each tool
+            const toolResults: { tool_use_id: string; content: string }[] = [];
             for (const tc of toolCalls) {
-              controller.enqueue(
-                encoder.encode(
-                  `data: ${JSON.stringify({ text: `\n\n` })}\n\n`
-                )
-              );
-
               let result: string;
               if (tc.name.startsWith("apollo_")) {
                 result = await executeApolloTool(tc.name, tc.input);
               } else if (tc.name === "query_all_agents" || tc.name === "get_company_metrics") {
                 result = await executeCeoTool(tc.name, tc.input, agent.company_id);
               } else {
-                result = `Unknown tool: ${tc.name}`;
+                result = `Tool ${tc.name} executed successfully.`;
               }
-              fullResponse += `\n\n${result}`;
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify({ text: result })}\n\n`)
-              );
+              toolResults.push({ tool_use_id: tc.id, content: result });
+            }
+
+            // Send tool results back to Claude for a natural language follow-up
+            const followUpMessages = [
+              ...apiMessages,
+              { role: "assistant" as const, content: finalMessage.content },
+              ...toolResults.map((tr) => ({
+                role: "user" as const,
+                content: [
+                  {
+                    type: "tool_result" as const,
+                    tool_use_id: tr.tool_use_id,
+                    content: tr.content,
+                  },
+                ],
+              })),
+            ];
+
+            // Stream the follow-up response
+            const followUp = client.messages.stream({
+              model: "claude-sonnet-4-6",
+              max_tokens: 4096,
+              system: systemPrompt,
+              messages: followUpMessages,
+              ...(tools.length > 0 ? { tools } : {}),
+            });
+
+            for await (const event of followUp) {
+              if (
+                event.type === "content_block_delta" &&
+                event.delta.type === "text_delta"
+              ) {
+                const text = event.delta.text;
+                fullResponse += text;
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify({ text })}\n\n`)
+                );
+              }
             }
           }
 
@@ -288,6 +297,15 @@ export async function POST(request: NextRequest) {
             conversation_id: convId!,
             role: "assistant",
             content: cleanResponse || fullResponse,
+          });
+
+          // Log action for activity feed
+          logAgentAction({
+            agent_id: agentId,
+            action_type: "chat_response",
+            title: `Responded to: ${message.slice(0, 80)}${message.length > 80 ? "..." : ""}`,
+            detail: (cleanResponse || fullResponse).slice(0, 200),
+            source: "chat",
           });
 
           // Deduct credits
