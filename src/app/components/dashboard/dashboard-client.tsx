@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import ReactMarkdown from "react-markdown";
 import { AgentIcon } from "../agent-icons";
 
 interface AgentInfo {
@@ -616,13 +617,13 @@ export function DashboardClient({
                     </div>
                   ) : (
                     <div
-                      className={`max-w-[70%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+                      className={`max-w-[70%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
                         msg.role === "user"
-                          ? "bg-primary text-surface rounded-br-md"
-                          : "bg-neutral-100 text-primary rounded-bl-md"
+                          ? "bg-primary text-surface rounded-br-md whitespace-pre-wrap"
+                          : "bg-neutral-100 text-primary rounded-bl-md prose prose-sm prose-neutral max-w-none [&_h1]:text-base [&_h1]:font-semibold [&_h1]:mt-3 [&_h1]:mb-1 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:mt-3 [&_h2]:mb-1 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:mt-2 [&_h3]:mb-1 [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_hr]:my-2 [&_strong]:font-semibold [&_code]:text-xs [&_code]:bg-neutral-200 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_pre]:bg-neutral-200 [&_pre]:p-2 [&_pre]:rounded-lg [&_pre]:text-xs [&_pre]:overflow-x-auto"
                       }`}
                     >
-                      {msg.content}
+                      {msg.role === "user" ? msg.content : <ReactMarkdown>{msg.content}</ReactMarkdown>}
                       {msg.attachments && msg.attachments.length > 0 && (
                         <div className="mt-2 space-y-2">
                           {msg.attachments.map((att) => (
@@ -667,8 +668,8 @@ export function DashboardClient({
 
               {streamingText && (
                 <div className="flex justify-start">
-                  <div className="max-w-[70%] px-4 py-3 rounded-2xl rounded-bl-md bg-neutral-100 text-primary text-sm leading-relaxed whitespace-pre-wrap">
-                    {streamingText}
+                  <div className="max-w-[70%] px-4 py-3 rounded-2xl rounded-bl-md bg-neutral-100 text-primary text-sm leading-relaxed prose prose-sm prose-neutral max-w-none [&_h1]:text-base [&_h1]:font-semibold [&_h1]:mt-3 [&_h1]:mb-1 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:mt-3 [&_h2]:mb-1 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:mt-2 [&_h3]:mb-1 [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_hr]:my-2 [&_strong]:font-semibold [&_code]:text-xs [&_code]:bg-neutral-200 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_pre]:bg-neutral-200 [&_pre]:p-2 [&_pre]:rounded-lg [&_pre]:text-xs [&_pre]:overflow-x-auto">
+                    <ReactMarkdown>{streamingText}</ReactMarkdown>
                     <span className="inline-block w-1.5 h-4 bg-accent/60 ml-0.5 animate-pulse" />
                   </div>
                 </div>
