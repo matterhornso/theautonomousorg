@@ -31,6 +31,9 @@ export type {
   UserApiKey,
   ChaiTimeSession,
   ChaiTimeConfig,
+  AgentEval,
+  EvalTestSuite,
+  EvalRun,
 } from "./db-sqlite";
 
 // Re-export constants
@@ -541,6 +544,62 @@ export async function getLatestChaiTimeSession(companyId: string) {
 export async function getChaiTimeSessions(companyId: string, limit = 7) {
   if (USE_POSTGRES) return (await pg()).getChaiTimeSessions(companyId, limit);
   return sqlite.getChaiTimeSessions(companyId, limit);
+}
+
+// ─── Agent Evals ─────────────────────────────────────────
+export async function createEval(data: Parameters<typeof sqlite.createEval>[0]) {
+  if (USE_POSTGRES) return (await pg()).createEval(data);
+  return sqlite.createEval(data);
+}
+
+export async function getEvalsByAgent(agentId: string, limit = 50) {
+  if (USE_POSTGRES) return (await pg()).getEvalsByAgent(agentId, limit);
+  return sqlite.getEvalsByAgent(agentId, limit);
+}
+
+export async function getEvalsByCompany(companyId: string, limit = 100) {
+  if (USE_POSTGRES) return (await pg()).getEvalsByCompany(companyId, limit);
+  return sqlite.getEvalsByCompany(companyId, limit);
+}
+
+export async function getAverageScores(agentId: string, days = 7) {
+  if (USE_POSTGRES) return (await pg()).getAverageScores(agentId, days);
+  return sqlite.getAverageScores(agentId, days);
+}
+
+export async function updateUserFeedback(evalId: string, feedback: string) {
+  if (USE_POSTGRES) return (await pg()).updateUserFeedback(evalId, feedback);
+  return sqlite.updateUserFeedback(evalId, feedback);
+}
+
+export async function getEvalTestSuites(role?: string) {
+  if (USE_POSTGRES) return (await pg()).getEvalTestSuites(role);
+  return sqlite.getEvalTestSuites(role);
+}
+
+export async function createEvalRun(companyId: string, runType: string) {
+  if (USE_POSTGRES) return (await pg()).createEvalRun(companyId, runType);
+  return sqlite.createEvalRun(companyId, runType);
+}
+
+export async function updateEvalRun(runId: string, data: Parameters<typeof sqlite.updateEvalRun>[1]) {
+  if (USE_POSTGRES) return (await pg()).updateEvalRun(runId, data);
+  return sqlite.updateEvalRun(runId, data);
+}
+
+export async function getEvalRuns(companyId: string, limit = 20) {
+  if (USE_POSTGRES) return (await pg()).getEvalRuns(companyId, limit);
+  return sqlite.getEvalRuns(companyId, limit);
+}
+
+export async function getUserFeedbackSummary(companyId: string) {
+  if (USE_POSTGRES) return (await pg()).getUserFeedbackSummary(companyId);
+  return sqlite.getUserFeedbackSummary(companyId);
+}
+
+export async function getFlaggedEvals(companyId: string, limit = 20) {
+  if (USE_POSTGRES) return (await pg()).getFlaggedEvals(companyId, limit);
+  return sqlite.getFlaggedEvals(companyId, limit);
 }
 
 // ─── Postgres Schema Init ────────────────────────────────

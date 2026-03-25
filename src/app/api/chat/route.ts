@@ -11,12 +11,15 @@ import {
   getMemory,
   setMemory,
   getAgentsByCompany,
+  getCompany,
   hasEnoughCredits,
   deductCredits,
   CREDITS_PER_PROMPT,
   getFileUpload,
   logAgentAction,
+  createEval,
 } from "@/lib/db";
+import { judgeResponse } from "@/lib/eval-judge";
 import fs from "fs";
 import pathModule from "path";
 import {
@@ -56,7 +59,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check credits
-    if (userId && !hasEnoughCredits(userId)) {
+    if (userId && !(await hasEnoughCredits(userId))) {
       return new Response(
         JSON.stringify({
           error: "Insufficient credits. You need " + CREDITS_PER_PROMPT + " credits per message. Top up your credits to continue.",
@@ -66,7 +69,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const agent = getAgent(agentId);
+    const agent = await getAgent(agentId);
     if (!agent) {
       return new Response(JSON.stringify({ error: "Agent not found" }), {
         status: 404,
@@ -77,21 +80,21 @@ export async function POST(request: NextRequest) {
     // Get or create conversation
     let convId = conversationId;
     if (!convId) {
-      const conv = createConversation(agentId, message.slice(0, 60));
+      const conv = await createConversation(agentId, message.slice(0, 60));
       convId = conv.id;
     } else {
-      const existing = getConversation(convId);
+      const existing = await getConversation(convId);
       if (!existing) {
-        const conv = createConversation(agentId, message.slice(0, 60));
+        const conv = await createConversation(agentId, message.slice(0, 60));
         convId = conv.id;
       }
     }
 
     // Save user message
-    addMessage({ conversation_id: convId, role: "user", content: message });
+    await addMessage({ conversation_id: convId, role: "user", content: message });
 
     // Load conversation history (last 50 messages)
-    const history = getMessages(convId, 50);
+    const history = await getMessages(convId, 50);
     const apiMessages = history.map((m) => ({
       role: m.role as "user" | "assistant",
       content: m.content,
@@ -103,7 +106,7 @@ export async function POST(request: NextRequest) {
     const fileMatches = message.matchAll(fileUrlPattern);
     for (const match of fileMatches) {
       const fileId = match[1];
-      const upload = getFileUpload(fileId);
+      const upload = await getFileUpload(fileId);
       if (upload) {
         const isTextFile = ["text/plain", "text/csv"].includes(upload.file_type);
         const isImage = upload.file_type.startsWith("image/");
@@ -140,7 +143,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Load agent memory
-    const memories = getMemory(agentId);
+    const memories = await getMemory(agentId);
     let memorySection = "";
     if (memories.length > 0) {
       memorySection =
@@ -293,14 +296,14 @@ export async function POST(request: NextRequest) {
             .trim();
 
           // Save assistant response
-          addMessage({
+          await addMessage({
             conversation_id: convId!,
             role: "assistant",
             content: cleanResponse || fullResponse,
           });
 
           // Log action for activity feed
-          logAgentAction({
+          await logAgentAction({
             agent_id: agentId,
             action_type: "chat_response",
             title: `Responded to: ${message.slice(0, 80)}${message.length > 80 ? "..." : ""}`,
@@ -308,9 +311,30 @@ export async function POST(request: NextRequest) {
             source: "chat",
           });
 
+          // Fire-and-forget eval (non-blocking)
+          const evalResponse = cleanResponse || fullResponse;
+          getCompany(agent.company_id).then((co) => {
+            judgeResponse({
+              agentRole: agent.role,
+              companyName: co?.name || "Unknown",
+              userMessage: message,
+              agentResponse: evalResponse,
+            }).then(async (result) => {
+              await createEval({
+                agent_id: agentId,
+                conversation_id: convId!,
+                eval_type: "response_quality",
+                scores: JSON.stringify(result.scores),
+                judge_reasoning: result.reasoning,
+                prompt_used: message.slice(0, 500),
+                response_evaluated: evalResponse.slice(0, 500),
+              });
+            }).catch(() => { /* eval is best-effort */ });
+          }).catch(() => { /* eval is best-effort */ });
+
           // Deduct credits
           if (userId) {
-            const result = deductCredits(
+            const result = await deductCredits(
               userId,
               CREDITS_PER_PROMPT,
               `Chat with ${agent.role} Agent`
@@ -324,7 +348,7 @@ export async function POST(request: NextRequest) {
           }
 
           // Extract memory every 5 messages
-          const messageCount = getMessages(convId!, 100).length;
+          const messageCount = (await getMessages(convId!, 100)).length;
           if (messageCount % 10 === 0 && messageCount > 0) {
             extractMemory(agentId, message, fullResponse);
           }
@@ -332,7 +356,7 @@ export async function POST(request: NextRequest) {
           // Check for inter-agent mentions and actually relay
           const mentions = fullResponse.match(/@(\w[\w\s-]*?)(?=[\s,.\n!?]|$)/g);
           if (mentions && mentions.length > 0) {
-            const agents = getAgentsByCompany(agent.company_id);
+            const agents = await getAgentsByCompany(agent.company_id);
             const processed = new Set<string>();
             for (const mention of mentions.slice(0, 2)) {
               const mentionedRole = mention.slice(1).trim();
@@ -463,7 +487,7 @@ async function extractMemory(
       }[];
       for (const fact of facts.slice(0, 3)) {
         if (fact.key && fact.value) {
-          setMemory(agentId, fact.key, fact.value);
+          await setMemory(agentId, fact.key, fact.value);
         }
       }
     }

@@ -4,6 +4,53 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import { AgentIcon } from "../agent-icons";
 
+function FeedbackButtons({ agentId, messageContent, conversationId }: { agentId: string; messageContent: string; conversationId: string | null }) {
+  const [feedback, setFeedback] = useState<"thumbs_up" | "thumbs_down" | null>(null);
+
+  const sendFeedback = async (type: "thumbs_up" | "thumbs_down") => {
+    if (feedback) return; // Already submitted
+    setFeedback(type);
+    try {
+      await fetch("/api/evals/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentId, feedback: type, messageContent, conversationId }),
+      });
+    } catch { /* best-effort */ }
+  };
+
+  return (
+    <div className="flex items-center gap-1 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+      <button
+        onClick={() => sendFeedback("thumbs_up")}
+        className={`p-1 rounded text-xs transition-colors ${
+          feedback === "thumbs_up"
+            ? "bg-secondary/10 text-secondary"
+            : "text-neutral-400 hover:text-secondary hover:bg-secondary/5"
+        }`}
+        title="Good response"
+      >
+        <svg className="w-3.5 h-3.5" fill={feedback === "thumbs_up" ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 0 1 2.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 0 0 .322-1.672V2.75a.75.75 0 0 1 .75-.75 2.25 2.25 0 0 1 2.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282m0 0h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 0 1-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 0 0-1.423-.23H5.904m10.598-9.75H14.25M5.904 18.5c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 0 1-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 9.953 4.167 9.5 5 9.5h1.053c.472 0 .745.556.5.96a8.958 8.958 0 0 0-1.302 4.665c0 1.194.232 2.333.654 3.375Z" />
+        </svg>
+      </button>
+      <button
+        onClick={() => sendFeedback("thumbs_down")}
+        className={`p-1 rounded text-xs transition-colors ${
+          feedback === "thumbs_down"
+            ? "bg-red-50 text-red-400"
+            : "text-neutral-400 hover:text-red-400 hover:bg-red-50"
+        }`}
+        title="Poor response"
+      >
+        <svg className="w-3.5 h-3.5" fill={feedback === "thumbs_down" ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M7.498 15.25H4.372c-1.026 0-1.945-.694-2.054-1.715A12.137 12.137 0 0 1 2.25 12c0-2.848.992-5.464 2.649-7.521C5.287 3.997 5.886 3.75 6.504 3.75h4.369a4.5 4.5 0 0 1 1.423.23l3.114 1.04a4.5 4.5 0 0 0 1.423.23h1.294M7.498 15.25c.618 0 .991.724.725 1.282A7.471 7.471 0 0 0 7.5 19.75 2.25 2.25 0 0 0 9.75 22a.75.75 0 0 0 .75-.75v-.633c0-.573.11-1.14.322-1.672.304-.76.93-1.33 1.653-1.715a9.04 9.04 0 0 0 2.86-2.4c.498-.634 1.226-1.08 2.032-1.08h.384m-10.253 1.5H9.7m8.075-9.75c.01.05.027.1.05.148.593 1.2.925 2.55.925 3.977 0 1.487-.36 2.89-.999 4.125m.023-8.25c-.076-.365.183-.75.575-.75h.908c.889 0 1.713.518 1.972 1.368.339 1.11.521 2.287.521 3.507 0 1.553-.295 3.036-.831 4.398-.306.774-1.086 1.227-1.918 1.227h-1.053c-.472 0-.745-.556-.5-.96a8.95 8.95 0 0 0 .303-.54" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 interface AgentInfo {
   id: string;
   role: string;
@@ -421,6 +468,10 @@ export function DashboardClient({
           </a>
 
           <p className="text-[9px] text-neutral-600 uppercase tracking-widest mt-3 mb-1">Manage</p>
+          <a href={`/dashboard/${company.id}/evals`} className="flex items-center gap-2 text-xs text-neutral-400 hover:text-neutral-200 transition-colors py-1">
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.562.562 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.562.562 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" /></svg>
+            Agent Quality
+          </a>
           <a href={`/dashboard/${company.id}/team`} className="flex items-center gap-2 text-xs text-neutral-400 hover:text-neutral-200 transition-colors py-1">
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
             Team
@@ -589,7 +640,7 @@ export function DashboardClient({
               {messages.map((msg, msgIndex) => (
                 <div
                   key={msg.id}
-                  className={`flex animate-fade-in-up ${
+                  className={`flex animate-fade-in-up group ${
                     msg.role === "user" ? "justify-end" : "justify-start"
                   }`}
                   style={{ animationDelay: `${Math.min(msgIndex * 50, 200)}ms` }}
@@ -626,6 +677,13 @@ export function DashboardClient({
                       }`}
                     >
                       {msg.role === "user" ? msg.content : <ReactMarkdown>{msg.content}</ReactMarkdown>}
+                      {msg.role === "assistant" && activeAgent && (
+                        <FeedbackButtons
+                          agentId={activeAgent.id}
+                          messageContent={msg.content}
+                          conversationId={conversationId}
+                        />
+                      )}
                       {msg.attachments && msg.attachments.length > 0 && (
                         <div className="mt-2 space-y-2">
                           {msg.attachments.map((att) => (

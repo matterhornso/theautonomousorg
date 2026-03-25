@@ -302,6 +302,39 @@ function initSchema(db: Database.Database) {
       timezone TEXT DEFAULT 'UTC',
       last_run_at TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS agent_evals (
+      id TEXT PRIMARY KEY,
+      agent_id TEXT NOT NULL,
+      conversation_id TEXT,
+      message_id TEXT,
+      eval_type TEXT NOT NULL,
+      scores TEXT NOT NULL,
+      judge_reasoning TEXT,
+      user_feedback TEXT,
+      prompt_used TEXT,
+      response_evaluated TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS eval_test_suites (
+      id TEXT PRIMARY KEY,
+      role TEXT NOT NULL,
+      test_name TEXT NOT NULL,
+      test_prompt TEXT NOT NULL,
+      expected_qualities TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS eval_runs (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL,
+      run_type TEXT NOT NULL,
+      started_at TEXT DEFAULT (datetime('now')),
+      completed_at TEXT,
+      results TEXT,
+      status TEXT DEFAULT 'running'
+    );
   `);
 }
 
@@ -1631,4 +1664,190 @@ export function getConversationCountsByAgentIds(agentIds: string[]): Record<stri
   for (const row of convRows) result[row.agent_id] = { ...result[row.agent_id], conversations: row.cnt };
   for (const row of msgRows) result[row.agent_id] = { ...result[row.agent_id], messages: row.cnt };
   return result;
+}
+
+// ─── Agent Evals ─────────────────────────────────────────
+export interface AgentEval {
+  id: string;
+  agent_id: string;
+  conversation_id: string | null;
+  message_id: string | null;
+  eval_type: string;
+  scores: string;
+  judge_reasoning: string | null;
+  user_feedback: string | null;
+  prompt_used: string | null;
+  response_evaluated: string | null;
+  created_at: string;
+}
+
+export interface EvalTestSuite {
+  id: string;
+  role: string;
+  test_name: string;
+  test_prompt: string;
+  expected_qualities: string | null;
+  created_at: string;
+}
+
+export interface EvalRun {
+  id: string;
+  company_id: string;
+  run_type: string;
+  started_at: string;
+  completed_at: string | null;
+  results: string | null;
+  status: string;
+}
+
+export function createEval(data: {
+  agent_id: string;
+  conversation_id?: string;
+  message_id?: string;
+  eval_type: string;
+  scores: string;
+  judge_reasoning?: string;
+  user_feedback?: string;
+  prompt_used?: string;
+  response_evaluated?: string;
+}): AgentEval {
+  const db = getDb();
+  const id = randomUUID();
+  db.prepare(
+    `INSERT INTO agent_evals (id, agent_id, conversation_id, message_id, eval_type, scores, judge_reasoning, user_feedback, prompt_used, response_evaluated)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    id,
+    data.agent_id,
+    data.conversation_id || null,
+    data.message_id || null,
+    data.eval_type,
+    data.scores,
+    data.judge_reasoning || null,
+    data.user_feedback || null,
+    data.prompt_used || null,
+    data.response_evaluated || null
+  );
+  return db.prepare("SELECT * FROM agent_evals WHERE id = ?").get(id) as AgentEval;
+}
+
+export function getEvalsByAgent(agentId: string, limit = 50): AgentEval[] {
+  return getDb()
+    .prepare("SELECT * FROM agent_evals WHERE agent_id = ? ORDER BY created_at DESC LIMIT ?")
+    .all(agentId, limit) as AgentEval[];
+}
+
+export function getEvalsByCompany(companyId: string, limit = 100): AgentEval[] {
+  return getDb()
+    .prepare(
+      `SELECT e.* FROM agent_evals e
+       JOIN agents a ON e.agent_id = a.id
+       WHERE a.company_id = ?
+       ORDER BY e.created_at DESC LIMIT ?`
+    )
+    .all(companyId, limit) as AgentEval[];
+}
+
+export function getAverageScores(agentId: string, days = 7): { relevance: number; completeness: number; actionability: number; role_specificity: number; overall: number; count: number } {
+  const rows = getDb()
+    .prepare(
+      `SELECT scores FROM agent_evals
+       WHERE agent_id = ? AND created_at >= datetime('now', '-' || ? || ' days')
+       ORDER BY created_at DESC`
+    )
+    .all(agentId, days) as { scores: string }[];
+
+  if (rows.length === 0) return { relevance: 0, completeness: 0, actionability: 0, role_specificity: 0, overall: 0, count: 0 };
+
+  let relevance = 0, completeness = 0, actionability = 0, role_specificity = 0, overall = 0;
+  for (const row of rows) {
+    try {
+      const s = JSON.parse(row.scores);
+      relevance += s.relevance || 0;
+      completeness += s.completeness || 0;
+      actionability += s.actionability || 0;
+      role_specificity += s.role_specificity || 0;
+      overall += s.overall || 0;
+    } catch { /* skip malformed */ }
+  }
+  const n = rows.length;
+  return {
+    relevance: Math.round((relevance / n) * 10) / 10,
+    completeness: Math.round((completeness / n) * 10) / 10,
+    actionability: Math.round((actionability / n) * 10) / 10,
+    role_specificity: Math.round((role_specificity / n) * 10) / 10,
+    overall: Math.round((overall / n) * 10) / 10,
+    count: n,
+  };
+}
+
+export function updateUserFeedback(evalId: string, feedback: string): void {
+  getDb()
+    .prepare("UPDATE agent_evals SET user_feedback = ? WHERE id = ?")
+    .run(feedback, evalId);
+}
+
+export function getEvalTestSuites(role?: string): EvalTestSuite[] {
+  if (role) {
+    return getDb()
+      .prepare("SELECT * FROM eval_test_suites WHERE role = ? ORDER BY created_at ASC")
+      .all(role) as EvalTestSuite[];
+  }
+  return getDb()
+    .prepare("SELECT * FROM eval_test_suites ORDER BY role, created_at ASC")
+    .all() as EvalTestSuite[];
+}
+
+export function createEvalRun(companyId: string, runType: string): EvalRun {
+  const db = getDb();
+  const id = randomUUID();
+  db.prepare(
+    `INSERT INTO eval_runs (id, company_id, run_type) VALUES (?, ?, ?)`
+  ).run(id, companyId, runType);
+  return db.prepare("SELECT * FROM eval_runs WHERE id = ?").get(id) as EvalRun;
+}
+
+export function updateEvalRun(runId: string, data: { completed_at?: string; results?: string; status?: string }): void {
+  const db = getDb();
+  const sets: string[] = [];
+  const values: string[] = [];
+  if (data.completed_at !== undefined) { sets.push("completed_at = ?"); values.push(data.completed_at); }
+  if (data.results !== undefined) { sets.push("results = ?"); values.push(data.results); }
+  if (data.status !== undefined) { sets.push("status = ?"); values.push(data.status); }
+  if (sets.length === 0) return;
+  values.push(runId);
+  db.prepare(`UPDATE eval_runs SET ${sets.join(", ")} WHERE id = ?`).run(...values);
+}
+
+export function getEvalRuns(companyId: string, limit = 20): EvalRun[] {
+  return getDb()
+    .prepare("SELECT * FROM eval_runs WHERE company_id = ? ORDER BY started_at DESC LIMIT ?")
+    .all(companyId, limit) as EvalRun[];
+}
+
+export function getUserFeedbackSummary(companyId: string): { thumbs_up: number; thumbs_down: number; total: number } {
+  const row = getDb()
+    .prepare(
+      `SELECT
+         SUM(CASE WHEN e.user_feedback = 'thumbs_up' THEN 1 ELSE 0 END) as thumbs_up,
+         SUM(CASE WHEN e.user_feedback = 'thumbs_down' THEN 1 ELSE 0 END) as thumbs_down,
+         COUNT(*) as total
+       FROM agent_evals e
+       JOIN agents a ON e.agent_id = a.id
+       WHERE a.company_id = ?`
+    )
+    .get(companyId) as { thumbs_up: number; thumbs_down: number; total: number };
+  return { thumbs_up: row.thumbs_up || 0, thumbs_down: row.thumbs_down || 0, total: row.total || 0 };
+}
+
+export function getFlaggedEvals(companyId: string, limit = 20): AgentEval[] {
+  return getDb()
+    .prepare(
+      `SELECT e.* FROM agent_evals e
+       JOIN agents a ON e.agent_id = a.id
+       WHERE a.company_id = ?
+         AND json_extract(e.scores, '$.overall') < 3
+       ORDER BY e.created_at DESC LIMIT ?`
+    )
+    .all(companyId, limit) as AgentEval[];
 }

@@ -470,12 +470,123 @@ async function checkChaiTime(): Promise<void> {
   }
 }
 
+// ─── 5. Daily Eval Batch ─────────────────────────────────
+async function checkDailyEvals(): Promise<void> {
+  const now = new Date();
+  const currentHour = now.getUTCHours();
+  const currentMinute = now.getUTCMinutes();
+
+  // Run at midnight UTC (00:00-00:09)
+  if (currentHour !== 0 || currentMinute >= 10) return;
+
+  // Get all companies
+  const companies = await sql<{ id: string; name: string }[]>`
+    SELECT id, name FROM companies`;
+
+  for (const company of companies) {
+    // Check if we already ran today
+    const existing = await sql`
+      SELECT id FROM eval_runs
+      WHERE company_id = ${company.id}
+        AND run_type = 'daily_batch'
+        AND started_at >= ${new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()}
+      LIMIT 1`;
+
+    if (existing.length > 0) continue;
+
+    console.log(`[${new Date().toISOString()}] Running daily eval batch for ${company.name}`);
+
+    const runId = crypto.randomUUID();
+    await sql`INSERT INTO eval_runs (id, company_id, run_type) VALUES (${runId}, ${company.id}, 'daily_batch')`;
+
+    try {
+      const agents = await sql<{ id: string; role: string; system_prompt: string }[]>`
+        SELECT id, role, system_prompt FROM agents WHERE company_id = ${company.id} AND status = 'active'`;
+
+      const allResults: Record<string, unknown> = {};
+      const { defaultTestSuites } = await import("./src/lib/eval-test-suites");
+
+      for (const agent of agents) {
+        const roleTests = defaultTestSuites.filter((t: { role: string }) => t.role === agent.role);
+        if (roleTests.length === 0) continue;
+
+        // Run 1 random test per agent to keep costs down
+        const randomTest = roleTests[Math.floor(Math.random() * roleTests.length)];
+
+        try {
+          const agentResponse = await client.messages.create({
+            model: "claude-sonnet-4-6",
+            max_tokens: 2048,
+            system: agent.system_prompt,
+            messages: [{ role: "user", content: randomTest.prompt }],
+          });
+          const responseText = agentResponse.content[0].type === "text" ? agentResponse.content[0].text : "";
+
+          // Judge it
+          const judgeResponse = await client.messages.create({
+            model: "claude-haiku-4-5-20251001",
+            max_tokens: 500,
+            messages: [{
+              role: "user",
+              content: `You are an AI quality judge. Score this agent response on 5 dimensions (1-5 each).
+
+Agent Role: ${agent.role}
+Company: ${company.name}
+User asked: "${randomTest.prompt}"
+Agent responded: "${responseText.slice(0, 2000)}"
+
+Score each 1-5:
+- relevance: Does it address the question?
+- completeness: Is it thorough enough?
+- actionability: Can the user act on this?
+- role_specificity: Does it sound like a real ${agent.role} expert, not generic AI?
+- overall: Overall quality
+
+Output ONLY valid JSON: {"relevance":N,"completeness":N,"actionability":N,"role_specificity":N,"overall":N,"reasoning":"one sentence"}`,
+            }],
+          });
+
+          const judgeText = judgeResponse.content[0].type === "text" ? judgeResponse.content[0].text : "{}";
+          const jsonMatch = judgeText.match(/\{[\s\S]*\}/);
+          const scores = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+          const reasoning = scores.reasoning || "";
+          delete scores.reasoning;
+
+          const evalId = crypto.randomUUID();
+          await sql`
+            INSERT INTO agent_evals (id, agent_id, eval_type, scores, judge_reasoning, prompt_used, response_evaluated)
+            VALUES (${evalId}, ${agent.id}, 'daily_batch', ${JSON.stringify(scores)}, ${reasoning}, ${randomTest.prompt}, ${responseText.slice(0, 500)})`;
+
+          allResults[agent.role] = { scores, testName: randomTest.name };
+          console.log(`  ${agent.role}: ${scores.overall || '?'}/5`);
+        } catch (error) {
+          console.error(`  ${agent.role}: eval failed — ${error instanceof Error ? error.message : error}`);
+          allResults[agent.role] = { error: "eval failed" };
+        }
+      }
+
+      await sql`
+        UPDATE eval_runs
+        SET completed_at = NOW(), results = ${JSON.stringify(allResults)}, status = 'completed'
+        WHERE id = ${runId}`;
+
+      console.log(`  Done: ${Object.keys(allResults).length} agents evaluated`);
+    } catch (error) {
+      console.error(`  Eval batch failed: ${error instanceof Error ? error.message : error}`);
+      await sql`
+        UPDATE eval_runs
+        SET completed_at = NOW(), results = ${JSON.stringify({ error: "batch failed" })}, status = 'failed'
+        WHERE id = ${runId}`;
+    }
+  }
+}
+
 // ─── Main Loop ───────────────────────────────────────────
 async function run() {
   console.log(`[TheAutonomous Worker] Starting...`);
   console.log(`  Database: ${DATABASE_URL!.replace(/:[^@]+@/, ":***@")}`);
   console.log(`  Poll interval: ${POLL_INTERVAL}ms`);
-  console.log(`  Features: tasks, cron jobs, daily debriefs, chai time`);
+  console.log(`  Features: tasks, cron jobs, daily debriefs, chai time, agent evals`);
   console.log("");
 
   let cycleCount = 0;
@@ -496,6 +607,11 @@ async function run() {
       // 4. Check Chai Time (every 6th cycle ≈ every minute)
       if (cycleCount % 6 === 0) {
         await checkChaiTime();
+      }
+
+      // 5. Check daily evals (every 6th cycle ≈ every minute)
+      if (cycleCount % 6 === 0) {
+        await checkDailyEvals();
       }
 
       cycleCount++;
