@@ -165,60 +165,53 @@ export function DashboardClient({
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
-        let accumulated = "";
-        let lineBuffer = "";
+        // Use a mutable object to survive React re-renders/closure issues
+        const state = { accumulated: "", lineBuffer: "", convId: "" };
+
+        const addAssistantMessage = (content: string) => {
+          if (!content.trim()) return;
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: crypto.randomUUID(),
+              role: "assistant" as const,
+              content,
+            },
+          ]);
+          setStreamingText("");
+        };
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) {
-            // If stream ends with accumulated text that never got [DONE],
-            // still add it as an assistant message
-            if (accumulated) {
-              setMessages((prev) => [
-                ...prev,
-                {
-                  id: crypto.randomUUID(),
-                  role: "assistant",
-                  content: accumulated,
-                },
-              ]);
-              setStreamingText("");
-            }
+            // Stream ended — save whatever we have
+            addAssistantMessage(state.accumulated);
             break;
           }
 
           const chunk = decoder.decode(value, { stream: true });
-          // Prepend any leftover partial line from the previous chunk
-          const text = lineBuffer + chunk;
+          const text = state.lineBuffer + chunk;
           const lines = text.split("\n");
-          // The last element may be incomplete — buffer it for the next chunk
-          lineBuffer = lines.pop() || "";
+          state.lineBuffer = lines.pop() || "";
 
           for (const line of lines) {
             if (!line.startsWith("data: ")) continue;
             const data = line.slice(6);
 
             if (data === "[DONE]") {
-              setMessages((prev) => [
-                ...prev,
-                {
-                  id: crypto.randomUUID(),
-                  role: "assistant",
-                  content: accumulated,
-                },
-              ]);
-              setStreamingText("");
-              accumulated = "";
+              addAssistantMessage(state.accumulated);
+              state.accumulated = "";
               continue;
             }
 
             try {
               const parsed = JSON.parse(data);
               if (parsed.conversationId) {
+                state.convId = parsed.conversationId;
                 setConversationId(parsed.conversationId);
               } else if (parsed.text) {
-                accumulated += parsed.text;
-                setStreamingText(accumulated);
+                state.accumulated += parsed.text;
+                setStreamingText(state.accumulated);
               } else if (parsed.interAgent) {
                 setMessages((prev) => [
                   ...prev,
@@ -242,19 +235,23 @@ export function DashboardClient({
                 setCreditBalance(parsed.credits.balance);
               }
             } catch {
-              /* skip */
+              /* skip malformed SSE data */
             }
           }
         }
-      } catch {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            role: "system",
-            content: "Connection lost. Please try again.",
-          },
-        ]);
+      } catch (err) {
+        console.error("[Chat] Stream error:", err);
+        // Only show error if we didn't get any response
+        if (!streamingText) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: crypto.randomUUID(),
+              role: "system",
+              content: "Something went wrong. Please try again.",
+            },
+          ]);
+        }
         setStreamingText("");
       } finally {
         setLoading(false);
