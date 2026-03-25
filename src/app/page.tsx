@@ -149,7 +149,7 @@ export default function Home() {
                     {agentRoles.map((role) => (
                       <div
                         key={role.title}
-                        className="flex items-center gap-3 p-3 bg-white border border-neutral-200/60 rounded-lg hover:shadow-sm transition-all"
+                        className="flex items-center gap-3 p-3 bg-white border border-neutral-200/60 rounded-lg hover:shadow-md hover:shadow-neutral-900/[0.04] hover:-translate-y-px transition-all duration-300"
                       >
                         <AgentIcon role={role.title} size="sm" />
                         <div className="flex-1 min-w-0">
@@ -194,11 +194,11 @@ export default function Home() {
             {steps.map((step, i) => (
               <Reveal key={step.number} delay={i * 75}>
                 <div className="group">
-                  <span className="font-[family-name:var(--font-mono)] text-xs text-accent font-medium">
+                  <span className="font-[family-name:var(--font-serif)] text-4xl text-accent/20 font-normal group-hover:text-accent/40 transition-colors duration-500">
                     {step.number}
                   </span>
-                  <div className="w-full h-px bg-neutral-300 my-4 group-hover:bg-accent transition-colors" />
-                  <h3 className="text-xl font-semibold mb-2">{step.title}</h3>
+                  <div className="w-full h-px bg-neutral-300 my-4 group-hover:bg-accent transition-colors duration-300" />
+                  <h3 className="text-xl font-semibold mb-3">{step.title}</h3>
                   <p className="text-neutral-500 text-sm leading-relaxed">
                     {step.description}
                   </p>
@@ -210,8 +210,10 @@ export default function Home() {
       </section>
 
       {/* ─── Agents Showcase (interactive) ──────────────── */}
-      <section id="agents" className="py-24 lg:py-32 bg-primary text-surface">
-        <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
+      <section id="agents" className="py-24 lg:py-32 bg-primary text-surface relative overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[600px] bg-accent/[0.04] rounded-full blur-[160px] pointer-events-none" />
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-secondary/[0.03] rounded-full blur-[120px] pointer-events-none" />
+        <div className="relative z-10 max-w-[1280px] mx-auto px-6 lg:px-8">
           <AgentShowcase />
         </div>
       </section>
@@ -317,7 +319,7 @@ export default function Home() {
               },
             ].map((feature, i) => (
               <Reveal key={feature.title} delay={i * 50}>
-                <div className="p-5 rounded-xl border border-neutral-200 bg-white h-full">
+                <div className="p-5 rounded-xl border border-neutral-200/80 bg-white h-full shadow-sm shadow-neutral-900/[0.02] hover-lift">
                   <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center text-surface mb-3">
                     {feature.icon}
                   </div>
@@ -511,7 +513,7 @@ export default function Home() {
               ].map((model) => (
                 <div
                   key={model.name}
-                  className={`p-5 rounded-xl border ${
+                  className={`p-5 rounded-xl border hover-lift ${
                     model.tag === "Default"
                       ? "bg-primary text-surface border-primary"
                       : "bg-white border-neutral-200"
@@ -628,10 +630,17 @@ export default function Home() {
             ].map((plan) => (
               <Reveal key={plan.name} delay={plan.featured ? 75 : 0}>
                 <div
-                  className={`p-6 rounded-2xl border h-full flex flex-col ${
+                  className={`rounded-[1.25rem] h-full ${
                     plan.featured
-                      ? "bg-primary text-surface border-primary shadow-2xl shadow-primary/10 relative"
-                      : "bg-white border-neutral-200"
+                      ? "bg-neutral-800/50 p-1.5 shadow-2xl shadow-primary/15"
+                      : "bg-neutral-200/40 p-1.5"
+                  }`}
+                >
+                <div
+                  className={`p-6 rounded-[calc(1.25rem-6px)] h-full flex flex-col ${
+                    plan.featured
+                      ? "bg-primary text-surface relative shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]"
+                      : "bg-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.8)]"
                   }`}
                 >
                   {plan.featured && (
@@ -699,6 +708,7 @@ export default function Home() {
                     label={plan.cta}
                     featured={plan.featured}
                   />
+                </div>
                 </div>
               </Reveal>
             ))}

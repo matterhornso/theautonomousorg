@@ -109,21 +109,29 @@ export default function AgentStatusPage() {
           <>
           {/* Summary bar */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-            <div className="p-4 bg-white border border-neutral-200 rounded-xl">
-              <p className="text-lg font-semibold">{agents.length}</p>
-              <p className="text-xs text-neutral-400">Active Agents</p>
+            <div className="double-bezel">
+              <div className="double-bezel-inner p-4">
+                <p className="text-lg font-semibold">{agents.length}</p>
+                <p className="text-xs text-neutral-400">Active Agents</p>
+              </div>
             </div>
-            <div className="p-4 bg-white border border-neutral-200 rounded-xl">
-              <p className="text-lg font-semibold">{agents.reduce((sum, a) => sum + a.tasks.filter(t => t.status === "done").length, 0)}</p>
-              <p className="text-xs text-neutral-400">Tasks Done</p>
+            <div className="double-bezel">
+              <div className="double-bezel-inner p-4">
+                <p className="text-lg font-semibold">{agents.reduce((sum, a) => sum + a.tasks.filter(t => t.status === "done").length, 0)}</p>
+                <p className="text-xs text-neutral-400">Tasks Done</p>
+              </div>
             </div>
-            <div className="p-4 bg-white border border-neutral-200 rounded-xl">
-              <p className="text-lg font-semibold">{agents.reduce((sum, a) => sum + a.tasks.filter(t => t.status === "running" || t.status === "queued").length, 0)}</p>
-              <p className="text-xs text-neutral-400">Active Tasks</p>
+            <div className="double-bezel">
+              <div className="double-bezel-inner p-4">
+                <p className="text-lg font-semibold">{agents.reduce((sum, a) => sum + a.tasks.filter(t => t.status === "running" || t.status === "queued").length, 0)}</p>
+                <p className="text-xs text-neutral-400">Active Tasks</p>
+              </div>
             </div>
-            <div className="p-4 bg-white border border-neutral-200 rounded-xl">
-              <p className="text-lg font-semibold">{agents.reduce((sum, a) => sum + a.memory.length, 0)}</p>
-              <p className="text-xs text-neutral-400">Total Memories</p>
+            <div className="double-bezel">
+              <div className="double-bezel-inner p-4">
+                <p className="text-lg font-semibold">{agents.reduce((sum, a) => sum + a.memory.length, 0)}</p>
+                <p className="text-xs text-neutral-400">Total Memories</p>
+              </div>
             </div>
           </div>
           <div className="space-y-3">
@@ -142,13 +150,15 @@ export default function AgentStatusPage() {
               return (
                 <div
                   key={agent.id}
-                  className="bg-white border border-neutral-200 rounded-xl overflow-hidden"
+                  className={`bg-white border border-neutral-200/80 rounded-xl overflow-hidden shadow-sm shadow-neutral-900/[0.02] transition-all duration-300 ${
+                    isExpanded ? "shadow-md shadow-neutral-900/[0.06]" : "hover:shadow-md hover:shadow-neutral-900/[0.05] hover:-translate-y-px"
+                  }`}
                 >
                   {/* Header row */}
                   <button
                     onClick={() => toggleAgent(agent.id)}
                     aria-expanded={isExpanded}
-                    className="w-full flex items-center gap-4 p-4 text-left hover:bg-neutral-50 transition-colors focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none"
+                    className="w-full flex items-center gap-4 p-4 text-left hover:bg-neutral-50/60 transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:outline-none"
                   >
                     <AgentIcon role={agent.role} size="md" variant="dark" />
                     <div className="flex-1 min-w-0">
@@ -188,7 +198,7 @@ export default function AgentStatusPage() {
                       </div>
                     </div>
                     <svg
-                      className={`w-4 h-4 text-neutral-400 transition-transform ${
+                      className={`w-4 h-4 text-neutral-400 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                         isExpanded ? "rotate-180" : ""
                       }`}
                       fill="none"

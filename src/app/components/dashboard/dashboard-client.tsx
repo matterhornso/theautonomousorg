@@ -501,7 +501,7 @@ export function DashboardClient({
 
             {/* Task results panel */}
             {expandedTask && agentTasks.length > 0 && (
-              <div className="px-6 py-4 border-b border-neutral-200 bg-neutral-50 max-h-80 overflow-y-auto">
+              <div className="px-6 py-4 border-b border-neutral-200 bg-gradient-to-b from-neutral-50 to-surface max-h-80 overflow-y-auto">
                 <p className="text-xs text-neutral-400 uppercase tracking-wider mb-3">
                   Proactive Task Results
                 </p>
@@ -509,7 +509,7 @@ export function DashboardClient({
                   {agentTasks.map((task) => (
                     <div
                       key={task.id}
-                      className="bg-white rounded-lg border border-neutral-200 overflow-hidden"
+                      className="bg-white rounded-xl border border-neutral-200/80 overflow-hidden shadow-sm shadow-neutral-900/[0.03] hover-lift"
                     >
                       <button
                         onClick={() =>
@@ -517,7 +517,7 @@ export function DashboardClient({
                             expandedTask === task.id ? "all" : task.id
                           )
                         }
-                        className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-neutral-50"
+                        className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-neutral-50/60 transition-colors"
                       >
                         <span
                           className={`w-2 h-2 rounded-full shrink-0 ${
@@ -554,7 +554,7 @@ export function DashboardClient({
             )}
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
+            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4 bg-gradient-to-b from-surface to-white">
               {messages.length === 0 && !streamingText && (
                 <div className="flex flex-col items-center justify-center h-full text-center">
                   <div className="mb-4">
@@ -575,7 +575,7 @@ export function DashboardClient({
                         <button
                           key={starter}
                           onClick={() => sendMessage(starter)}
-                          className="px-4 py-2 bg-white border border-neutral-200 rounded-full text-sm text-neutral-600 hover:border-accent hover:text-primary transition-all"
+                          className="px-4 py-2 bg-white border border-neutral-200 rounded-full text-sm text-neutral-600 hover:border-accent/50 hover:text-primary hover:shadow-sm hover:shadow-accent/5 active:scale-[0.97] transition-all duration-200"
                         >
                           {starter}
                         </button>
@@ -585,18 +585,19 @@ export function DashboardClient({
                 </div>
               )}
 
-              {messages.map((msg) => (
+              {messages.map((msg, msgIndex) => (
                 <div
                   key={msg.id}
-                  className={`flex ${
+                  className={`flex animate-fade-in-up ${
                     msg.role === "user" ? "justify-end" : "justify-start"
                   }`}
+                  style={{ animationDelay: `${Math.min(msgIndex * 50, 200)}ms` }}
                 >
                   {msg.role === "system" ? (
                     <div
                       className={`max-w-[80%] px-4 py-3 rounded-xl text-sm ${
                         msg.relayFrom
-                          ? "bg-accent/10 border border-accent/20"
+                          ? "bg-accent/10 border border-accent/20 shadow-sm shadow-accent/5"
                           : "bg-neutral-100"
                       }`}
                     >
@@ -619,8 +620,8 @@ export function DashboardClient({
                     <div
                       className={`max-w-[70%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
                         msg.role === "user"
-                          ? "bg-primary text-surface rounded-br-md whitespace-pre-wrap"
-                          : "bg-neutral-100 text-primary rounded-bl-md prose prose-sm prose-neutral max-w-none [&_h1]:text-base [&_h1]:font-semibold [&_h1]:mt-3 [&_h1]:mb-1 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:mt-3 [&_h2]:mb-1 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:mt-2 [&_h3]:mb-1 [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_hr]:my-2 [&_strong]:font-semibold [&_code]:text-xs [&_code]:bg-neutral-200 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_pre]:bg-neutral-200 [&_pre]:p-2 [&_pre]:rounded-lg [&_pre]:text-xs [&_pre]:overflow-x-auto"
+                          ? "bg-gradient-to-br from-primary to-neutral-800 text-surface rounded-br-md whitespace-pre-wrap shadow-md shadow-primary/10"
+                          : "bg-white text-primary rounded-bl-md border-l-2 border-accent/30 shadow-sm shadow-neutral-900/[0.03] prose prose-sm prose-neutral max-w-none [&_h1]:text-base [&_h1]:font-semibold [&_h1]:mt-3 [&_h1]:mb-1 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:mt-3 [&_h2]:mb-1 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:mt-2 [&_h3]:mb-1 [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_hr]:my-2 [&_strong]:font-semibold [&_code]:text-xs [&_code]:bg-neutral-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_pre]:bg-neutral-100 [&_pre]:p-2 [&_pre]:rounded-lg [&_pre]:text-xs [&_pre]:overflow-x-auto"
                       }`}
                     >
                       {msg.role === "user" ? msg.content : <ReactMarkdown>{msg.content}</ReactMarkdown>}
@@ -667,10 +668,10 @@ export function DashboardClient({
               ))}
 
               {streamingText && (
-                <div className="flex justify-start">
-                  <div className="max-w-[70%] px-4 py-3 rounded-2xl rounded-bl-md bg-neutral-100 text-primary text-sm leading-relaxed prose prose-sm prose-neutral max-w-none [&_h1]:text-base [&_h1]:font-semibold [&_h1]:mt-3 [&_h1]:mb-1 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:mt-3 [&_h2]:mb-1 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:mt-2 [&_h3]:mb-1 [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_hr]:my-2 [&_strong]:font-semibold [&_code]:text-xs [&_code]:bg-neutral-200 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_pre]:bg-neutral-200 [&_pre]:p-2 [&_pre]:rounded-lg [&_pre]:text-xs [&_pre]:overflow-x-auto">
+                <div className="flex justify-start animate-fade-in-up">
+                  <div className="max-w-[70%] px-4 py-3 rounded-2xl rounded-bl-md bg-white text-primary border-l-2 border-accent/30 shadow-sm shadow-neutral-900/[0.03] text-sm leading-relaxed prose prose-sm prose-neutral max-w-none [&_h1]:text-base [&_h1]:font-semibold [&_h1]:mt-3 [&_h1]:mb-1 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:mt-3 [&_h2]:mb-1 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:mt-2 [&_h3]:mb-1 [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_hr]:my-2 [&_strong]:font-semibold [&_code]:text-xs [&_code]:bg-neutral-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_pre]:bg-neutral-100 [&_pre]:p-2 [&_pre]:rounded-lg [&_pre]:text-xs [&_pre]:overflow-x-auto">
                     <ReactMarkdown>{streamingText}</ReactMarkdown>
-                    <span className="inline-block w-1.5 h-4 bg-accent/60 ml-0.5 animate-pulse" />
+                    <span className="inline-block w-1.5 h-5 bg-accent rounded-sm ml-0.5 animate-cursor-blink" />
                   </div>
                 </div>
               )}
@@ -679,7 +680,7 @@ export function DashboardClient({
             </div>
 
             {/* Input */}
-            <div className="px-6 py-4 border-t border-neutral-200 bg-white">
+            <div className="px-6 py-4 border-t border-neutral-200 bg-gradient-to-t from-white via-white to-neutral-50/80 shadow-[0_-4px_16px_rgba(0,0,0,0.03)]">
               {/* Pending attachments preview */}
               {pendingAttachments.length > 0 && (
                 <div className="flex flex-wrap gap-2 max-w-4xl mx-auto mb-2">
@@ -740,7 +741,7 @@ export function DashboardClient({
                   placeholder={`Message ${activeAgent.role} Agent...`}
                   rows={1}
                   disabled={loading}
-                  className="flex-1 px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent disabled:opacity-60 placeholder:text-neutral-400"
+                  className="flex-1 px-4 py-3 bg-white border border-neutral-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent/50 disabled:opacity-60 placeholder:text-neutral-400 shadow-sm shadow-neutral-900/[0.02] transition-shadow duration-200"
                   style={{ minHeight: "44px", maxHeight: "120px" }}
                   onInput={(e) => {
                     const target = e.target as HTMLTextAreaElement;
@@ -751,7 +752,7 @@ export function DashboardClient({
                 <button
                   onClick={() => sendMessage()}
                   disabled={loading || !input.trim()}
-                  className="px-4 py-3 bg-primary text-surface rounded-xl text-sm font-medium hover:bg-neutral-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                  className="px-4 py-3 bg-primary text-surface rounded-xl text-sm font-medium hover:bg-neutral-800 active:scale-[0.97] transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 shadow-sm"
                 >
                   {loading ? (
                     <svg
@@ -839,7 +840,7 @@ export function DashboardClient({
                     return (
                       <div
                         key={task.id}
-                        className="bg-white border border-neutral-200 rounded-xl overflow-hidden hover:border-neutral-300 transition-colors"
+                        className="bg-white border border-neutral-200/80 rounded-xl overflow-hidden shadow-sm shadow-neutral-900/[0.03] hover-lift"
                       >
                         <button
                           onClick={() => {

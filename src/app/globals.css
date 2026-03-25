@@ -90,6 +90,74 @@ body {
   50% { opacity: 0.85; }
 }
 
+/* Fade-in-up animation for chat messages and cards */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Streaming cursor blink */
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.animate-cursor-blink {
+  animation: cursorBlink 1s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+/* Glass card — frosted nested card treatment */
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    0 4px 12px rgba(0, 0, 0, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-lg);
+}
+
+/* Double-bezel card: outer shell + inner core */
+.double-bezel {
+  background: rgba(0, 0, 0, 0.025);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius-xl);
+  padding: 6px;
+}
+
+.double-bezel > .double-bezel-inner {
+  background: white;
+  border-radius: calc(var(--radius-xl) - 6px);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    inset 0 1px 1px rgba(255, 255, 255, 0.8);
+}
+
+/* Hover transition utilities */
+.hover-lift {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Active press feedback */
+.hover-lift:active {
+  transform: translateY(0) scale(0.99);
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
