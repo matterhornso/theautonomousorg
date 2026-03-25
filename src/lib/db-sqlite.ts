@@ -303,6 +303,31 @@ function initSchema(db: Database.Database) {
       last_run_at TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS workflows (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL REFERENCES companies(id),
+      name TEXT NOT NULL,
+      description TEXT,
+      trigger_agent_role TEXT NOT NULL,
+      trigger_event TEXT NOT NULL,
+      steps_json TEXT NOT NULL,
+      is_active INTEGER DEFAULT 1,
+      last_triggered_at TEXT,
+      trigger_count INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS workflow_runs (
+      id TEXT PRIMARY KEY,
+      workflow_id TEXT NOT NULL REFERENCES workflows(id),
+      company_id TEXT NOT NULL REFERENCES companies(id),
+      status TEXT NOT NULL DEFAULT 'running',
+      current_step INTEGER DEFAULT 0,
+      results_json TEXT,
+      started_at TEXT DEFAULT (datetime('now')),
+      completed_at TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS agent_evals (
       id TEXT PRIMARY KEY,
       agent_id TEXT NOT NULL,
@@ -1850,4 +1875,208 @@ export function getFlaggedEvals(companyId: string, limit = 20): AgentEval[] {
        ORDER BY e.created_at DESC LIMIT ?`
     )
     .all(companyId, limit) as AgentEval[];
+}
+
+// ─── Workflows ────────────────────────────────────────────
+export interface Workflow {
+  id: string;
+  company_id: string;
+  name: string;
+  description: string | null;
+  trigger_agent_role: string;
+  trigger_event: string;
+  steps_json: string;
+  is_active: number;
+  last_triggered_at: string | null;
+  trigger_count: number;
+  created_at: string;
+}
+
+export interface WorkflowRun {
+  id: string;
+  workflow_id: string;
+  company_id: string;
+  status: string;
+  current_step: number;
+  results_json: string | null;
+  started_at: string;
+  completed_at: string | null;
+}
+
+export function createWorkflow(data: {
+  company_id: string;
+  name: string;
+  description?: string;
+  trigger_agent_role: string;
+  trigger_event: string;
+  steps_json: string;
+}): Workflow {
+  const db = getDb();
+  const id = randomUUID();
+  db.prepare(
+    `INSERT INTO workflows (id, company_id, name, description, trigger_agent_role, trigger_event, steps_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, data.company_id, data.name, data.description ?? null, data.trigger_agent_role, data.trigger_event, data.steps_json);
+  return db.prepare("SELECT * FROM workflows WHERE id = ?").get(id) as Workflow;
+}
+
+export function getWorkflowsByCompany(companyId: string): Workflow[] {
+  return getDb()
+    .prepare("SELECT * FROM workflows WHERE company_id = ? ORDER BY created_at DESC")
+    .all(companyId) as Workflow[];
+}
+
+export function getWorkflow(id: string): Workflow | undefined {
+  return getDb().prepare("SELECT * FROM workflows WHERE id = ?").get(id) as Workflow | undefined;
+}
+
+export function getActiveWorkflowsByTrigger(companyId: string, triggerAgentRole: string, triggerEvent: string): Workflow[] {
+  return getDb()
+    .prepare(
+      "SELECT * FROM workflows WHERE company_id = ? AND trigger_agent_role = ? AND trigger_event = ? AND is_active = 1"
+    )
+    .all(companyId, triggerAgentRole, triggerEvent) as Workflow[];
+}
+
+export function updateWorkflow(id: string, data: { name?: string; description?: string; steps_json?: string; is_active?: number }): void {
+  const db = getDb();
+  const sets: string[] = [];
+  const values: (string | number)[] = [];
+  if (data.name !== undefined) { sets.push("name = ?"); values.push(data.name); }
+  if (data.description !== undefined) { sets.push("description = ?"); values.push(data.description); }
+  if (data.steps_json !== undefined) { sets.push("steps_json = ?"); values.push(data.steps_json); }
+  if (data.is_active !== undefined) { sets.push("is_active = ?"); values.push(data.is_active); }
+  if (sets.length === 0) return;
+  values.push(id);
+  db.prepare(`UPDATE workflows SET ${sets.join(", ")} WHERE id = ?`).run(...values);
+}
+
+export function deleteWorkflow(id: string): void {
+  getDb().prepare("DELETE FROM workflows WHERE id = ?").run(id);
+}
+
+export function incrementWorkflowTrigger(id: string): void {
+  getDb().prepare("UPDATE workflows SET trigger_count = trigger_count + 1, last_triggered_at = datetime('now') WHERE id = ?").run(id);
+}
+
+export function createWorkflowRun(data: { workflow_id: string; company_id: string }): WorkflowRun {
+  const db = getDb();
+  const id = randomUUID();
+  db.prepare(
+    `INSERT INTO workflow_runs (id, workflow_id, company_id) VALUES (?, ?, ?)`
+  ).run(id, data.workflow_id, data.company_id);
+  return db.prepare("SELECT * FROM workflow_runs WHERE id = ?").get(id) as WorkflowRun;
+}
+
+export function updateWorkflowRun(id: string, data: { status?: string; current_step?: number; results_json?: string; completed_at?: string }): void {
+  const db = getDb();
+  const sets: string[] = [];
+  const values: (string | number)[] = [];
+  if (data.status !== undefined) { sets.push("status = ?"); values.push(data.status); }
+  if (data.current_step !== undefined) { sets.push("current_step = ?"); values.push(data.current_step); }
+  if (data.results_json !== undefined) { sets.push("results_json = ?"); values.push(data.results_json); }
+  if (data.completed_at !== undefined) { sets.push("completed_at = ?"); values.push(data.completed_at); }
+  if (sets.length === 0) return;
+  values.push(id);
+  db.prepare(`UPDATE workflow_runs SET ${sets.join(", ")} WHERE id = ?`).run(...values);
+}
+
+export function getWorkflowRunsByCompany(companyId: string, limit = 20): WorkflowRun[] {
+  return getDb()
+    .prepare("SELECT * FROM workflow_runs WHERE company_id = ? ORDER BY started_at DESC LIMIT ?")
+    .all(companyId, limit) as WorkflowRun[];
+}
+
+// ─── Conversation Search ──────────────────────────────────
+export function searchMessages(companyId: string, query: string, options?: { agentId?: string; limit?: number }): Array<{
+  message_id: string;
+  conversation_id: string;
+  agent_id: string;
+  agent_role: string;
+  role: string;
+  content: string;
+  created_at: string;
+}> {
+  const db = getDb();
+  const limit = options?.limit ?? 50;
+  const searchTerm = `%${query}%`;
+
+  if (options?.agentId) {
+    return db.prepare(
+      `SELECT m.id as message_id, m.conversation_id, c.agent_id, a.role as agent_role, m.role, m.content, m.created_at
+       FROM messages m
+       JOIN conversations c ON m.conversation_id = c.id
+       JOIN agents a ON c.agent_id = a.id
+       WHERE a.company_id = ? AND a.id = ? AND m.content LIKE ?
+       ORDER BY m.created_at DESC LIMIT ?`
+    ).all(companyId, options.agentId, searchTerm, limit) as Array<{
+      message_id: string; conversation_id: string; agent_id: string; agent_role: string;
+      role: string; content: string; created_at: string;
+    }>;
+  }
+
+  return db.prepare(
+    `SELECT m.id as message_id, m.conversation_id, c.agent_id, a.role as agent_role, m.role, m.content, m.created_at
+     FROM messages m
+     JOIN conversations c ON m.conversation_id = c.id
+     JOIN agents a ON c.agent_id = a.id
+     WHERE a.company_id = ? AND m.content LIKE ?
+     ORDER BY m.created_at DESC LIMIT ?`
+  ).all(companyId, searchTerm, limit) as Array<{
+    message_id: string; conversation_id: string; agent_id: string; agent_role: string;
+    role: string; content: string; created_at: string;
+  }>;
+}
+
+// ─── Agent Leaderboard ────────────────────────────────────
+export function getAgentLeaderboard(companyId: string): Array<{
+  agent_id: string;
+  role: string;
+  message_count: number;
+  task_count: number;
+  tasks_completed: number;
+  avg_score: number;
+  thumbs_up: number;
+  thumbs_down: number;
+}> {
+  const db = getDb();
+  return db.prepare(
+    `SELECT
+       a.id as agent_id,
+       a.role,
+       COALESCE(msg_counts.message_count, 0) as message_count,
+       COALESCE(task_counts.task_count, 0) as task_count,
+       COALESCE(task_counts.tasks_completed, 0) as tasks_completed,
+       COALESCE(eval_scores.avg_score, 0) as avg_score,
+       COALESCE(eval_scores.thumbs_up, 0) as thumbs_up,
+       COALESCE(eval_scores.thumbs_down, 0) as thumbs_down
+     FROM agents a
+     LEFT JOIN (
+       SELECT c.agent_id, COUNT(m.id) as message_count
+       FROM conversations c
+       JOIN messages m ON m.conversation_id = c.id
+       WHERE m.role = 'assistant'
+       GROUP BY c.agent_id
+     ) msg_counts ON msg_counts.agent_id = a.id
+     LEFT JOIN (
+       SELECT agent_id,
+              COUNT(*) as task_count,
+              SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) as tasks_completed
+       FROM tasks
+       GROUP BY agent_id
+     ) task_counts ON task_counts.agent_id = a.id
+     LEFT JOIN (
+       SELECT agent_id,
+              AVG(json_extract(scores, '$.overall')) as avg_score,
+              SUM(CASE WHEN user_feedback = 'thumbs_up' THEN 1 ELSE 0 END) as thumbs_up,
+              SUM(CASE WHEN user_feedback = 'thumbs_down' THEN 1 ELSE 0 END) as thumbs_down
+       FROM agent_evals
+       GROUP BY agent_id
+     ) eval_scores ON eval_scores.agent_id = a.id
+     WHERE a.company_id = ?
+     ORDER BY avg_score DESC, message_count DESC`
+  ).all(companyId) as Array<{
+    agent_id: string; role: string; message_count: number; task_count: number;
+    tasks_completed: number; avg_score: number; thumbs_up: number; thumbs_down: number;
+  }>;
 }

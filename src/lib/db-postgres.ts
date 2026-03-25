@@ -331,6 +331,33 @@ export async function initSchema() {
     )`;
 
   await sql`
+    CREATE TABLE IF NOT EXISTS workflows (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL REFERENCES companies(id),
+      name TEXT NOT NULL,
+      description TEXT,
+      trigger_agent_role TEXT NOT NULL,
+      trigger_event TEXT NOT NULL,
+      steps_json TEXT NOT NULL,
+      is_active INTEGER DEFAULT 1,
+      last_triggered_at TIMESTAMPTZ,
+      trigger_count INTEGER DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS workflow_runs (
+      id TEXT PRIMARY KEY,
+      workflow_id TEXT NOT NULL REFERENCES workflows(id),
+      company_id TEXT NOT NULL REFERENCES companies(id),
+      status TEXT NOT NULL DEFAULT 'running',
+      current_step INTEGER DEFAULT 0,
+      results_json TEXT,
+      started_at TIMESTAMPTZ DEFAULT NOW(),
+      completed_at TIMESTAMPTZ
+    )`;
+
+  await sql`
     CREATE TABLE IF NOT EXISTS agent_evals (
       id TEXT PRIMARY KEY,
       agent_id TEXT NOT NULL,
@@ -377,6 +404,9 @@ export async function initSchema() {
   await sql`CREATE INDEX IF NOT EXISTS idx_team_members_company ON team_members(company_id)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_debriefs_company ON debriefs(company_id, created_at)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_chai_time_sessions_company ON chai_time_sessions(company_id, started_at)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_workflows_company ON workflows(company_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_workflow_runs_company ON workflow_runs(company_id, started_at)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_messages_content ON messages USING gin(to_tsvector('english', content))`;
   await sql`CREATE INDEX IF NOT EXISTS idx_agent_evals_agent ON agent_evals(agent_id, created_at)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_eval_runs_company ON eval_runs(company_id, started_at)`;
 }
@@ -1616,4 +1646,190 @@ export async function getFlaggedEvals(companyId: string, limit = 20): Promise<Ag
       AND (e.scores::json->>'overall')::int < 3
     ORDER BY e.created_at DESC LIMIT ${limit}`;
   return rows as unknown as AgentEval[];
+}
+
+// ─── Workflows ────────────────────────────────────────────
+export interface Workflow {
+  id: string;
+  company_id: string;
+  name: string;
+  description: string | null;
+  trigger_agent_role: string;
+  trigger_event: string;
+  steps_json: string;
+  is_active: number;
+  last_triggered_at: string | null;
+  trigger_count: number;
+  created_at: string;
+}
+
+export interface WorkflowRun {
+  id: string;
+  workflow_id: string;
+  company_id: string;
+  status: string;
+  current_step: number;
+  results_json: string | null;
+  started_at: string;
+  completed_at: string | null;
+}
+
+export async function createWorkflow(data: {
+  company_id: string;
+  name: string;
+  description?: string;
+  trigger_agent_role: string;
+  trigger_event: string;
+  steps_json: string;
+}): Promise<Workflow> {
+  const id = randomUUID();
+  const [row] = await sql`
+    INSERT INTO workflows (id, company_id, name, description, trigger_agent_role, trigger_event, steps_json)
+    VALUES (${id}, ${data.company_id}, ${data.name}, ${data.description ?? null}, ${data.trigger_agent_role}, ${data.trigger_event}, ${data.steps_json})
+    RETURNING *`;
+  return row as Workflow;
+}
+
+export async function getWorkflowsByCompany(companyId: string): Promise<Workflow[]> {
+  const rows = await sql`SELECT * FROM workflows WHERE company_id = ${companyId} ORDER BY created_at DESC`;
+  return rows as unknown as Workflow[];
+}
+
+export async function getWorkflow(id: string): Promise<Workflow | undefined> {
+  const [row] = await sql`SELECT * FROM workflows WHERE id = ${id}`;
+  return row as Workflow | undefined;
+}
+
+export async function getActiveWorkflowsByTrigger(companyId: string, triggerAgentRole: string, triggerEvent: string): Promise<Workflow[]> {
+  const rows = await sql`
+    SELECT * FROM workflows
+    WHERE company_id = ${companyId} AND trigger_agent_role = ${triggerAgentRole} AND trigger_event = ${triggerEvent} AND is_active = 1`;
+  return rows as unknown as Workflow[];
+}
+
+export async function updateWorkflow(id: string, data: { name?: string; description?: string; steps_json?: string; is_active?: number }): Promise<void> {
+  if (data.name !== undefined) await sql`UPDATE workflows SET name = ${data.name} WHERE id = ${id}`;
+  if (data.description !== undefined) await sql`UPDATE workflows SET description = ${data.description} WHERE id = ${id}`;
+  if (data.steps_json !== undefined) await sql`UPDATE workflows SET steps_json = ${data.steps_json} WHERE id = ${id}`;
+  if (data.is_active !== undefined) await sql`UPDATE workflows SET is_active = ${data.is_active} WHERE id = ${id}`;
+}
+
+export async function deleteWorkflow(id: string): Promise<void> {
+  await sql`DELETE FROM workflows WHERE id = ${id}`;
+}
+
+export async function incrementWorkflowTrigger(id: string): Promise<void> {
+  await sql`UPDATE workflows SET trigger_count = trigger_count + 1, last_triggered_at = NOW() WHERE id = ${id}`;
+}
+
+export async function createWorkflowRun(data: { workflow_id: string; company_id: string }): Promise<WorkflowRun> {
+  const id = randomUUID();
+  const [row] = await sql`
+    INSERT INTO workflow_runs (id, workflow_id, company_id) VALUES (${id}, ${data.workflow_id}, ${data.company_id})
+    RETURNING *`;
+  return row as WorkflowRun;
+}
+
+export async function updateWorkflowRun(id: string, data: { status?: string; current_step?: number; results_json?: string; completed_at?: string }): Promise<void> {
+  if (data.status !== undefined) await sql`UPDATE workflow_runs SET status = ${data.status} WHERE id = ${id}`;
+  if (data.current_step !== undefined) await sql`UPDATE workflow_runs SET current_step = ${data.current_step} WHERE id = ${id}`;
+  if (data.results_json !== undefined) await sql`UPDATE workflow_runs SET results_json = ${data.results_json} WHERE id = ${id}`;
+  if (data.completed_at !== undefined) await sql`UPDATE workflow_runs SET completed_at = ${data.completed_at} WHERE id = ${id}`;
+}
+
+export async function getWorkflowRunsByCompany(companyId: string, limit = 20): Promise<WorkflowRun[]> {
+  const rows = await sql`SELECT * FROM workflow_runs WHERE company_id = ${companyId} ORDER BY started_at DESC LIMIT ${limit}`;
+  return rows as unknown as WorkflowRun[];
+}
+
+// ─── Conversation Search ──────────────────────────────────
+export async function searchMessages(companyId: string, query: string, options?: { agentId?: string; limit?: number }): Promise<Array<{
+  message_id: string;
+  conversation_id: string;
+  agent_id: string;
+  agent_role: string;
+  role: string;
+  content: string;
+  created_at: string;
+}>> {
+  const limit = options?.limit ?? 50;
+  const searchTerm = `%${query}%`;
+
+  if (options?.agentId) {
+    const rows = await sql`
+      SELECT m.id as message_id, m.conversation_id, c.agent_id, a.role as agent_role, m.role, m.content, m.created_at
+      FROM messages m
+      JOIN conversations c ON m.conversation_id = c.id
+      JOIN agents a ON c.agent_id = a.id
+      WHERE a.company_id = ${companyId} AND a.id = ${options.agentId} AND m.content ILIKE ${searchTerm}
+      ORDER BY m.created_at DESC LIMIT ${limit}`;
+    return rows as unknown as Array<{
+      message_id: string; conversation_id: string; agent_id: string; agent_role: string;
+      role: string; content: string; created_at: string;
+    }>;
+  }
+
+  const rows = await sql`
+    SELECT m.id as message_id, m.conversation_id, c.agent_id, a.role as agent_role, m.role, m.content, m.created_at
+    FROM messages m
+    JOIN conversations c ON m.conversation_id = c.id
+    JOIN agents a ON c.agent_id = a.id
+    WHERE a.company_id = ${companyId} AND m.content ILIKE ${searchTerm}
+    ORDER BY m.created_at DESC LIMIT ${limit}`;
+  return rows as unknown as Array<{
+    message_id: string; conversation_id: string; agent_id: string; agent_role: string;
+    role: string; content: string; created_at: string;
+  }>;
+}
+
+// ─── Agent Leaderboard ────────────────────────────────────
+export async function getAgentLeaderboard(companyId: string): Promise<Array<{
+  agent_id: string;
+  role: string;
+  message_count: number;
+  task_count: number;
+  tasks_completed: number;
+  avg_score: number;
+  thumbs_up: number;
+  thumbs_down: number;
+}>> {
+  const rows = await sql`
+    SELECT
+      a.id as agent_id,
+      a.role,
+      COALESCE(msg_counts.message_count, 0) as message_count,
+      COALESCE(task_counts.task_count, 0) as task_count,
+      COALESCE(task_counts.tasks_completed, 0) as tasks_completed,
+      COALESCE(eval_scores.avg_score, 0) as avg_score,
+      COALESCE(eval_scores.thumbs_up, 0) as thumbs_up,
+      COALESCE(eval_scores.thumbs_down, 0) as thumbs_down
+    FROM agents a
+    LEFT JOIN (
+      SELECT c.agent_id, COUNT(m.id) as message_count
+      FROM conversations c
+      JOIN messages m ON m.conversation_id = c.id
+      WHERE m.role = 'assistant'
+      GROUP BY c.agent_id
+    ) msg_counts ON msg_counts.agent_id = a.id
+    LEFT JOIN (
+      SELECT agent_id,
+             COUNT(*) as task_count,
+             SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) as tasks_completed
+      FROM tasks
+      GROUP BY agent_id
+    ) task_counts ON task_counts.agent_id = a.id
+    LEFT JOIN (
+      SELECT agent_id,
+             AVG((scores::json->>'overall')::float) as avg_score,
+             SUM(CASE WHEN user_feedback = 'thumbs_up' THEN 1 ELSE 0 END) as thumbs_up,
+             SUM(CASE WHEN user_feedback = 'thumbs_down' THEN 1 ELSE 0 END) as thumbs_down
+      FROM agent_evals
+      GROUP BY agent_id
+    ) eval_scores ON eval_scores.agent_id = a.id
+    WHERE a.company_id = ${companyId}
+    ORDER BY avg_score DESC, message_count DESC`;
+  return rows as unknown as Array<{
+    agent_id: string; role: string; message_count: number; task_count: number;
+    tasks_completed: number; avg_score: number; thumbs_up: number; thumbs_down: number;
+  }>;
 }

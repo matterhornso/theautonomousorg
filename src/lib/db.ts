@@ -34,6 +34,8 @@ export type {
   AgentEval,
   EvalTestSuite,
   EvalRun,
+  Workflow,
+  WorkflowRun,
 } from "./db-sqlite";
 
 // Re-export constants
@@ -600,6 +602,69 @@ export async function getUserFeedbackSummary(companyId: string) {
 export async function getFlaggedEvals(companyId: string, limit = 20) {
   if (USE_POSTGRES) return (await pg()).getFlaggedEvals(companyId, limit);
   return sqlite.getFlaggedEvals(companyId, limit);
+}
+
+// ─── Workflows ────────────────────────────────────────────
+export async function createWorkflow(data: Parameters<typeof sqlite.createWorkflow>[0]) {
+  if (USE_POSTGRES) return (await pg()).createWorkflow(data);
+  return sqlite.createWorkflow(data);
+}
+
+export async function getWorkflowsByCompany(companyId: string) {
+  if (USE_POSTGRES) return (await pg()).getWorkflowsByCompany(companyId);
+  return sqlite.getWorkflowsByCompany(companyId);
+}
+
+export async function getWorkflow(id: string) {
+  if (USE_POSTGRES) return (await pg()).getWorkflow(id);
+  return sqlite.getWorkflow(id);
+}
+
+export async function getActiveWorkflowsByTrigger(companyId: string, triggerAgentRole: string, triggerEvent: string) {
+  if (USE_POSTGRES) return (await pg()).getActiveWorkflowsByTrigger(companyId, triggerAgentRole, triggerEvent);
+  return sqlite.getActiveWorkflowsByTrigger(companyId, triggerAgentRole, triggerEvent);
+}
+
+export async function updateWorkflow(id: string, data: Parameters<typeof sqlite.updateWorkflow>[1]) {
+  if (USE_POSTGRES) return (await pg()).updateWorkflow(id, data);
+  return sqlite.updateWorkflow(id, data);
+}
+
+export async function deleteWorkflow(id: string) {
+  if (USE_POSTGRES) return (await pg()).deleteWorkflow(id);
+  return sqlite.deleteWorkflow(id);
+}
+
+export async function incrementWorkflowTrigger(id: string) {
+  if (USE_POSTGRES) return (await pg()).incrementWorkflowTrigger(id);
+  return sqlite.incrementWorkflowTrigger(id);
+}
+
+export async function createWorkflowRun(data: Parameters<typeof sqlite.createWorkflowRun>[0]) {
+  if (USE_POSTGRES) return (await pg()).createWorkflowRun(data);
+  return sqlite.createWorkflowRun(data);
+}
+
+export async function updateWorkflowRun(id: string, data: Parameters<typeof sqlite.updateWorkflowRun>[1]) {
+  if (USE_POSTGRES) return (await pg()).updateWorkflowRun(id, data);
+  return sqlite.updateWorkflowRun(id, data);
+}
+
+export async function getWorkflowRunsByCompany(companyId: string, limit = 20) {
+  if (USE_POSTGRES) return (await pg()).getWorkflowRunsByCompany(companyId, limit);
+  return sqlite.getWorkflowRunsByCompany(companyId, limit);
+}
+
+// ─── Conversation Search ──────────────────────────────────
+export async function searchMessages(companyId: string, query: string, options?: { agentId?: string; limit?: number }) {
+  if (USE_POSTGRES) return (await pg()).searchMessages(companyId, query, options);
+  return sqlite.searchMessages(companyId, query, options);
+}
+
+// ─── Agent Leaderboard ────────────────────────────────────
+export async function getAgentLeaderboard(companyId: string) {
+  if (USE_POSTGRES) return (await pg()).getAgentLeaderboard(companyId);
+  return sqlite.getAgentLeaderboard(companyId);
 }
 
 // ─── Postgres Schema Init ────────────────────────────────
