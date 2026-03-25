@@ -294,12 +294,188 @@ Format as:
   }
 }
 
+// ─── 4. Check Chai Time ──────────────────────────────────
+async function checkChaiTime(): Promise<void> {
+  const now = new Date();
+  const currentMinute = now.getUTCMinutes();
+
+  // Only check at the start of each 10-minute window
+  if (currentMinute % 10 !== 0) return;
+
+  // Get all companies with chai_time_config enabled
+  const configs = await sql<{
+    company_id: string;
+    time_hour: number;
+    time_minute: number;
+    timezone: string;
+    last_run_at: string | null;
+  }[]>`
+    SELECT company_id, time_hour, time_minute, timezone, last_run_at
+    FROM chai_time_config
+    WHERE enabled = 1`;
+
+  for (const config of configs) {
+    // Check if it's the right time in the company's timezone
+    const companyTime = new Date(
+      now.toLocaleString("en-US", { timeZone: config.timezone || "UTC" })
+    );
+    const companyHour = companyTime.getHours();
+    const companyMinute = companyTime.getMinutes();
+
+    if (companyHour !== config.time_hour || companyMinute >= 10) continue;
+
+    // Check if already run today
+    if (config.last_run_at) {
+      const lastRun = new Date(config.last_run_at);
+      const lastRunLocal = new Date(
+        lastRun.toLocaleString("en-US", { timeZone: config.timezone || "UTC" })
+      );
+      if (
+        lastRunLocal.getFullYear() === companyTime.getFullYear() &&
+        lastRunLocal.getMonth() === companyTime.getMonth() &&
+        lastRunLocal.getDate() === companyTime.getDate()
+      ) {
+        continue; // Already ran today
+      }
+    }
+
+    console.log(`[${new Date().toISOString()}] Running Chai Time for company ${config.company_id} (${config.timezone})`);
+
+    try {
+      // Get all active agents
+      const agents = await sql<{ id: string; role: string; system_prompt: string; company_id: string }[]>`
+        SELECT id, role, system_prompt, company_id FROM agents WHERE company_id = ${config.company_id} AND status = 'active'`;
+
+      if (agents.length === 0) {
+        console.log(`  Skipped: no active agents`);
+        continue;
+      }
+
+      const company = await sql<{ name: string }[]>`SELECT name FROM companies WHERE id = ${config.company_id}`;
+      const companyName = company[0]?.name ?? "Company";
+
+      // Create session
+      const sessionId = crypto.randomUUID();
+      await sql`INSERT INTO chai_time_sessions (id, company_id) VALUES (${sessionId}, ${config.company_id})`;
+
+      // Gather context and generate summaries
+      const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const summaries: { agentId: string; role: string; summary: string }[] = [];
+
+      for (const agent of agents) {
+        const actions = await sql<{ action_type: string; title: string }[]>`
+          SELECT action_type, title FROM agent_actions
+          WHERE agent_id = ${agent.id} AND created_at >= ${yesterday.toISOString()}
+          ORDER BY created_at DESC LIMIT 20`;
+
+        const tasks = await sql<{ title: string }[]>`
+          SELECT title FROM tasks
+          WHERE agent_id = ${agent.id} AND status = 'done' AND completed_at >= ${yesterday.toISOString()}`;
+
+        const memory = await sql<{ key: string; value: string }[]>`
+          SELECT key, value FROM memory WHERE agent_id = ${agent.id} ORDER BY updated_at DESC LIMIT 10`;
+
+        const actionsText = actions.length > 0
+          ? actions.map(a => `- [${a.action_type}] ${a.title}`).join("\n")
+          : "No actions logged.";
+        const tasksText = tasks.length > 0
+          ? tasks.map(t => `- ${t.title} (done)`).join("\n")
+          : "No tasks completed.";
+        const memoryText = memory.length > 0
+          ? memory.slice(0, 10).map(m => `- ${m.key}: ${m.value.slice(0, 200)}`).join("\n")
+          : "No memory entries.";
+
+        try {
+          const result = await client.messages.create({
+            model: "claude-haiku-4-5-20251001",
+            max_tokens: 300,
+            messages: [{
+              role: "user",
+              content: `You are the ${agent.role} Agent for ${companyName}. Here's what you've done in the last 24 hours:\n\nActions:\n${actionsText}\n\nCompleted Tasks:\n${tasksText}\n\nCurrent Memory/Context:\n${memoryText}\n\nWrite a brief standup update (2-3 sentences) covering:\n- What you accomplished\n- Key information other agents should know\n- Any blockers or needs from other agents\n\nBe specific and concise.`,
+            }],
+          });
+          const summary = result.content[0].type === "text" ? result.content[0].text : "No update available.";
+          summaries.push({ agentId: agent.id, role: agent.role, summary });
+        } catch {
+          summaries.push({ agentId: agent.id, role: agent.role, summary: "Unable to generate summary." });
+        }
+      }
+
+      // Generate cross-updates
+      const crossUpdates: { fromRole: string; toRole: string; update: string }[] = [];
+
+      for (const agent of agents) {
+        const otherSummaries = summaries
+          .filter(s => s.agentId !== agent.id)
+          .map(s => `**${s.role}:** ${s.summary}`)
+          .join("\n\n");
+
+        if (!otherSummaries) continue;
+
+        try {
+          const result = await client.messages.create({
+            model: "claude-haiku-4-5-20251001",
+            max_tokens: 500,
+            messages: [{
+              role: "user",
+              content: `You are the ${agent.role} Agent. Here's what your teammates shared at Chai Time:\n\n${otherSummaries}\n\nBased on these updates, what 1-3 things are most relevant to YOUR role as ${agent.role}?\nHow should this affect your work? Be specific and actionable.\n\nOutput as a JSON array: [{"key": "chai_time_${now.toISOString().slice(0, 10)}_<sourceRole>", "value": "what you learned and how it affects your work"}]\nUse today's date. Only output the JSON array, nothing else.`,
+            }],
+          });
+          const text = result.content[0].type === "text" ? result.content[0].text : "[]";
+          const jsonMatch = text.match(/\[[\s\S]*\]/);
+          if (jsonMatch) {
+            const updates = JSON.parse(jsonMatch[0]) as { key: string; value: string }[];
+            for (const update of updates) {
+              const memoryId = crypto.randomUUID();
+              await sql`
+                INSERT INTO memory (id, agent_id, key, value)
+                VALUES (${memoryId}, ${agent.id}, ${update.key}, ${update.value})
+                ON CONFLICT (agent_id, key)
+                DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`;
+
+              const fromRoleMatch = update.key.match(/chai_time_\d{4}-\d{2}-\d{2}_(.+)$/);
+              const fromRole = fromRoleMatch ? fromRoleMatch[1] : "Unknown";
+              crossUpdates.push({ fromRole, toRole: agent.role, update: update.value });
+            }
+          }
+        } catch {
+          // Non-fatal
+        }
+      }
+
+      // Log action for each agent
+      for (const agent of agents) {
+        const actionId = crypto.randomUUID();
+        await sql`
+          INSERT INTO agent_actions (id, agent_id, action_type, title, detail, source)
+          VALUES (${actionId}, ${agent.id}, 'chai_time', 'Chai Time: synced with team',
+                  ${`Exchanged context with ${agents.length - 1} other agents`}, 'system')`;
+      }
+
+      // Update session
+      await sql`
+        UPDATE chai_time_sessions
+        SET status = 'completed', completed_at = NOW(),
+            agent_summaries = ${JSON.stringify(summaries)},
+            cross_updates = ${JSON.stringify(crossUpdates)}
+        WHERE id = ${sessionId}`;
+
+      // Update last_run_at
+      await sql`UPDATE chai_time_config SET last_run_at = NOW() WHERE company_id = ${config.company_id}`;
+
+      console.log(`  ✓ Chai Time completed (${summaries.length} agents, ${crossUpdates.length} cross-updates)`);
+    } catch (error) {
+      console.error(`  ✗ Chai Time failed: ${error instanceof Error ? error.message : error}`);
+    }
+  }
+}
+
 // ─── Main Loop ───────────────────────────────────────────
 async function run() {
   console.log(`[TheAutonomous Worker] Starting...`);
   console.log(`  Database: ${DATABASE_URL!.replace(/:[^@]+@/, ":***@")}`);
   console.log(`  Poll interval: ${POLL_INTERVAL}ms`);
-  console.log(`  Features: tasks, cron jobs, daily debriefs`);
+  console.log(`  Features: tasks, cron jobs, daily debriefs, chai time`);
   console.log("");
 
   let cycleCount = 0;
@@ -315,6 +491,11 @@ async function run() {
       // 3. Check debriefs (every 6th cycle ≈ every minute)
       if (cycleCount % 6 === 0) {
         await checkDebriefs();
+      }
+
+      // 4. Check Chai Time (every 6th cycle ≈ every minute)
+      if (cycleCount % 6 === 0) {
+        await checkChaiTime();
       }
 
       cycleCount++;
