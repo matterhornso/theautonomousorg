@@ -100,10 +100,11 @@ export function AgentIcon({
   variant = "dark",
 }: {
   role: string;
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
   variant?: "dark" | "light" | "accent";
 }) {
   const sizeStyles: Record<string, React.CSSProperties> = {
+    xs: { width: 20, height: 20 },
     sm: { width: 28, height: 28 },
     md: { width: 36, height: 36 },
     lg: { width: 48, height: 48 },
