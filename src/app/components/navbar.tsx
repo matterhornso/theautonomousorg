@@ -65,6 +65,12 @@ export function Navbar() {
             >
               Pricing
             </a>
+            <a
+              href="/blog"
+              className="hover:text-primary transition-colors py-3"
+            >
+              Blog
+            </a>
           </div>
 
           <div className="flex items-center gap-3">
@@ -167,6 +173,13 @@ export function Navbar() {
               className="block py-3 text-lg text-neutral-700 hover:text-primary transition-colors"
             >
               Pricing
+            </a>
+            <a
+              href="/blog"
+              onClick={() => setMobileOpen(false)}
+              className="block py-3 text-lg text-neutral-700 hover:text-primary transition-colors"
+            >
+              Blog
             </a>
 
             <div className="pt-4 border-t border-neutral-200 mt-4 space-y-3">

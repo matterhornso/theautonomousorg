@@ -1,43 +1,90 @@
-# The Autonomous
-
+# TheAutonomous
 > AI agents for every role in your company.
 
-The Autonomous is an AI platform that gives businesses an AI workforce. Users enter their company website, get personalized AI agent recommendations, and launch agents that start working immediately — researching prospects, auditing SEO, analyzing competitors — before users even ask.
+## What is TheAutonomous?
+TheAutonomous is an AI workforce platform that provides specialized AI agents for every business function. Instead of hiring individual employees or subscribing to dozens of SaaS tools, companies enter their website URL, receive AI-powered recommendations for which agent roles would have the highest impact, and launch a team of AI agents that start working immediately.
 
-## Key Facts
+Each agent is a fully autonomous software entity powered by Claude Sonnet 4.6 (or a user-chosen model) with persistent memory, role-specific skills, real tool integrations, and the ability to collaborate with other agents. Agents don't just answer questions — they proactively research, execute tasks, and report back.
 
-- 14 AI agent roles: Sales, Marketing, Accounting, Strategy, Product, Front-End Engineering, Back-End Engineering, AI Expert, Admin, HR, Finance, Customer Success, Legal, Data Analyst
-- 168 role-specific skills and 112 system capabilities
-- Agents work proactively (not just when asked)
-- Persistent memory across conversations
-- Inter-agent collaboration via @mentions
-- Tool integrations: Apollo.io (210M+ contacts), Instantly.ai (email campaigns), Web Search
-- Credits-based pricing: 1000 free credits on signup (~20 conversations)
-- Custom agent builder for unique business roles
-- Self-serve REST API for programmatic access
-- Built by Chainflux
-
-## Target Market
-
-Traditional small businesses getting into AI for the first time — not AI-native companies. The platform is designed so non-technical business owners can get AI agents working for their company in 2 minutes.
+TheAutonomous is built by Chainflux and designed for traditional small businesses getting into AI for the first time — not AI-native companies. The platform is designed so non-technical business owners can get AI agents working for their company in 2 minutes.
 
 ## How It Works
-
-1. User enters their company website URL
-2. AI analyzes the business (industry, size, workflows)
-3. Platform recommends which agents would have highest impact
-4. User selects and launches agents
+1. Enter your company website URL at theautonomous.org
+2. AI analyzes your business — industry, team size, workflows, growth stage
+3. Platform recommends which AI agents would have the highest impact
+4. Select the roles you need — each agent arrives pre-configured
 5. Agents start working proactively with role-specific tasks
-6. User chats with agents via web dashboard, WhatsApp, or Telegram
+6. Communicate with agents via web dashboard, WhatsApp, or Telegram
+
+## Agent Roles (14 Pre-Built + Custom)
+- **Sales Agent:** Prospect research via Apollo.io (210M+ contacts), outbound email sequences via Instantly.ai, lead qualification, CRM updates, demo scheduling, pipeline management
+- **Marketing Agent:** SEO audits, content creation, social media management, campaign planning, performance analytics, competitor content analysis
+- **Accounting Agent:** Transaction categorization, invoice processing, expense tracking, financial reporting, tax preparation support
+- **Strategy Agent:** Market research, competitive analysis, business planning, KPI tracking, growth opportunity identification, board deck preparation
+- **Product Agent:** User research, feature prioritization, roadmap planning, requirements documentation, competitor feature analysis
+- **Front-End Engineering Agent:** UI code review, component architecture, accessibility audits, performance optimization, design system maintenance
+- **Back-End Engineering Agent:** API design, database optimization, code review, deployment checklists, technical debt tracking
+- **AI Expert Agent:** Model selection guidance, prompt engineering, AI integration architecture, evaluation frameworks, cost optimization
+- **Admin Agent:** Contract drafting, meeting scheduling, document management, vendor coordination, office operations
+- **HR Agent:** Job description writing, candidate screening, onboarding documentation, policy creation, employee handbook management
+- **Finance Agent:** Budget forecasting, cash flow analysis, investment research, financial modeling, fundraising support
+- **Customer Success Agent:** Churn prediction, onboarding workflows, customer health scoring, feedback analysis, NPS management
+- **Legal Agent:** Contract review, compliance monitoring, terms and conditions drafting, regulatory research, IP protection
+- **Data Analyst Agent:** Data pipeline design, visualization creation, trend analysis, reporting automation, A/B test analysis
+- **Custom Agents:** Create your own agent with custom role definitions, skills, and instructions
+
+## Key Features
+- 14 AI agent roles with 168 role-specific skills and 112 system capabilities
+- Proactive task execution — agents work before you ask
+- Persistent memory across all conversations — agents get smarter over time
+- Inter-agent collaboration via @mentions (e.g., Sales agent asks Admin agent to draft a contract)
+- Real tool integrations: Apollo.io (210M+ contacts), Instantly.ai (email automation), Web Search
+- BYOM (Bring Your Own Model): GPT-4o, Gemini, Llama, Mistral, or any OpenAI-compatible endpoint
+- WhatsApp and Telegram messaging bridges — manage agents from your phone
+- Admin dashboard for full agent management and analytics
+- Self-serve REST API for programmatic access
+- Custom agent builder for unique business roles
+- Downloadable agent skills for use with Claude Code locally
+- Team access — multiple people can connect to the same agent
 
 ## Pricing
+- **Starter (Free):** 1,000 TA credits included (~20 conversations), then $19 per 1,000 credits. Claude Sonnet 4.6 included. WhatsApp integration. Community support.
+- **Growth ($49/month):** 5,000 TA credits per month, then $15 per 1,000 credits. BYOM support. WhatsApp + Slack. Priority support. Agent collaboration.
+- **Enterprise (Custom):** Unlimited TA credits with volume discounts. All integrations. Custom models & fine-tuning. Dedicated support. SOC2 & HIPAA compliance.
+- All plans: 50 credits per prompt. No credit card required for Starter.
 
-- Free: 1000 credits (~20 conversations)
-- Top-up: 500 credits / $5, 2000 credits / $15, 5000 credits / $30
+## Technical Details
+- Built with Next.js 16, React 19, TypeScript, Tailwind CSS 4
+- AI backbone: Claude Sonnet 4.6 (Anthropic) by default, with BYOM support
+- Database: Supabase (PostgreSQL)
+- Authentication: Clerk
+- Email: Resend
+- Payments: Stripe
+- Hosting: Cloud-based with isolated instances per company
+
+## Target Market
+Traditional small businesses getting into AI for the first time. CTOs, COOs, and founders of SMBs and enterprises looking to augment or automate business workflows with AI.
+
+## FAQ
+
+### What is TheAutonomous?
+TheAutonomous is an AI platform that provides AI agents for every role in your company — Sales, Marketing, Accounting, HR, Legal, Strategy, Product, Engineering, and more. Each agent comes with role-specific skills, persistent memory, and real tool integrations.
+
+### How does it differ from chatbots?
+Chatbots are reactive — you ask a question, you get an answer, the conversation resets. AI agents have persistent memory, use real tools (APIs, databases, email), work proactively, specialize in specific roles, and collaborate with other agents. They are autonomous workers, not conversation interfaces.
+
+### What AI models are supported?
+Claude Sonnet 4.6 is the default. Users can bring their own models: GPT-4o, Gemini, Llama, Mistral, or any OpenAI-compatible endpoint.
+
+### Is my data secure?
+Each agent runs in an isolated cloud instance. Data never crosses between companies. All communications are encrypted. Enterprise customers can access SOC2 and HIPAA compliance.
+
+### How do I communicate with agents?
+Via the admin dashboard, WhatsApp, or Telegram. Multiple team members can connect to the same agent.
 
 ## Links
-
 - Website: https://theautonomous.org
+- Blog: https://theautonomous.org/blog
 - Contact: hello@theautonomous.org
 - Privacy: https://theautonomous.org/privacy
 - Terms: https://theautonomous.org/terms

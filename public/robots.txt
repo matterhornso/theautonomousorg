@@ -1,14 +1,12 @@
-# The Autonomous — AI Agents for Every Role in Your Company
+# TheAutonomous — AI Agents for Every Role in Your Company
 # https://theautonomous.org
 
 User-agent: *
 Allow: /
-Disallow: /api/
-Disallow: /dashboard/
-Disallow: /provisioning/
-Disallow: /onboarding/
-Disallow: /sign-in/
-Disallow: /sign-up/
+Disallow: /dashboard
+Disallow: /api
+Disallow: /provisioning
+Disallow: /onboarding
 
 # Sitemaps
 Sitemap: https://theautonomous.org/sitemap.xml

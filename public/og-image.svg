@@ -1,0 +1,22 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#0A0A0B"/>
+  <rect x="60" y="60" width="1080" height="510" rx="24" fill="#1A1918" stroke="#252320" stroke-width="1"/>
+  <text x="120" y="200" font-family="Georgia, serif" font-size="64" fill="#FAFAF8" letter-spacing="-1">
+    <tspan>TheAutonomous</tspan>
+  </text>
+  <line x1="120" y1="230" x2="400" y2="230" stroke="#D4A853" stroke-width="3"/>
+  <text x="120" y="300" font-family="Arial, sans-serif" font-size="32" fill="#A09A8D">
+    <tspan>AI Agents for Every Business Role</tspan>
+  </text>
+  <text x="120" y="370" font-family="Arial, sans-serif" font-size="20" fill="#7D776B">
+    <tspan>Sales  ·  Marketing  ·  Accounting  ·  Strategy  ·  Product</tspan>
+  </text>
+  <text x="120" y="405" font-family="Arial, sans-serif" font-size="20" fill="#7D776B">
+    <tspan>Engineering  ·  HR  ·  Legal  ·  Finance  ·  Customer Success</tspan>
+  </text>
+  <text x="120" y="490" font-family="Arial, sans-serif" font-size="18" fill="#5A554B">
+    <tspan>theautonomous.org</tspan>
+  </text>
+  <circle cx="1040" cy="160" r="60" fill="#D4A853" opacity="0.08"/>
+  <circle cx="1000" cy="400" r="100" fill="#2D5A3D" opacity="0.06"/>
+</svg>

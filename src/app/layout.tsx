@@ -5,8 +5,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "The Autonomous — AI Agents for Every Role in Your Company",
-    template: "%s | The Autonomous",
+    default: "The Autonomous — AI Agents for Every Business Role",
+    template: "%s | TheAutonomous — AI Agents for Every Business Role",
   },
   description:
     "Run your company with AI agents. Sales, Marketing, Accounting, HR, Legal, Strategy, Engineering, and more. Enter your website, get personalized agent recommendations, and start automating your business in 2 minutes. Built by Chainflux.",
@@ -32,19 +32,28 @@ export const metadata: Metadata = {
     canonical: "https://theautonomous.org",
   },
   openGraph: {
-    title: "The Autonomous — AI Agents for Every Role in Your Company",
+    title: "The Autonomous — AI Agents for Every Business Role",
     description:
       "Enter your company website. Get AI agent recommendations. Launch agents for Sales, Marketing, HR, Accounting, Strategy, and more. Each agent has role-specific skills, persistent memory, and real tool integrations.",
     url: "https://theautonomous.org",
-    siteName: "The Autonomous",
+    siteName: "TheAutonomous",
+    images: [
+      {
+        url: "https://theautonomous.org/og-image.svg",
+        width: 1200,
+        height: 630,
+        alt: "TheAutonomous — AI Agents for Every Business Role",
+      },
+    ],
     type: "website",
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: "The Autonomous — AI Agents for Every Role in Your Company",
+    title: "The Autonomous — AI Agents for Every Business Role",
     description:
       "Run your company with AI agents. 14 roles, 168 skills, real tool integrations. Enter your website and launch your AI workforce in 2 minutes.",
+    images: ["https://theautonomous.org/og-image.svg"],
     creator: "@chainflux",
   },
   robots: {

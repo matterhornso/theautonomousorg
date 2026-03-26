@@ -716,6 +716,194 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ─── Use Cases ──────────────────────────────────── */}
+      <section className="py-24 lg:py-32 border-t border-neutral-200">
+        <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <Reveal>
+              <p className="text-sm text-accent font-medium tracking-wide uppercase mb-3">
+                Use cases
+              </p>
+            </Reveal>
+            <Reveal delay={75}>
+              <h2 className="font-[family-name:var(--font-serif)] text-3xl sm:text-4xl lg:text-[42px] tracking-tight mb-4">
+                Real results from real companies.
+              </h2>
+            </Reveal>
+            <Reveal delay={150}>
+              <p className="text-neutral-500 text-lg max-w-2xl mx-auto">
+                See how businesses across industries use AI agents to automate
+                workflows, accelerate growth, and focus their human teams on what
+                matters most.
+              </p>
+            </Reveal>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {[
+              {
+                industry: "SaaS Startup",
+                result: "47 qualified leads in the first week",
+                description:
+                  "A B2B SaaS startup launched a Sales Agent to handle outbound prospecting. The agent researched 500+ companies on Apollo.io, crafted personalized email sequences, and qualified responses — generating 47 qualified leads and 8 demo bookings in 7 days.",
+              },
+              {
+                industry: "E-commerce Brand",
+                result: "3x content output, zero new hires",
+                description:
+                  "An e-commerce company deployed a Marketing Agent to handle SEO content, social media scheduling, and campaign analytics. Monthly content output tripled while the founder redirected 15 hours per week from marketing tasks to product development.",
+              },
+              {
+                industry: "Consulting Firm",
+                result: "80% less time on admin and invoicing",
+                description:
+                  "A boutique consulting firm used an Accounting Agent and Admin Agent together. The Accounting Agent categorized expenses and prepared invoices while the Admin Agent drafted contracts and managed client onboarding documents — cutting administrative overhead by 80%.",
+              },
+            ].map((useCase, i) => (
+              <Reveal key={useCase.industry} delay={i * 75}>
+                <div className="p-6 bg-white border border-neutral-200/80 rounded-xl h-full shadow-sm shadow-neutral-900/[0.02]">
+                  <p className="text-xs text-accent font-medium uppercase tracking-wider mb-2">
+                    {useCase.industry}
+                  </p>
+                  <p className="font-[family-name:var(--font-serif)] text-xl tracking-tight mb-3">
+                    {useCase.result}
+                  </p>
+                  <p className="text-neutral-500 text-sm leading-relaxed">
+                    {useCase.description}
+                  </p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── FAQ ──────────────────────────────────────────── */}
+      <section id="faq" className="py-24 lg:py-32 bg-surface-mid">
+        <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
+          <div className="max-w-3xl mx-auto">
+            <Reveal>
+              <p className="text-sm text-accent font-medium tracking-wide uppercase mb-3">
+                FAQ
+              </p>
+            </Reveal>
+            <Reveal delay={75}>
+              <h2 className="font-[family-name:var(--font-serif)] text-3xl sm:text-4xl lg:text-[42px] tracking-tight mb-12">
+                Frequently asked questions.
+              </h2>
+            </Reveal>
+
+            <div className="space-y-8">
+              {[
+                {
+                  q: "What is TheAutonomous?",
+                  a: "TheAutonomous is an AI platform that provides AI agents for every role in your company — Sales, Marketing, Accounting, HR, Legal, Strategy, Product, Engineering, and more. Each agent comes with role-specific skills, persistent memory, and real tool integrations. You enter your company website, get personalized agent recommendations, and launch your AI workforce in 2 minutes.",
+                },
+                {
+                  q: "How do the AI agents work?",
+                  a: "Each AI agent runs on a large language model (Claude Sonnet 4.6 by default) and is configured with role-specific skills, tool integrations, and your company context. Agents don't just answer questions — they proactively research, execute tasks, and collaborate with other agents. They remember every conversation and get smarter over time.",
+                },
+                {
+                  q: "What roles can AI agents fill?",
+                  a: "We offer 14 pre-built agent roles: Sales, Marketing, Accounting, Strategy, Product, Front-End Engineering, Back-End Engineering, AI Expert, Admin, HR, Finance, Customer Success, Legal, and Data Analyst. You can also create custom agents with your own role definitions, skills, and instructions.",
+                },
+                {
+                  q: "How much does it cost?",
+                  a: "TheAutonomous offers 1,000 free credits on signup (approximately 20 conversations with your agents). No credit card required. The Growth plan is $49/month with 5,000 credits included. Enterprise plans with unlimited credits are available for larger organizations.",
+                },
+                {
+                  q: "Can I bring my own AI model?",
+                  a: "Yes. Every agent runs on Claude Sonnet 4.6 by default for best-in-class reasoning, but you can bring your own model — GPT-4o, Gemini, Llama, Mistral, or any OpenAI-compatible endpoint. This is useful for specific latency, cost, or compliance requirements.",
+                },
+                {
+                  q: "Is my data secure?",
+                  a: "Each agent runs in its own isolated cloud instance with dedicated resources. Your data never crosses between companies. All communications are encrypted in transit and at rest. We do not use your data to train AI models. Enterprise customers can access SOC2 and HIPAA compliance options.",
+                },
+                {
+                  q: "How do I communicate with my agents?",
+                  a: "You can manage your agents from the admin dashboard, or connect via WhatsApp and Telegram for on-the-go access. Assign tasks, get status updates, and make decisions — wherever you are. Multiple team members can connect to the same agent.",
+                },
+                {
+                  q: "Can agents collaborate with each other?",
+                  a: "Yes. Agents can communicate with each other using @mentions. For example, your Sales agent can ask the Admin agent to draft a contract, and the system automatically routes the message, gets the response, and relays it back. This makes your AI agents work like a real team.",
+                },
+              ].map((faq, i) => (
+                <Reveal key={i} delay={i * 50}>
+                  <div className="border-b border-neutral-200 pb-6">
+                    <h3 className="font-semibold text-lg mb-2">{faq.q}</h3>
+                    <p className="text-neutral-500 text-[15px] leading-relaxed">
+                      {faq.a}
+                    </p>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Blog / Resources ─────────────────────────────── */}
+      <section className="py-24 lg:py-32 border-t border-neutral-200">
+        <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <Reveal>
+              <p className="text-sm text-accent font-medium tracking-wide uppercase mb-3">
+                Resources
+              </p>
+            </Reveal>
+            <Reveal delay={75}>
+              <h2 className="font-[family-name:var(--font-serif)] text-3xl sm:text-4xl lg:text-[42px] tracking-tight mb-4">
+                Learn more about AI agents.
+              </h2>
+            </Reveal>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {[
+              {
+                href: "/blog/what-are-ai-agents",
+                title: "What Are AI Agents? A Complete Guide",
+                desc: "Everything business leaders need to know about AI agents — what they are, how they work, and why they matter.",
+              },
+              {
+                href: "/blog/ai-agents-vs-chatbots",
+                title: "AI Agents vs Chatbots",
+                desc: "Why your business needs actual teammates, not chat windows. The fundamental differences explained.",
+              },
+              {
+                href: "/blog/how-to-automate-sales",
+                title: "How to Automate Sales with AI",
+                desc: "A step-by-step guide to automating your sales pipeline — from prospect research to demo scheduling.",
+              },
+            ].map((post, i) => (
+              <Reveal key={post.href} delay={i * 75}>
+                <a
+                  href={post.href}
+                  className="block p-6 bg-white border border-neutral-200/80 rounded-xl h-full shadow-sm shadow-neutral-900/[0.02] hover:shadow-md hover:-translate-y-px transition-all duration-300"
+                >
+                  <h3 className="font-semibold mb-2">{post.title}</h3>
+                  <p className="text-neutral-500 text-sm leading-relaxed">
+                    {post.desc}
+                  </p>
+                  <span className="text-accent text-sm font-medium mt-3 inline-block">
+                    Read more &rarr;
+                  </span>
+                </a>
+              </Reveal>
+            ))}
+          </div>
+
+          <div className="text-center mt-8">
+            <a
+              href="/blog"
+              className="text-sm text-accent font-medium hover:underline"
+            >
+              View all articles &rarr;
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* ─── Newsletter ──────────────────────────────────── */}
       <section className="py-16 bg-surface-mid border-t border-neutral-200">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-8">
@@ -759,6 +947,22 @@ export default function Home() {
                   </a>
                   <a href="/#pricing" className="hover:text-surface transition-colors">
                     Pricing
+                  </a>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-neutral-300 uppercase tracking-wider mb-3">
+                  Resources
+                </p>
+                <div className="flex flex-col gap-2 text-sm">
+                  <a href="/blog" className="hover:text-surface transition-colors">
+                    Blog
+                  </a>
+                  <a href="/blog/what-are-ai-agents" className="hover:text-surface transition-colors">
+                    What Are AI Agents?
+                  </a>
+                  <a href="/blog/how-to-automate-sales" className="hover:text-surface transition-colors">
+                    Automate Sales with AI
                   </a>
                 </div>
               </div>

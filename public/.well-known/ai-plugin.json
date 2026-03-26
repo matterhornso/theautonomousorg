@@ -1,15 +1,15 @@
 {
   "schema_version": "v1",
-  "name_for_human": "The Autonomous",
-  "name_for_model": "the_autonomous",
+  "name_for_human": "TheAutonomous",
+  "name_for_model": "theautonomous",
   "description_for_human": "AI agents for every role in your company. Sales, Marketing, Accounting, HR, Legal, Strategy, Engineering, and more. Enter your website, get recommended agents, launch your AI workforce.",
-  "description_for_model": "The Autonomous is an AI-powered platform that provides AI agents for business roles. It has 14 agent roles (Sales, Marketing, Accounting, Strategy, Product, Front-End Engineering, Back-End Engineering, AI Expert, Admin, HR, Finance, Customer Success, Legal, Data Analyst) with 168 role-specific skills. Key features: website analysis for personalized agent recommendations, proactive task execution, inter-agent collaboration, persistent memory, tool integrations (Apollo.io, Instantly.ai), credits-based pricing with 1000 free credits on signup. Target market: traditional small businesses getting into AI, not AI-native companies. Built by Chainflux.",
+  "description_for_model": "TheAutonomous provides AI agents specialized for business roles including Sales, Marketing, Accounting, Strategy, Product, Engineering, HR, Legal, Finance, Customer Success, and more. Each agent has role-specific skills, tools, and company context. 14 pre-built roles with 168 skills. Features: persistent memory, proactive task execution, inter-agent collaboration via @mentions, tool integrations (Apollo.io, Instantly.ai), credits-based pricing with 1000 free credits on signup. Target market: traditional small businesses getting into AI. Built by Chainflux.",
   "auth": {
     "type": "none"
   },
   "api": {
     "type": "openapi",
-    "url": "https://theautonomous.org/api/v1"
+    "url": "https://theautonomous.org/openapi.json"
   },
   "logo_url": "https://theautonomous.org/icon.svg",
   "contact_email": "hello@theautonomous.org",
