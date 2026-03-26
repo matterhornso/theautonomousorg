@@ -285,3 +285,101 @@ export function getTaskTemplatesForRole(
     },
   ];
 }
+
+/**
+ * Cron task templates — suggested recurring tasks per agent role.
+ * Users enable these with one click from the Schedule panel.
+ */
+export interface CronTemplate {
+  id: string;
+  role: string;
+  title: string;
+  description: string;
+  cron_expression: string;
+  cron_human: string;
+  prompt: string;
+}
+
+export const cronTemplates: CronTemplate[] = [
+  {
+    id: "sales_pipeline_weekly",
+    role: "Sales",
+    title: "Weekly Pipeline Review",
+    description: "Review leads, update pipeline, flag stale deals",
+    cron_expression: "0 9 * * 1",
+    cron_human: "Every Monday at 9am",
+    prompt: "Review the current sales pipeline. Identify stale leads (no activity in 7+ days), highlight top opportunities, and recommend 3 specific actions to move deals forward this week.",
+  },
+  {
+    id: "sales_prospect_daily",
+    role: "Sales",
+    title: "Daily Prospect Check",
+    description: "Check new leads matching ideal customer profile",
+    cron_expression: "0 8 * * 1-5",
+    cron_human: "Weekdays at 8am",
+    prompt: "Check for new prospects that match our ideal customer profile. If Apollo is connected, search for companies matching our ICP. Summarize the top 5 new leads with key details.",
+  },
+  {
+    id: "marketing_seo_monthly",
+    role: "Marketing",
+    title: "Monthly SEO Audit",
+    description: "Analyze site rankings, suggest improvements",
+    cron_expression: "0 10 1 * *",
+    cron_human: "1st of each month at 10am",
+    prompt: "Conduct a monthly SEO audit. Analyze current keyword rankings, identify content gaps, review competitor content strategies, and provide 5 specific recommendations to improve organic traffic this month.",
+  },
+  {
+    id: "marketing_content_weekly",
+    role: "Marketing",
+    title: "Weekly Content Plan",
+    description: "Plan social posts and blog topics for the week",
+    cron_expression: "0 9 * * 1",
+    cron_human: "Every Monday at 9am",
+    prompt: "Create a content plan for this week. Include: 3-5 social media post ideas with draft copy, 1 blog topic with outline, and any timely/trending topics to capitalize on. Align with our brand voice.",
+  },
+  {
+    id: "strategy_competitor_quarterly",
+    role: "Strategy",
+    title: "Quarterly Competitor Analysis",
+    description: "Research competitor moves and market trends",
+    cron_expression: "0 10 1 1,4,7,10 *",
+    cron_human: "Quarterly (Jan, Apr, Jul, Oct 1st)",
+    prompt: "Conduct a quarterly competitive landscape analysis. Research what key competitors have launched, any pricing changes, market positioning shifts, and emerging trends. Provide strategic recommendations.",
+  },
+  {
+    id: "accounting_expense_monthly",
+    role: "Accounting",
+    title: "Monthly Expense Review",
+    description: "Review expenses, flag anomalies",
+    cron_expression: "0 9 1 * *",
+    cron_human: "1st of each month at 9am",
+    prompt: "Review the company's monthly expenses. Identify any anomalies, unexpected charges, or areas where costs could be optimized. Provide a brief expense summary and flag anything requiring attention.",
+  },
+  {
+    id: "hr_pulse_weekly",
+    role: "HR",
+    title: "Weekly Team Pulse",
+    description: "Check team sentiment, upcoming reviews",
+    cron_expression: "0 10 * * 5",
+    cron_human: "Every Friday at 10am",
+    prompt: "Prepare a weekly team pulse report. Review any team updates, upcoming performance reviews, PTO requests, and general team health indicators. Flag any concerns that need attention.",
+  },
+  {
+    id: "product_prioritization_biweekly",
+    role: "Product",
+    title: "Biweekly Feature Prioritization",
+    description: "Review backlog, prioritize based on user feedback",
+    cron_expression: "0 10 1,15 * *",
+    cron_human: "1st and 15th of each month",
+    prompt: "Review the product backlog and prioritize features. Consider user feedback, business impact, and engineering effort. Recommend the top 5 items to work on in the next sprint with justification.",
+  },
+  {
+    id: "ceo_summary_daily",
+    role: "CEO",
+    title: "Daily Executive Summary",
+    description: "Query all agents and delegate follow-ups",
+    cron_expression: "0 7 * * 1-5",
+    cron_human: "Weekdays at 7am",
+    prompt: "Generate a daily executive summary. Query all agents for status updates, review company metrics, identify blockers or risks, and recommend 3 priority actions for today.",
+  },
+];

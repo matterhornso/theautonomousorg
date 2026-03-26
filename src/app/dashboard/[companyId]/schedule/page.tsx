@@ -4,6 +4,15 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { AgentIcon } from "@/app/components/agent-icons";
 
+interface CronTemplate {
+  id: string;
+  role: string;
+  title: string;
+  description: string;
+  cron_expression: string;
+  cron_human: string;
+}
+
 interface ScheduledTask {
   id: string;
   agent_id: string;
@@ -37,6 +46,9 @@ export default function SchedulePage() {
 
   const [schedules, setSchedules] = useState<ScheduledTask[]>([]);
   const [agents, setAgents] = useState<AgentBasic[]>([]);
+  const [templates, setTemplates] = useState<CronTemplate[]>([]);
+  const [enabledTemplates, setEnabledTemplates] = useState<Set<string>>(new Set());
+  const [enablingTemplate, setEnablingTemplate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
 
@@ -51,13 +63,62 @@ export default function SchedulePage() {
     Promise.all([
       fetch(`/api/tasks/schedule?companyId=${companyId}`).then((r) => r.json()),
       fetch(`/api/agents?companyId=${companyId}`).then((r) => r.json()),
-    ]).then(([tasks, agentList]) => {
-      if (Array.isArray(tasks)) setSchedules(tasks);
+      fetch(`/api/tasks/schedule/templates`).then((r) => r.json()),
+    ]).then(([tasks, agentList, templateList]) => {
+      if (Array.isArray(tasks)) {
+        setSchedules(tasks);
+        // Track which templates are already enabled (match by title)
+        const enabled = new Set<string>();
+        tasks.forEach((t: ScheduledTask) => {
+          if (t.is_recurring && t.cron_expression) {
+            enabled.add(t.title);
+          }
+        });
+        setEnabledTemplates(enabled);
+      }
       if (Array.isArray(agentList))
         setAgents(agentList.map((a: AgentBasic) => ({ id: a.id, role: a.role })));
+      if (Array.isArray(templateList)) setTemplates(templateList);
       setLoading(false);
     });
   }, [companyId]);
+
+  const handleEnableTemplate = async (template: CronTemplate) => {
+    const agent = agents.find((a) => a.role === template.role);
+    if (!agent) return;
+    setEnablingTemplate(template.id);
+    const res = await fetch("/api/tasks/schedule", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        agentId: agent.id,
+        type: "cron_template",
+        title: template.title,
+        prompt: `Recurring task: ${template.description}`,
+        cronExpression: template.cron_expression,
+      }),
+    });
+    if (res.ok) {
+      const task = await res.json();
+      setSchedules((prev) => [task, ...prev]);
+      setEnabledTemplates((prev) => new Set([...prev, template.title]));
+    }
+    setEnablingTemplate(null);
+  };
+
+  const handleDisableTemplate = async (template: CronTemplate) => {
+    const existing = schedules.find(
+      (s) => s.title === template.title && s.is_recurring
+    );
+    if (existing) {
+      await handleCancel(existing.id);
+      setEnabledTemplates((prev) => {
+        const next = new Set(prev);
+        next.delete(template.title);
+        return next;
+      });
+    }
+  };
 
   const handleCreate = async () => {
     if (!form.agentId || !form.title || !form.cronExpression) return;
@@ -115,6 +176,69 @@ export default function SchedulePage() {
           Set up recurring jobs for your agents. They&apos;ll run automatically
           on the schedule you define — like a cron job, but for AI.
         </p>
+
+        {/* Suggested Templates */}
+        {templates.length > 0 && (
+          <section className="mb-10">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-neutral-400 mb-4">
+              Suggested schedules
+            </h2>
+            <p className="text-neutral-500 text-sm mb-4">
+              One-click enable. Your agents already know what to do.
+            </p>
+            <div className="border border-neutral-200 rounded-2xl overflow-hidden bg-white">
+              {templates
+                .filter((t) => agents.some((a) => a.role === t.role))
+                .map((template, idx, arr) => {
+                  const isEnabled = enabledTemplates.has(template.title);
+                  const isEnabling = enablingTemplate === template.id;
+                  return (
+                    <div
+                      key={template.id}
+                      className={`flex items-center gap-4 px-5 py-4 ${
+                        idx < arr.length - 1 ? "border-b border-neutral-100" : ""
+                      }`}
+                    >
+                      <AgentIcon role={template.role} size="sm" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{template.title}</p>
+                        <p className="text-xs text-neutral-400 mt-0.5">
+                          {template.cron_human} &middot; {template.description}
+                        </p>
+                      </div>
+                      <button
+                        role="switch"
+                        aria-checked={isEnabled}
+                        aria-label={`Enable ${template.title}`}
+                        onClick={() =>
+                          isEnabled
+                            ? handleDisableTemplate(template)
+                            : handleEnableTemplate(template)
+                        }
+                        disabled={isEnabling}
+                        className={`relative w-11 h-6 rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-[#D4A853]/50 ${
+                          isEnabled ? "bg-[#D4A853]" : "bg-neutral-200"
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                            isEnabled ? "translate-x-5" : ""
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  );
+                })}
+            </div>
+            {templates.filter((t) => agents.some((a) => a.role === t.role)).length === 0 && (
+              <div className="text-center py-12 border border-neutral-200 rounded-2xl bg-white">
+                <p className="text-neutral-400 text-sm">
+                  No schedules yet. Your agents have suggested tasks ready to run.
+                </p>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Create new schedule */}
         <section className="mb-10 p-6 bg-white border border-neutral-200 rounded-2xl">

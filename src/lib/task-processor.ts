@@ -7,6 +7,7 @@ import {
   setMemory,
   incrementUsage,
 } from "@/lib/db";
+import { sendTelegramNotification } from "@/lib/debrief";
 
 const client = new Anthropic();
 const MAX_RETRIES = 3;
@@ -87,6 +88,12 @@ export async function processNextTask(): Promise<ProcessResult> {
       `task_${task.type}`,
       `Completed "${task.title}": ${resultText.slice(0, 500)}`
     );
+
+    // Push notification via Telegram (non-blocking)
+    sendTelegramNotification(
+      agent.company_id,
+      `✅ *${agent.role} Agent* completed: ${task.title}\n\n${resultText.slice(0, 100)}${resultText.length > 100 ? "..." : ""}`
+    ).catch(() => {/* silent — notification is best-effort */});
 
     return {
       status: "completed",

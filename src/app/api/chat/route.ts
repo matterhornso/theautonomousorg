@@ -254,8 +254,8 @@ export async function POST(request: NextRequest) {
               let result: string;
               if (tc.name.startsWith("apollo_")) {
                 result = await executeApolloTool(tc.name, tc.input);
-              } else if (tc.name === "query_all_agents" || tc.name === "get_company_metrics") {
-                result = await executeCeoTool(tc.name, tc.input, agent.company_id);
+              } else if (tc.name === "query_all_agents" || tc.name === "get_company_metrics" || tc.name === "delegate_task") {
+                result = await executeCeoTool(tc.name, tc.input, agent.company_id, convId);
               } else {
                 result = `Tool ${tc.name} executed successfully.`;
               }

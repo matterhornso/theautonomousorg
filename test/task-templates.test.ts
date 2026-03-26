@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getTaskTemplatesForRole } from "@/lib/task-templates";
+import { getTaskTemplatesForRole, cronTemplates } from "@/lib/task-templates";
 import type { Analysis } from "@/lib/types";
 
 const mockAnalysis: Analysis = {
@@ -118,5 +118,38 @@ describe("Task Templates", () => {
     const templates = getTaskTemplatesForRole("Data Analyst", mockAnalysis);
     expect(templates.length).toBe(1);
     expect(templates[0].type).toBe("analytics_setup");
+  });
+});
+
+describe("Cron Templates", () => {
+  it("has templates for key roles", () => {
+    const roles = cronTemplates.map((t) => t.role);
+    expect(roles).toContain("Sales");
+    expect(roles).toContain("Marketing");
+    expect(roles).toContain("Strategy");
+    expect(roles).toContain("CEO");
+    expect(roles).toContain("HR");
+    expect(roles).toContain("Accounting");
+    expect(roles).toContain("Product");
+  });
+
+  it("has valid cron expressions", () => {
+    for (const t of cronTemplates) {
+      expect(t.cron_expression).toMatch(/^[0-9*,/-]+(\s[0-9*,/-]+){4}$/);
+    }
+  });
+
+  it("has unique IDs", () => {
+    const ids = cronTemplates.map((t) => t.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("has non-empty prompts and descriptions", () => {
+    for (const t of cronTemplates) {
+      expect(t.title.length).toBeGreaterThan(0);
+      expect(t.description.length).toBeGreaterThan(0);
+      expect(t.prompt.length).toBeGreaterThan(0);
+      expect(t.cron_human.length).toBeGreaterThan(0);
+    }
   });
 });
