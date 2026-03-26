@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "agentId required" }, { status: 400 });
   }
 
-  const agent = getAgent(agentId);
+  const agent = await getAgent(agentId);
   if (!agent) {
     return NextResponse.json({ error: "Agent not found" }, { status: 404 });
   }
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
   const builtInSkills = toolkit?.skills
     || (parsedSkillsJson.length > 0 ? parsedSkillsJson : defaultCustomSkills);
   const capabilities = toolkit?.systemCapabilities || [];
-  const customSkills = getCustomSkills(agentId);
+  const customSkills = await getCustomSkills(agentId);
 
   return NextResponse.json({
     role: agent.role,
@@ -60,18 +60,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const agent = getAgent(agentId);
+  const agent = await getAgent(agentId);
   if (!agent) {
     return NextResponse.json({ error: "Agent not found" }, { status: 404 });
   }
 
   // Verify user owns this agent's company
-  const companies = getCompaniesByUser(userId);
+  const companies = await getCompaniesByUser(userId);
   if (!companies.find((c) => c.id === agent.company_id)) {
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   }
 
-  addCustomSkill(agentId, skill.trim(), userId);
+  await addCustomSkill(agentId, skill.trim(), userId);
 
   return NextResponse.json({ added: skill.trim() });
 }
@@ -88,16 +88,16 @@ export async function DELETE(request: NextRequest) {
     skill: string;
   };
 
-  const agent = getAgent(agentId);
+  const agent = await getAgent(agentId);
   if (!agent) {
     return NextResponse.json({ error: "Agent not found" }, { status: 404 });
   }
 
-  const companies = getCompaniesByUser(userId);
+  const companies = await getCompaniesByUser(userId);
   if (!companies.find((c) => c.id === agent.company_id)) {
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   }
 
-  removeCustomSkill(agentId, skill);
+  await removeCustomSkill(agentId, skill);
   return NextResponse.json({ removed: skill });
 }

@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create company record linked to authenticated user
-    const company = createCompany({
+    const company = await createCompany({
       name: analysis.company.name,
       url: analysis.company.description || "",
       user_id: userId ?? undefined,
@@ -46,9 +46,9 @@ export async function POST(request: NextRequest) {
         id: agents.find((a) => a.role === r)?.id || "pending",
       }));
 
-      const systemPrompt = buildSystemPrompt(role, analysis, fullRoster);
+      const systemPrompt = await buildSystemPrompt(role, analysis, fullRoster);
 
-      const agent = createAgent({
+      const agent = await createAgent({
         company_id: company.id,
         role,
         system_prompt: systemPrompt,
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       // Enqueue proactive tasks for this agent
       const taskTemplates = getTaskTemplatesForRole(role, analysis);
       for (const template of taskTemplates) {
-        createTask({
+        await createTask({
           agent_id: agent.id,
           type: template.type,
           title: template.title,

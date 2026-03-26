@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
   const { companyId } = (await request.json()) as { companyId: string };
   if (!companyId) return NextResponse.json({ error: "companyId required" }, { status: 400 });
 
-  const companies = getCompaniesByUser(userId);
+  const companies = await getCompaniesByUser(userId);
   if (!companies.find((c) => c.id === companyId)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

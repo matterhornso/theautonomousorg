@@ -24,10 +24,10 @@ export async function generateDebrief(
   const now = new Date();
   const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-  const agents = getAgentsByCompany(companyId);
-  const allTasks = getTasksByCompany(companyId);
-  const activity = getActivityFeed(companyId, 50);
-  const usage = getUsage(companyId);
+  const agents = await getAgentsByCompany(companyId);
+  const allTasks = await getTasksByCompany(companyId);
+  const activity = await getActivityFeed(companyId, 50);
+  const usage = await getUsage(companyId);
 
   // Filter to last 24h
   const recentTasks = allTasks.filter(
@@ -87,7 +87,7 @@ Format as:
       ? result.content[0].text
       : "Debrief generation failed.";
 
-  return createDebrief({
+  return await createDebrief({
     company_id: companyId,
     user_id: userId,
     content,

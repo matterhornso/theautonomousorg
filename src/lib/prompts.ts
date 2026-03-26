@@ -131,12 +131,12 @@ const roleInstructions: Record<string, string> = {
 - Your output should be what a real CEO would present to their board or leadership team`,
 };
 
-export function buildSystemPrompt(
+export async function buildSystemPrompt(
   role: string,
   analysis: Analysis,
   agentRoster: { role: string; id: string }[],
   agentId?: string
-): string {
+): Promise<string> {
   const roleData = agentRoles.find((r) => r.title === role);
   const instructions = roleInstructions[role] || `You are the ${role} agent. Help the company with ${role.toLowerCase()}-related tasks.`;
 
@@ -150,7 +150,7 @@ export function buildSystemPrompt(
   const configuredTools = getConfiguredTools();
 
   // Get custom skills if agentId provided
-  const customSkills = agentId ? getCustomSkills(agentId) : [];
+  const customSkills = agentId ? await getCustomSkills(agentId) : [];
   const customSkillsSection = customSkills.length > 0
     ? "\n\n## Custom Skills (added by your team)\n" + customSkills.map((s) => `- ${s}`).join("\n")
     : "";

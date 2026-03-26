@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
         const packId = session.metadata?.packId;
 
         if (userId && credits > 0) {
-          addCredits(
+          await addCredits(
             userId,
             credits,
             "topup",
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       const companyId = session.metadata?.companyId;
       const plan = session.metadata?.plan;
       if (companyId && plan) {
-        upsertSubscription(companyId, {
+        await upsertSubscription(companyId, {
           plan: plan as "growth" | "enterprise",
           status: "active",
           stripe_subscription_id:
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       };
       const companyId = subData.metadata?.companyId;
       if (companyId) {
-        upsertSubscription(companyId, {
+        await upsertSubscription(companyId, {
           plan: "free",
           status: "cancelled",
           stripe_subscription_id: null,

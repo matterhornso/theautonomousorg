@@ -23,26 +23,26 @@ export async function GET(request: NextRequest) {
   const companyId = request.nextUrl.searchParams.get("companyId");
   console.log(`[agents/status] userId=${userId}, companyId=${companyId}`);
 
-  const ownership = assertCompanyOwnership(userId, companyId);
+  const ownership = await assertCompanyOwnership(userId, companyId);
   if (!ownership.ok) {
     console.error(`[agents/status] Ownership check failed for userId=${userId}, companyId=${companyId}`);
     return ownership.response;
   }
 
-  const agents = getAgentsByCompany(ownership.companyId);
+  const agents = await getAgentsByCompany(ownership.companyId);
   console.log(`[agents/status] Found ${agents.length} agents for companyId=${ownership.companyId}`);
   const agentIds = agents.map((a) => a.id);
 
   // Batch all queries (6 queries total instead of 225)
-  const [memoryMap, skillsMap, tasksMap, actionsMap, countsMap] = [
+  const [memoryMap, skillsMap, tasksMap, actionsMap, countsMap] = await Promise.all([
     getMemoryByAgentIds(agentIds),
     getCustomSkillsByAgentIds(agentIds),
     getTasksByAgentIds(agentIds),
     getActionsByAgentIds(agentIds, 10),
     getConversationCountsByAgentIds(agentIds),
-  ];
+  ]);
 
-  const userKeys = getUserApiKeys(ownership.companyId);
+  const userKeys = await getUserApiKeys(ownership.companyId);
   const connectedServiceNames = userKeys.map((k) => k.display_name);
 
   const result = agents.map((agent) => {

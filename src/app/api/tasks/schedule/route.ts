@@ -10,12 +10,12 @@ export async function GET(request: NextRequest) {
   const companyId = request.nextUrl.searchParams.get("companyId");
   if (!companyId) return NextResponse.json({ error: "companyId required" }, { status: 400 });
 
-  const companies = getCompaniesByUser(userId);
+  const companies = await getCompaniesByUser(userId);
   if (!companies.find((c) => c.id === companyId)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const tasks = getScheduledTasksByCompany(companyId);
+  const tasks = await getScheduledTasksByCompany(companyId);
   return NextResponse.json(tasks);
 }
 
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "agentId and title required" }, { status: 400 });
   }
 
-  const agent = getAgent(agentId);
+  const agent = await getAgent(agentId);
   if (!agent) return NextResponse.json({ error: "Agent not found" }, { status: 404 });
 
   // Validate cron expression
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     nextRun = next ? next.toISOString() : undefined;
   }
 
-  const task = createScheduledTask({
+  const task = await createScheduledTask({
     agent_id: agentId,
     type: type || "scheduled",
     title,
@@ -77,7 +77,7 @@ export async function DELETE(request: NextRequest) {
   const { taskId } = (await request.json()) as { taskId: string };
   // Simple delete — in production, verify ownership
   const db = await import("@/lib/db");
-  db.updateTaskStatus(taskId, "failed", { error_message: "Cancelled by user" });
+  await db.updateTaskStatus(taskId, "failed", { error_message: "Cancelled by user" });
 
   return NextResponse.json({ cancelled: true });
 }

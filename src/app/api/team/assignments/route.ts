@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   const agentId = request.nextUrl.searchParams.get("agentId");
   if (!agentId) return NextResponse.json({ error: "agentId required" }, { status: 400 });
 
-  const assignments = getAgentAssignments(agentId);
+  const assignments = await getAgentAssignments(agentId);
   return NextResponse.json({ agentId, assignedUsers: assignments });
 }
 
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     targetUserId: string;
   };
 
-  assignAgent(agentId, targetUserId, userId);
+  await assignAgent(agentId, targetUserId, userId);
   return NextResponse.json({ assigned: true });
 }
 
@@ -32,6 +32,6 @@ export async function DELETE(request: NextRequest) {
     targetUserId: string;
   };
 
-  unassignAgent(agentId, targetUserId);
+  await unassignAgent(agentId, targetUserId);
   return NextResponse.json({ unassigned: true });
 }

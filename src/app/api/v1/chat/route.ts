@@ -14,7 +14,7 @@ import {
 const client = new Anthropic();
 
 export async function POST(request: NextRequest) {
-  const auth = authenticateApiKey(request);
+  const auth = await authenticateApiKey(request);
   if (auth instanceof NextResponse) return auth;
 
   const { agentId, conversationId, message } = (await request.json()) as {
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const agent = getAgent(agentId);
+  const agent = await getAgent(agentId);
   if (!agent || agent.company_id !== auth.companyId) {
     return NextResponse.json({ error: "Agent not found" }, { status: 404 });
   }
@@ -38,27 +38,27 @@ export async function POST(request: NextRequest) {
   // Get or create conversation
   let convId = conversationId;
   if (!convId) {
-    const conv = createConversation(agentId, message.slice(0, 60));
+    const conv = await createConversation(agentId, message.slice(0, 60));
     convId = conv.id;
   } else {
-    const existing = getConversation(convId);
+    const existing = await getConversation(convId);
     if (!existing) {
-      const conv = createConversation(agentId, message.slice(0, 60));
+      const conv = await createConversation(agentId, message.slice(0, 60));
       convId = conv.id;
     }
   }
 
   // Save user message
-  addMessage({ conversation_id: convId, role: "user", content: message });
+  await addMessage({ conversation_id: convId, role: "user", content: message });
 
   // Load context
-  const history = getMessages(convId, 50);
+  const history = await getMessages(convId, 50);
   const apiMessages = history.map((m) => ({
     role: m.role as "user" | "assistant",
     content: m.content,
   }));
 
-  const memories = getMemory(agentId);
+  const memories = await getMemory(agentId);
   let memorySection = "";
   if (memories.length > 0) {
     memorySection =
@@ -78,14 +78,14 @@ export async function POST(request: NextRequest) {
     result.content[0].type === "text" ? result.content[0].text : "";
 
   // Save assistant response
-  addMessage({
+  await addMessage({
     conversation_id: convId,
     role: "assistant",
     content: responseText,
   });
 
   // Track usage
-  incrementUsage(auth.companyId, "message_count");
+  await incrementUsage(auth.companyId, "message_count");
 
   return NextResponse.json({
     conversationId: convId,

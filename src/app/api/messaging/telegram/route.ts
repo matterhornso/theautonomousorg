@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Look up the messaging user
-    const messagingUser = getMessagingUser("telegram", telegramUserId);
+    const messagingUser = await getMessagingUser("telegram", telegramUserId);
 
     if (!messagingUser) {
       await sendMessage(
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     }
 
     const companyId = messagingUser.company_id;
-    const agents = getAgentsByCompany(companyId);
+    const agents = await getAgentsByCompany(companyId);
 
     if (agents.length === 0) {
       await sendMessage(
@@ -144,50 +144,50 @@ export async function POST(request: NextRequest) {
         targetAgent = matchedAgent;
         userMessage = mentionMatch[2].trim();
         // Update default agent to the one they just talked to
-        updateDefaultAgent(messagingUser.id, matchedAgent.id);
+        await updateDefaultAgent(messagingUser.id, matchedAgent.id);
       }
     }
 
     // Fall back to default agent, or first agent
     if (!targetAgent) {
       if (messagingUser.default_agent_id) {
-        targetAgent = getAgent(messagingUser.default_agent_id);
+        targetAgent = await getAgent(messagingUser.default_agent_id);
       }
       // If default agent not found or not set, use the first active agent
       if (!targetAgent) {
         targetAgent = agents[0];
-        updateDefaultAgent(messagingUser.id, targetAgent.id);
+        await updateDefaultAgent(messagingUser.id, targetAgent.id);
       }
     }
 
     // Get or create a conversation for this telegram user + agent combo
     // Reuse the most recent conversation, or create a new one
-    const existingConversations = getConversationsByAgent(targetAgent.id);
+    const existingConversations = await getConversationsByAgent(targetAgent.id);
     // Look for a conversation titled with the telegram user identifier
     const telegramConvTitle = `telegram:${telegramUserId}`;
     let conversation = existingConversations.find(
       (c) => c.title === telegramConvTitle
     );
     if (!conversation) {
-      conversation = createConversation(targetAgent.id, telegramConvTitle);
+      conversation = await createConversation(targetAgent.id, telegramConvTitle);
     }
 
     // Save user message
-    addMessage({
+    await addMessage({
       conversation_id: conversation.id,
       role: "user",
       content: userMessage,
     });
 
     // Load conversation history
-    const history = getMessages(conversation.id, 30);
+    const history = await getMessages(conversation.id, 30);
     const apiMessages = history.map((m) => ({
       role: m.role as "user" | "assistant",
       content: m.content,
     }));
 
     // Load agent memory
-    const memories = getMemory(targetAgent.id);
+    const memories = await getMemory(targetAgent.id);
     let memorySection = "";
     if (memories.length > 0) {
       memorySection =
@@ -218,14 +218,14 @@ export async function POST(request: NextRequest) {
       .join("\n");
 
     // Save assistant response
-    addMessage({
+    await addMessage({
       conversation_id: conversation.id,
       role: "assistant",
       content: responseText,
     });
 
     // Track usage
-    incrementUsage(companyId, "message_count");
+    await incrementUsage(companyId, "message_count");
 
     // Send response via Telegram
     const agentLabel =

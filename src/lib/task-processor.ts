@@ -23,26 +23,26 @@ export interface ProcessResult {
  * webhook handlers, or the worker process — no HTTP round-trip needed.
  */
 export async function processNextTask(): Promise<ProcessResult> {
-  const task = getNextQueuedTask();
+  const task = await getNextQueuedTask();
   if (!task) {
     return { status: "no_tasks" };
   }
 
   // Check retry limit
   if (task.retry_count >= MAX_RETRIES) {
-    updateTaskStatus(task.id, "failed", {
+    await updateTaskStatus(task.id, "failed", {
       error_message: `Failed after ${MAX_RETRIES} attempts`,
     });
     return { status: "retry_exceeded", taskId: task.id };
   }
 
   // Mark as running
-  updateTaskStatus(task.id, "running");
+  await updateTaskStatus(task.id, "running");
 
   try {
-    const agent = getAgent(task.agent_id);
+    const agent = await getAgent(task.agent_id);
     if (!agent) {
-      updateTaskStatus(task.id, "failed", {
+      await updateTaskStatus(task.id, "failed", {
         error_message: "Agent not found",
       });
       return { status: "agent_not_found", taskId: task.id };
@@ -67,10 +67,10 @@ export async function processNextTask(): Promise<ProcessResult> {
       message.content[0].type === "text" ? message.content[0].text : "";
 
     // Mark as done with result
-    updateTaskStatus(task.id, "done", { result_json: resultText });
+    await updateTaskStatus(task.id, "done", { result_json: resultText });
 
     // Log agent action
-    logAgentAction({
+    await logAgentAction({
       agent_id: task.agent_id,
       action_type: "task_completed",
       title: `Completed: ${task.title}`,
@@ -79,10 +79,10 @@ export async function processNextTask(): Promise<ProcessResult> {
     });
 
     // Track usage
-    incrementUsage(agent.company_id, "task_count");
+    await incrementUsage(agent.company_id, "task_count");
 
     // Store result as agent memory for future conversations
-    setMemory(
+    await setMemory(
       task.agent_id,
       `task_${task.type}`,
       `Completed "${task.title}": ${resultText.slice(0, 500)}`
@@ -95,7 +95,7 @@ export async function processNextTask(): Promise<ProcessResult> {
     };
   } catch (error) {
     console.error("Task processing error:", error);
-    updateTaskStatus(task.id, "failed", {
+    await updateTaskStatus(task.id, "failed", {
       error_message: error instanceof Error ? error.message : "Unknown error",
     });
     return {

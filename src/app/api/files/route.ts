@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Validate company ownership
-    const company = getCompany(companyId);
+    const company = await getCompany(companyId);
     if (!company) {
       return NextResponse.json({ error: "Company not found" }, { status: 404 });
     }
@@ -37,9 +37,9 @@ export async function GET(request: NextRequest) {
 
     let files;
     if (agentId) {
-      files = getFilesByAgent(agentId).filter((f) => f.company_id === companyId);
+      files = (await getFilesByAgent(agentId)).filter((f) => f.company_id === companyId);
     } else {
-      files = getFilesByCompany(companyId);
+      files = await getFilesByCompany(companyId);
     }
 
     // Group by category
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const totalStorage = getStorageUsageByCompany(companyId);
+    const totalStorage = await getStorageUsageByCompany(companyId);
 
     return NextResponse.json({
       files: grouped,
@@ -86,14 +86,14 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "fileId is required" }, { status: 400 });
     }
 
-    const file = getFileUpload(fileId);
+    const file = await getFileUpload(fileId);
     if (!file) {
       return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
 
     // Check ownership: the file must belong to a company the user owns
     if (file.company_id) {
-      const company = getCompany(file.company_id);
+      const company = await getCompany(file.company_id);
       if (!company || (company.user_id && company.user_id !== userId)) {
         return NextResponse.json({ error: "Not authorized" }, { status: 403 });
       }
@@ -112,7 +112,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Delete from database
-    deleteFileUpload(fileId);
+    await deleteFileUpload(fileId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

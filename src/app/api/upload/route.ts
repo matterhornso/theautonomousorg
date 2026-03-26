@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     // Validate company ownership if companyId provided
     if (companyId) {
-      const company = getCompany(companyId);
+      const company = await getCompany(companyId);
       if (!company) {
         return NextResponse.json({ error: "Company not found" }, { status: 404 });
       }
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Save metadata to database
-    createFileUpload({
+    await createFileUpload({
       id: fileId,
       user_id: userId,
       company_id: companyId ?? undefined,

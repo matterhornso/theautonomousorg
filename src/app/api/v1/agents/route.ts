@@ -3,13 +3,13 @@ import { authenticateApiKey } from "@/lib/api-auth";
 import { getAgentsByCompany, getAgent } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
-  const auth = authenticateApiKey(request);
+  const auth = await authenticateApiKey(request);
   if (auth instanceof NextResponse) return auth;
 
   const agentId = request.nextUrl.searchParams.get("id");
 
   if (agentId) {
-    const agent = getAgent(agentId);
+    const agent = await getAgent(agentId);
     if (!agent || agent.company_id !== auth.companyId) {
       return NextResponse.json({ error: "Agent not found" }, { status: 404 });
     }
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const agents = getAgentsByCompany(auth.companyId);
+  const agents = await getAgentsByCompany(auth.companyId);
   return NextResponse.json(
     agents.map((a) => ({
       id: a.id,

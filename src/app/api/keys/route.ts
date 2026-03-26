@@ -19,12 +19,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "companyId required" }, { status: 400 });
   }
 
-  const companies = getCompaniesByUser(userId);
+  const companies = await getCompaniesByUser(userId);
   if (!companies.find((c) => c.id === companyId)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const keys = getApiKeysByCompany(companyId);
+  const keys = await getApiKeysByCompany(companyId);
   return NextResponse.json(
     keys.map((k) => ({
       id: k.id,
@@ -47,13 +47,13 @@ export async function POST(request: NextRequest) {
     name: string;
   };
 
-  const companies = getCompaniesByUser(userId);
+  const companies = await getCompaniesByUser(userId);
   if (!companies.find((c) => c.id === companyId)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const { key, hash } = generateApiKey();
-  createApiKeyRecord(companyId, hash, name || "Default");
+  await createApiKeyRecord(companyId, hash, name || "Default");
 
   // Return the key ONCE — it can't be retrieved again
   return NextResponse.json({
@@ -74,11 +74,11 @@ export async function DELETE(request: NextRequest) {
     companyId: string;
   };
 
-  const companies = getCompaniesByUser(userId);
+  const companies = await getCompaniesByUser(userId);
   if (!companies.find((c) => c.id === companyId)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  deleteApiKey(keyId);
+  await deleteApiKey(keyId);
   return NextResponse.json({ deleted: true });
 }

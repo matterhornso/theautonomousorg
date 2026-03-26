@@ -6,12 +6,12 @@ export async function GET(request: NextRequest) {
   const agentId = request.nextUrl.searchParams.get("agentId");
 
   if (agentId) {
-    const agent = getAgent(agentId);
+    const agent = await getAgent(agentId);
     if (!agent) {
       return NextResponse.json({ error: "Agent not found" }, { status: 404 });
     }
-    const memory = getMemory(agentId);
-    const conversations = getConversationsByAgent(agentId);
+    const memory = await getMemory(agentId);
+    const conversations = await getConversationsByAgent(agentId);
     return NextResponse.json({
       ...agent,
       skills: JSON.parse(agent.skills_json || "[]"),
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (companyId) {
-    const agents = getAgentsByCompany(companyId);
+    const agents = await getAgentsByCompany(companyId);
     return NextResponse.json(
       agents.map((a) => ({
         ...a,

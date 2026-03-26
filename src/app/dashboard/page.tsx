@@ -9,7 +9,7 @@ export default async function DashboardIndex() {
   const { userId } = await auth();
   if (!userId) redirect("/");
 
-  const companies = getCompaniesByUser(userId);
+  const companies = await getCompaniesByUser(userId);
 
   if (companies.length === 0) {
     return (
@@ -41,6 +41,12 @@ export default async function DashboardIndex() {
     redirect(`/dashboard/${companies[0].id}`);
   }
 
+  // Preload agents for all companies
+  const agentsByCompany = await Promise.all(
+    companies.map(async (c) => ({ companyId: c.id, agents: await getAgentsByCompany(c.id) }))
+  );
+  const agentMap = Object.fromEntries(agentsByCompany.map((x) => [x.companyId, x.agents]));
+
   // Multiple companies — show picker
   return (
     <div className="min-h-screen bg-surface pt-24 px-6">
@@ -54,7 +60,7 @@ export default async function DashboardIndex() {
 
         <div className="space-y-4">
           {companies.map((company) => {
-            const agents = getAgentsByCompany(company.id);
+            const agents = agentMap[company.id] || [];
             return (
               <Link
                 key={company.id}

@@ -11,14 +11,14 @@ export default async function AnalyticsPage({
   params: Promise<{ companyId: string }>;
 }) {
   const { companyId } = await params;
-  const company = getCompany(companyId);
+  const company = await getCompany(companyId);
   if (!company) notFound();
 
-  const agents = getAgentsByCompany(companyId);
-  const allTasks = getTasksByCompany(companyId);
-  const usage = getUsage(companyId);
-  const subscription = getSubscription(companyId);
-  const activity = getActivityFeed(companyId, 50);
+  const agents = await getAgentsByCompany(companyId);
+  const allTasks = await getTasksByCompany(companyId);
+  const usage = await getUsage(companyId);
+  const subscription = await getSubscription(companyId);
+  const activity = await getActivityFeed(companyId, 50);
 
   const tasksDone = allTasks.filter((t) => t.status === "done").length;
   const tasksFailed = allTasks.filter((t) => t.status === "failed").length;

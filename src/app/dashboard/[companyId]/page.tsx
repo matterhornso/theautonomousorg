@@ -11,10 +11,10 @@ export default async function DashboardPage({
   params: Promise<{ companyId: string }>;
 }) {
   const { companyId } = await params;
-  const company = getCompany(companyId);
+  const company = await getCompany(companyId);
   if (!company) notFound();
 
-  const agents = getAgentsByCompany(companyId).map((a) => {
+  const agents = (await getAgentsByCompany(companyId)).map((a) => {
     const roleData = agentRoles.find((r) => r.title === a.role);
     return {
       id: a.id,
@@ -26,8 +26,8 @@ export default async function DashboardPage({
     };
   });
 
-  const activity = getActivityFeed(companyId, 30);
-  const tasks = getTasksByCompany(companyId);
+  const activity = await getActivityFeed(companyId, 30);
+  const tasks = await getTasksByCompany(companyId);
 
   return (
     <DashboardClient

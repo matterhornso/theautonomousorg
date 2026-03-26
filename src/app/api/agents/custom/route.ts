@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       };
 
     // Verify user owns this company
-    const companies = getCompaniesByUser(userId);
+    const companies = await getCompaniesByUser(userId);
     const company = companies.find((c) => c.id === companyId);
     if (!company) {
       return NextResponse.json(
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Build system prompt for custom agent
-    const roster = getAgentRoster(companyId);
+    const roster = await getAgentRoster(companyId);
     const rosterList = roster.map((a) => `- @${a.role}`).join("\n");
 
     const analysis: Analysis | null = company.analysis_json
@@ -75,7 +75,7 @@ To request help from another agent, use @AgentRole in your response. The system 
 - Collaborate — use other agents when their expertise is needed
 - Be honest about what you don't know or can't do`;
 
-    const agent = createAgent({
+    const agent = await createAgent({
       company_id: companyId,
       role: name,
       system_prompt: systemPrompt,
@@ -90,7 +90,7 @@ To request help from another agent, use @AgentRole in your response. The system 
     });
 
     // Create an initial introduction task
-    createTask({
+    await createTask({
       agent_id: agent.id,
       type: "introduction",
       title: `Initial Analysis & Recommendations`,

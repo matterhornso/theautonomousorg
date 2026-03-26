@@ -33,7 +33,7 @@ export async function GET(
     }
 
     const { fileId } = await params;
-    const upload = getFileUpload(fileId);
+    const upload = await getFileUpload(fileId);
 
     if (!upload) {
       return NextResponse.json({ error: "File not found" }, { status: 404 });

@@ -3,12 +3,12 @@ import { authenticateApiKey } from "@/lib/api-auth";
 import { getTasksByCompany } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
-  const auth = authenticateApiKey(request);
+  const auth = await authenticateApiKey(request);
   if (auth instanceof NextResponse) return auth;
 
   const status = request.nextUrl.searchParams.get("status");
 
-  let tasks = getTasksByCompany(auth.companyId);
+  let tasks = await getTasksByCompany(auth.companyId);
 
   if (status) {
     tasks = tasks.filter((t) => t.status === status);

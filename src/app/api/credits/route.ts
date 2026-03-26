@@ -16,8 +16,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const credits = getCredits(userId);
-  const transactions = getCreditTransactions(
+  const credits = await getCredits(userId);
+  const transactions = await getCreditTransactions(
     userId,
     Number(request.nextUrl.searchParams.get("limit")) || 20
   );
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Manual top-up with verified paymentId (admin use)
-    const newBalance = addCredits(
+    const newBalance = await addCredits(
       userId,
       amount,
       "topup",

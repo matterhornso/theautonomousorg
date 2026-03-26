@@ -26,7 +26,7 @@ export async function POST(
   try {
     const { webhookId } = await params;
 
-    const webhook = getWebhook(webhookId);
+    const webhook = await getWebhook(webhookId);
     if (!webhook) {
       return NextResponse.json({ error: "Webhook not found" }, { status: 404 });
     }
@@ -66,7 +66,7 @@ export async function POST(
     const title = webhook.task_title_template.replace("{name}", webhook.name);
 
     // Create a task for the configured agent
-    const task = createTask({
+    const task = await createTask({
       agent_id: webhook.agent_id,
       type: webhook.task_type,
       title,
@@ -74,7 +74,7 @@ export async function POST(
     });
 
     // Update webhook trigger stats
-    incrementWebhookTrigger(webhook.id);
+    await incrementWebhookTrigger(webhook.id);
 
     // Process the task directly (no self-fetch)
     processNextTask().catch(() => {

@@ -11,12 +11,13 @@ import {
  * Also auto-claims unclaimed companies (provisioned without auth).
  * Returns the companyId on success, or a NextResponse error on failure.
  */
-export function assertCompanyOwnership(
+export async function assertCompanyOwnership(
   userId: string,
   companyId: string | null
-):
+): Promise<
   | { ok: true; companyId: string }
-  | { ok: false; response: NextResponse } {
+  | { ok: false; response: NextResponse }
+> {
   if (!companyId) {
     return {
       ok: false,
@@ -28,21 +29,21 @@ export function assertCompanyOwnership(
   }
 
   // Check direct ownership first
-  const companies = getCompaniesByUser(userId);
+  const companies = await getCompaniesByUser(userId);
   if (companies.find((c) => c.id === companyId)) {
     return { ok: true, companyId };
   }
 
   // Check if the company exists but has no owner (provisioned without auth)
   // and claim it for the current user
-  const company = getCompany(companyId);
+  const company = await getCompany(companyId);
   if (company && !company.user_id) {
-    claimCompanyForUser(companyId, userId);
+    await claimCompanyForUser(companyId, userId);
     return { ok: true, companyId };
   }
 
   // Check team membership (accepted invites)
-  const teamMember = getTeamMemberByUserId(companyId, userId);
+  const teamMember = await getTeamMemberByUserId(companyId, userId);
   if (teamMember && teamMember.invite_status === "accepted") {
     return { ok: true, companyId };
   }

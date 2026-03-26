@@ -13,16 +13,16 @@ export async function GET(request: NextRequest) {
   const limit = Number(request.nextUrl.searchParams.get("limit")) || 50;
 
   if (agentId) {
-    const actions = getAgentActions(agentId, limit);
+    const actions = await getAgentActions(agentId, limit);
     return NextResponse.json(actions);
   }
 
   if (companyId) {
-    const companies = getCompaniesByUser(userId);
+    const companies = await getCompaniesByUser(userId);
     if (!companies.find((c) => c.id === companyId)) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-    const actions = getCompanyActions(companyId, limit);
+    const actions = await getCompanyActions(companyId, limit);
     return NextResponse.json(actions);
   }
 

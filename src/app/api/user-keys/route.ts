@@ -8,8 +8,8 @@ import {
   deleteUserApiKey,
 } from "@/lib/db";
 
-function ownsCompany(userId: string, companyId: string): boolean {
-  const companies = getCompaniesByUser(userId);
+async function ownsCompany(userId: string, companyId: string): Promise<boolean> {
+  const companies = await getCompaniesByUser(userId);
   return companies.some((c) => c.id === companyId);
 }
 
@@ -24,15 +24,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "companyId required" }, { status: 400 });
   }
 
-  if (!ownsCompany(userId, companyId)) {
+  if (!(await ownsCompany(userId, companyId))) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const keys = getUserApiKeys(companyId);
+  const keys = await getUserApiKeys(companyId);
 
   // For each key, fetch the actual encrypted value to show last 4 chars
-  const result = keys.map((k) => {
-    const rawKey = getUserApiKey(companyId, k.service_name);
+  const result = await Promise.all(keys.map(async (k) => {
+    const rawKey = await getUserApiKey(companyId, k.service_name);
     const masked = rawKey ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" + rawKey.slice(-4) : "";
     return {
       id: k.id,
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       created_at: k.created_at,
       key_hint: masked,
     };
-  });
+  }));
 
   return NextResponse.json(result);
 }
@@ -70,11 +70,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!ownsCompany(userId, companyId)) {
+  if (!(await ownsCompany(userId, companyId))) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const stored = storeUserApiKey(companyId, serviceName, displayName, apiKey, config);
+  const stored = await storeUserApiKey(companyId, serviceName, displayName, apiKey, config);
   return NextResponse.json({
     id: stored.id,
     service_name: stored.service_name,
@@ -102,10 +102,10 @@ export async function DELETE(request: NextRequest) {
     );
   }
 
-  if (!ownsCompany(userId, companyId)) {
+  if (!(await ownsCompany(userId, companyId))) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  deleteUserApiKey(companyId, serviceName);
+  await deleteUserApiKey(companyId, serviceName);
   return NextResponse.json({ deleted: true });
 }

@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getApiKeyByHash } from "./db";
 import { hashApiKey } from "./api-keys";
 
-export function authenticateApiKey(
+export async function authenticateApiKey(
   request: NextRequest
-): { companyId: string } | NextResponse {
+): Promise<{ companyId: string } | NextResponse> {
   const authHeader = request.headers.get("authorization");
   if (!authHeader?.startsWith("Bearer ta_live_")) {
     return NextResponse.json(
@@ -15,7 +15,7 @@ export function authenticateApiKey(
 
   const apiKey = authHeader.slice(7); // Remove "Bearer "
   const keyHash = hashApiKey(apiKey);
-  const record = getApiKeyByHash(keyHash);
+  const record = await getApiKeyByHash(keyHash);
 
   if (!record) {
     return NextResponse.json(

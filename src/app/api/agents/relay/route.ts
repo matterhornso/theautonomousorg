@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const sourceAgent = getAgent(sourceAgentId);
+    const sourceAgent = await getAgent(sourceAgentId);
     if (!sourceAgent) {
       return NextResponse.json(
         { error: "Source agent not found" },
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find target agent in the same company
-    const companyAgents = getAgentsByCompany(sourceAgent.company_id);
+    const companyAgents = await getAgentsByCompany(sourceAgent.company_id);
     const targetAgent = companyAgents.find(
       (a) => a.role.toLowerCase() === targetRole.toLowerCase() && a.id !== sourceAgentId
     );
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create inter-agent message record
-    const iam = createInterAgentMessage({
+    const iam = await createInterAgentMessage({
       source_agent_id: sourceAgentId,
       target_agent_id: targetAgent.id,
       request: message,
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Load target agent's memory
-    const memories = getMemory(targetAgent.id);
+    const memories = await getMemory(targetAgent.id);
     let memorySection = "";
     if (memories.length > 0) {
       memorySection =
@@ -87,11 +87,11 @@ export async function POST(request: NextRequest) {
       result.content[0].type === "text" ? result.content[0].text : "";
 
     // Complete the inter-agent message
-    completeInterAgentMessage(iam.id, responseText);
+    await completeInterAgentMessage(iam.id, responseText);
 
     // Add the relay as a system message in the conversation
     if (conversationId) {
-      addMessage({
+      await addMessage({
         conversation_id: conversationId,
         role: "system",
         content: `[@${targetAgent.role} responded to @${sourceAgent.role}]: ${responseText}`,

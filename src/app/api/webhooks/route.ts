@@ -24,12 +24,12 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const companies = getCompaniesByUser(userId);
+  const companies = await getCompaniesByUser(userId);
   if (!companies.find((c) => c.id === companyId)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const webhooks = getWebhooksByCompany(companyId);
+  const webhooks = await getWebhooksByCompany(companyId);
   return NextResponse.json(
     webhooks.map((w) => ({
       id: w.id,
@@ -69,12 +69,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const companies = getCompaniesByUser(userId);
+  const companies = await getCompaniesByUser(userId);
   if (!companies.find((c) => c.id === body.companyId)) {
     return NextResponse.json({ error: "Company not found" }, { status: 404 });
   }
 
-  const agent = getAgent(body.agentId);
+  const agent = await getAgent(body.agentId);
   if (!agent || agent.company_id !== body.companyId) {
     return NextResponse.json({ error: "Agent not found" }, { status: 404 });
   }
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
   // Generate a secret for signature validation
   const secret = randomBytes(32).toString("hex");
 
-  const webhook = createWebhook({
+  const webhook = await createWebhook({
     company_id: body.companyId,
     agent_id: body.agentId,
     name: body.name,
@@ -118,16 +118,16 @@ export async function DELETE(request: NextRequest) {
     );
   }
 
-  const companies = getCompaniesByUser(userId);
+  const companies = await getCompaniesByUser(userId);
   if (!companies.find((c) => c.id === companyId)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const webhook = getWebhook(webhookId);
+  const webhook = await getWebhook(webhookId);
   if (!webhook || webhook.company_id !== companyId) {
     return NextResponse.json({ error: "Webhook not found" }, { status: 404 });
   }
 
-  deactivateWebhook(webhookId);
+  await deactivateWebhook(webhookId);
   return NextResponse.json({ deactivated: true });
 }

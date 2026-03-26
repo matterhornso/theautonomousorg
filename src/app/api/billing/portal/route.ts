@@ -18,13 +18,13 @@ export async function POST(request: NextRequest) {
 
   const { companyId } = (await request.json()) as { companyId: string };
 
-  const companies = getCompaniesByUser(userId);
+  const companies = await getCompaniesByUser(userId);
   const company = companies.find((c) => c.id === companyId);
   if (!company) {
     return NextResponse.json({ error: "Company not found" }, { status: 404 });
   }
 
-  const sub = getSubscription(companyId);
+  const sub = await getSubscription(companyId);
   if (!sub?.stripe_customer_id) {
     return NextResponse.json(
       { error: "No billing account found" },

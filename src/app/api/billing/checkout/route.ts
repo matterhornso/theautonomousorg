@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     companyId: string;
   };
 
-  const companies = getCompaniesByUser(userId);
+  const companies = await getCompaniesByUser(userId);
   const company = companies.find((c) => c.id === companyId);
   if (!company) {
     return NextResponse.json({ error: "Company not found" }, { status: 404 });
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Get or create Stripe customer
-  const sub = getSubscription(companyId);
+  const sub = await getSubscription(companyId);
   let customerId = sub?.stripe_customer_id;
 
   if (!customerId) {
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       metadata: { companyId, userId, companyName: company.name },
     });
     customerId = customer.id;
-    upsertSubscription(companyId, {
+    await upsertSubscription(companyId, {
       stripe_customer_id: customerId,
       plan: "free",
     });

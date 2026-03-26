@@ -60,7 +60,7 @@ export async function executeCeoTool(
     switch (toolName) {
       case "query_all_agents": {
         const question = (input.question as string) || "What is your current status?";
-        const agents = getAgentsByCompany(companyId);
+        const agents = await getAgentsByCompany(companyId);
 
         if (agents.length === 0) {
           return "No agents are currently active for this company.";
@@ -72,7 +72,7 @@ export async function executeCeoTool(
           if (agent.role === "CEO") continue; // Don't query yourself
 
           // Get agent's memory for context
-          const memories = getMemory(agent.id);
+          const memories = await getMemory(agent.id);
           const memoryContext = memories
             .slice(0, 5)
             .map((m) => `${m.key}: ${m.value}`)
@@ -103,10 +103,10 @@ export async function executeCeoTool(
       }
 
       case "get_company_metrics": {
-        const agents = getAgentsByCompany(companyId);
-        const allTasks = getTasksByCompany(companyId);
-        const usage = getUsage(companyId);
-        const activity = getActivityFeed(companyId, 20);
+        const agents = await getAgentsByCompany(companyId);
+        const allTasks = await getTasksByCompany(companyId);
+        const usage = await getUsage(companyId);
+        const activity = await getActivityFeed(companyId, 20);
 
         const tasksDone = allTasks.filter((t) => t.status === "done").length;
         const tasksFailed = allTasks.filter((t) => t.status === "failed").length;

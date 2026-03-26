@@ -8,7 +8,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const profile = getUserProfile(userId);
+  const profile = await getUserProfile(userId);
   return NextResponse.json(profile || null);
 }
 
@@ -19,6 +19,6 @@ export async function POST(request: NextRequest) {
   }
 
   const data = await request.json();
-  const profile = upsertUserProfile(userId, data);
+  const profile = await upsertUserProfile(userId, data);
   return NextResponse.json(profile);
 }

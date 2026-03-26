@@ -10,12 +10,12 @@ export async function GET(request: NextRequest) {
   const companyId = request.nextUrl.searchParams.get("companyId");
   if (!companyId) return NextResponse.json({ error: "companyId required" }, { status: 400 });
 
-  const companies = getCompaniesByUser(userId);
+  const companies = await getCompaniesByUser(userId);
   if (!companies.find((c) => c.id === companyId)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const members = getTeamMembers(companyId);
+  const members = await getTeamMembers(companyId);
   return NextResponse.json(members);
 }
 
@@ -34,12 +34,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "companyId and email required" }, { status: 400 });
   }
 
-  const companies = getCompaniesByUser(userId);
+  const companies = await getCompaniesByUser(userId);
   if (!companies.find((c) => c.id === companyId)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const member = createTeamMember({
+  const member = await createTeamMember({
     company_id: companyId,
     email,
     phone,
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
   });
 
   // Send invite email (fire-and-forget — don't block the response)
-  const company = getCompany(companyId);
+  const company = await getCompany(companyId);
   const inviteUrl = `https://theautonomous.org/sign-up?invite=${member.invite_token}`;
   sendTeamInviteEmail({
     to: email,
@@ -68,7 +68,7 @@ export async function PATCH(request: NextRequest) {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { memberId, role } = (await request.json()) as { memberId: string; role: string };
-  updateTeamMemberRole(memberId, role);
+  await updateTeamMemberRole(memberId, role);
   return NextResponse.json({ updated: true });
 }
 
@@ -77,6 +77,6 @@ export async function DELETE(request: NextRequest) {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { memberId } = (await request.json()) as { memberId: string };
-  removeTeamMember(memberId);
+  await removeTeamMember(memberId);
   return NextResponse.json({ removed: true });
 }
