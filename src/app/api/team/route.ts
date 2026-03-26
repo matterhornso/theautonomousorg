@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getCompaniesByUser, getCompany, getTeamMembers, createTeamMember, updateTeamMemberRole, removeTeamMember } from "@/lib/db";
 import { sendTeamInviteEmail } from "@/lib/email";
+import { sanitizeInput } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
   const { userId } = await auth();
@@ -34,6 +35,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "companyId and email required" }, { status: 400 });
   }
 
+  const safeEmail = sanitizeInput(email);
+
   const companies = await getCompaniesByUser(userId);
   if (!companies.find((c) => c.id === companyId)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -41,7 +44,7 @@ export async function POST(request: NextRequest) {
 
   const member = await createTeamMember({
     company_id: companyId,
-    email,
+    email: safeEmail,
     phone,
     role: role || "member",
     invited_by: userId,

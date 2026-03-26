@@ -1,6 +1,7 @@
 /**
  * Simple in-memory rate limiter using sliding window.
- * For production, replace with Redis-backed implementation.
+ * WARNING: Dev-only — this does not work across multiple instances or after restarts.
+ * For production, replace with a Redis-backed implementation (e.g. @upstash/ratelimit).
  */
 
 interface RateLimitEntry {

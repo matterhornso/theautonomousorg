@@ -47,6 +47,12 @@ export async function POST(request: NextRequest) {
     }
 
     const { userId } = await auth();
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: "Sign in to chat with agents" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
 
     // Rate limit
     const ip = request.headers.get("x-forwarded-for") || "anonymous";
@@ -114,7 +120,14 @@ export async function POST(request: NextRequest) {
 
         if (isTextFile) {
           try {
-            const filePath = pathModule.join(process.cwd(), "data", "uploads", upload.file_path);
+            const uploadDir = pathModule.join(process.cwd(), "data", "uploads");
+            const filePath = pathModule.join(uploadDir, upload.file_path);
+            // Path traversal protection
+            const resolved = pathModule.resolve(filePath);
+            if (!resolved.startsWith(pathModule.resolve(uploadDir))) {
+              fileContext += `\n\n[File uploaded: ${upload.file_name} — invalid file path]`;
+              continue;
+            }
             const content = fs.readFileSync(filePath, "utf-8");
             const truncated = content.length > 50000 ? content.slice(0, 50000) + "\n\n[...truncated, file too large to show in full]" : content;
             fileContext += `\n\n--- Uploaded File: ${upload.file_name} (${upload.file_type}, ${(upload.file_size / 1024).toFixed(1)}KB) ---\n${truncated}\n--- End of File ---`;
@@ -148,7 +161,7 @@ export async function POST(request: NextRequest) {
     if (memories.length > 0) {
       memorySection =
         "\n\n## What You Remember\n" +
-        memories.map((m) => `- **${m.key}:** ${m.value}`).join("\n");
+        memories.map((m) => `- **${m.key}:** [${m.value.replace(/[[\]]/g, '')}]`).join("\n");
     }
 
     const systemPrompt = agent.system_prompt + memorySection;
@@ -385,8 +398,9 @@ export async function POST(request: NextRequest) {
 
                 // Actually relay the message
                 try {
+                  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
                   const relayRes = await fetch(
-                    `${request.nextUrl.origin}/api/agents/relay`,
+                    `${appUrl}/api/agents/relay`,
                     {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },

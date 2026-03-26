@@ -1,7 +1,19 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { processNextTask } from "@/lib/task-processor";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  // Internal-only: require secret header or authenticated user
+  const internalSecret = request.headers.get("x-internal-secret");
+  const isInternalCall = internalSecret && process.env.INTERNAL_SECRET && internalSecret === process.env.INTERNAL_SECRET;
+
+  if (!isInternalCall) {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
+
   const result = await processNextTask();
 
   switch (result.status) {

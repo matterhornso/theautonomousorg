@@ -6,7 +6,7 @@
  */
 
 import postgres from "postgres";
-import { randomUUID } from "crypto";
+import { randomUUID, createCipheriv, createDecipheriv, randomBytes, scryptSync } from "crypto";
 import type {
   Company,
   Agent,
@@ -1385,6 +1385,33 @@ export interface UserApiKey {
   created_at: string;
 }
 
+function getEncryptionKey(): Buffer | null {
+  const envKey = process.env.ENCRYPTION_KEY;
+  if (!envKey) return null;
+  return scryptSync(envKey, "theautonomous-salt", 32);
+}
+
+function encryptApiKey(plaintext: string): string {
+  const key = getEncryptionKey();
+  if (!key) return Buffer.from(plaintext).toString("base64");
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return iv.toString("hex") + ":" + tag.toString("hex") + ":" + encrypted.toString("hex");
+}
+
+function decryptApiKey(stored: string): string {
+  const key = getEncryptionKey();
+  if (!key) return Buffer.from(stored, "base64").toString("utf8");
+  const parts = stored.split(":");
+  if (parts.length !== 3) return stored; // legacy plaintext fallback
+  const [ivHex, tagHex, encHex] = parts;
+  const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(ivHex, "hex"));
+  decipher.setAuthTag(Buffer.from(tagHex, "hex"));
+  return decipher.update(Buffer.from(encHex, "hex")) + decipher.final("utf8");
+}
+
 export async function storeUserApiKey(
   companyId: string,
   serviceName: string,
@@ -1393,9 +1420,10 @@ export async function storeUserApiKey(
   config?: Record<string, unknown>
 ): Promise<UserApiKey> {
   const id = randomUUID();
+  const encrypted = encryptApiKey(apiKey);
   await sql`
     INSERT INTO user_api_keys (id, company_id, service_name, display_name, api_key_encrypted, config_json)
-    VALUES (${id}, ${companyId}, ${serviceName}, ${displayName}, ${apiKey}, ${config ? JSON.stringify(config) : null})
+    VALUES (${id}, ${companyId}, ${serviceName}, ${displayName}, ${encrypted}, ${config ? JSON.stringify(config) : null})
     ON CONFLICT (company_id, service_name)
     DO UPDATE SET display_name = EXCLUDED.display_name, api_key_encrypted = EXCLUDED.api_key_encrypted, config_json = EXCLUDED.config_json, is_active = 1`;
   const [row] = await sql`
@@ -1408,7 +1436,8 @@ export async function getUserApiKey(companyId: string, serviceName: string): Pro
   const [row] = await sql`
     SELECT api_key_encrypted FROM user_api_keys
     WHERE company_id = ${companyId} AND service_name = ${serviceName} AND is_active = 1`;
-  return (row as { api_key_encrypted: string } | undefined)?.api_key_encrypted;
+  const stored = (row as { api_key_encrypted: string } | undefined)?.api_key_encrypted;
+  return stored ? decryptApiKey(stored) : undefined;
 }
 
 export async function getUserApiKeys(companyId: string): Promise<UserApiKey[]> {
@@ -1753,7 +1782,8 @@ export async function searchMessages(companyId: string, query: string, options?:
   created_at: string;
 }>> {
   const limit = options?.limit ?? 50;
-  const searchTerm = `%${query}%`;
+  const escaped = query.replace(/%/g, '\\%').replace(/_/g, '\\_');
+  const searchTerm = `%${escaped}%`;
 
   if (options?.agentId) {
     const rows = await sql`

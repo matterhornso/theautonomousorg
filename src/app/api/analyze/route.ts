@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getUserProfile } from "@/lib/db";
 import { checkRateLimit, getRateLimitKey, RATE_LIMITS } from "@/lib/rate-limit";
-import { validateUrl } from "@/lib/validation";
+import { validateUrl, sanitizeInput } from "@/lib/validation";
 
 const client = new Anthropic();
 
@@ -122,7 +122,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { url } = await request.json();
+    const { url: rawUrl } = await request.json();
+    const url = typeof rawUrl === "string" ? sanitizeInput(rawUrl) : "";
 
     // Validate URL
     const urlError = validateUrl(url || "");

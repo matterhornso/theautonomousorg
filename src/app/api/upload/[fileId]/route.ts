@@ -66,7 +66,7 @@ export async function GET(
     return new NextResponse(fileBuffer, {
       headers: {
         "Content-Type": contentType,
-        "Content-Disposition": `inline; filename="${upload.file_name}"`,
+        "Content-Disposition": `inline; filename="${upload.file_name.replace(/[^\w\s.-]/g, '_').replace(/\s+/g, '_')}"`,
         "Cache-Control": "public, max-age=31536000, immutable",
       },
     });

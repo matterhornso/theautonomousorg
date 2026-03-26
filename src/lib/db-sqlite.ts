@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
 import path from "path";
-import { randomUUID } from "crypto";
+import { randomUUID, createCipheriv, createDecipheriv, randomBytes, scryptSync } from "crypto";
 import type {
   Company,
   Agent,
@@ -1566,6 +1566,33 @@ export interface UserApiKey {
   created_at: string;
 }
 
+function getEncryptionKey(): Buffer | null {
+  const envKey = process.env.ENCRYPTION_KEY;
+  if (!envKey) return null;
+  return scryptSync(envKey, "theautonomous-salt", 32);
+}
+
+function encryptApiKey(plaintext: string): string {
+  const key = getEncryptionKey();
+  if (!key) return Buffer.from(plaintext).toString("base64");
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return iv.toString("hex") + ":" + tag.toString("hex") + ":" + encrypted.toString("hex");
+}
+
+function decryptApiKey(stored: string): string {
+  const key = getEncryptionKey();
+  if (!key) return Buffer.from(stored, "base64").toString("utf8");
+  const parts = stored.split(":");
+  if (parts.length !== 3) return stored; // legacy plaintext fallback
+  const [ivHex, tagHex, encHex] = parts;
+  const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(ivHex, "hex"));
+  decipher.setAuthTag(Buffer.from(tagHex, "hex"));
+  return decipher.update(Buffer.from(encHex, "hex")) + decipher.final("utf8");
+}
+
 export function storeUserApiKey(
   companyId: string,
   serviceName: string,
@@ -1575,13 +1602,13 @@ export function storeUserApiKey(
 ): UserApiKey {
   const db = getDb();
   const id = randomUUID();
-  // MVP: store plain text — production would use encryption
+  const encrypted = encryptApiKey(apiKey);
   db.prepare(
     `INSERT INTO user_api_keys (id, company_id, service_name, display_name, api_key_encrypted, config_json)
      VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(company_id, service_name)
      DO UPDATE SET display_name = excluded.display_name, api_key_encrypted = excluded.api_key_encrypted, config_json = excluded.config_json, is_active = 1`
-  ).run(id, companyId, serviceName, displayName, apiKey, config ? JSON.stringify(config) : null);
+  ).run(id, companyId, serviceName, displayName, encrypted, config ? JSON.stringify(config) : null);
   return db
     .prepare("SELECT id, company_id, service_name, display_name, is_active, last_used_at, created_at FROM user_api_keys WHERE company_id = ? AND service_name = ?")
     .get(companyId, serviceName) as UserApiKey;
@@ -1591,7 +1618,7 @@ export function getUserApiKey(companyId: string, serviceName: string): string | 
   const row = getDb()
     .prepare("SELECT api_key_encrypted FROM user_api_keys WHERE company_id = ? AND service_name = ? AND is_active = 1")
     .get(companyId, serviceName) as { api_key_encrypted: string } | undefined;
-  return row?.api_key_encrypted;
+  return row?.api_key_encrypted ? decryptApiKey(row.api_key_encrypted) : undefined;
 }
 
 export function getUserApiKeys(companyId: string): UserApiKey[] {
@@ -1999,7 +2026,8 @@ export function searchMessages(companyId: string, query: string, options?: { age
 }> {
   const db = getDb();
   const limit = options?.limit ?? 50;
-  const searchTerm = `%${query}%`;
+  const escaped = query.replace(/%/g, '\\%').replace(/_/g, '\\_');
+  const searchTerm = `%${escaped}%`;
 
   if (options?.agentId) {
     return db.prepare(
@@ -2007,7 +2035,7 @@ export function searchMessages(companyId: string, query: string, options?: { age
        FROM messages m
        JOIN conversations c ON m.conversation_id = c.id
        JOIN agents a ON c.agent_id = a.id
-       WHERE a.company_id = ? AND a.id = ? AND m.content LIKE ?
+       WHERE a.company_id = ? AND a.id = ? AND m.content LIKE ? ESCAPE '\\'
        ORDER BY m.created_at DESC LIMIT ?`
     ).all(companyId, options.agentId, searchTerm, limit) as Array<{
       message_id: string; conversation_id: string; agent_id: string; agent_role: string;
@@ -2020,7 +2048,7 @@ export function searchMessages(companyId: string, query: string, options?: { age
      FROM messages m
      JOIN conversations c ON m.conversation_id = c.id
      JOIN agents a ON c.agent_id = a.id
-     WHERE a.company_id = ? AND m.content LIKE ?
+     WHERE a.company_id = ? AND m.content LIKE ? ESCAPE '\\'
      ORDER BY m.created_at DESC LIMIT ?`
   ).all(companyId, searchTerm, limit) as Array<{
     message_id: string; conversation_id: string; agent_id: string; agent_role: string;

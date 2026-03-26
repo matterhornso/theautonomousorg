@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
         current_period_end?: number;
       };
       if (subData.metadata?.companyId) {
-        upsertSubscription(subData.metadata.companyId, {
+        await upsertSubscription(subData.metadata.companyId, {
           status: subData.status || "active",
           current_period_end: subData.current_period_end
             ? new Date(subData.current_period_end * 1000).toISOString()

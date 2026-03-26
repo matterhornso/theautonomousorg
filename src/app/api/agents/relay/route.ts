@@ -1,5 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import { assertCompanyOwnership } from "@/lib/auth-helpers";
 import {
   getAgent,
   getAgentsByCompany,
@@ -14,6 +16,20 @@ const MAX_DEPTH = 3;
 
 export async function POST(request: NextRequest) {
   try {
+    // Allow internal calls via secret header, or require auth
+    const internalSecret = request.headers.get("x-internal-secret");
+    const isInternalCall = internalSecret && process.env.INTERNAL_SECRET && internalSecret === process.env.INTERNAL_SECRET;
+
+    if (!isInternalCall) {
+      const { userId } = await auth();
+      if (!userId) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      // Ownership is verified after we read sourceAgentId below
+      // (we store userId for the ownership check)
+      (request as unknown as Record<string, string>).__userId = userId;
+    }
+
     const { sourceAgentId, targetRole, message, conversationId, depth = 0 } =
       (await request.json()) as {
         sourceAgentId: string;
@@ -38,6 +54,15 @@ export async function POST(request: NextRequest) {
         { error: "Source agent not found" },
         { status: 404 }
       );
+    }
+
+    // Verify ownership if not an internal call
+    const storedUserId = (request as unknown as Record<string, string>).__userId;
+    if (storedUserId) {
+      const ownership = await assertCompanyOwnership(storedUserId, sourceAgent.company_id);
+      if (!ownership.ok) {
+        return ownership.response;
+      }
     }
 
     // Find target agent in the same company
@@ -67,7 +92,7 @@ export async function POST(request: NextRequest) {
     if (memories.length > 0) {
       memorySection =
         "\n\n## What You Remember\n" +
-        memories.map((m) => `- **${m.key}:** ${m.value}`).join("\n");
+        memories.map((m) => `- **${m.key}:** [${m.value.replace(/[[\]]/g, '')}]`).join("\n");
     }
 
     // Call Claude as the target agent

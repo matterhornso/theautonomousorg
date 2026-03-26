@@ -46,15 +46,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate webhook secret
+    // Validate webhook secret — reject ALL requests if secret is not configured
     const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
-    if (webhookSecret) {
-      const headerSecret = request.headers.get(
-        "x-telegram-bot-api-secret-token"
-      );
-      if (headerSecret !== webhookSecret) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
+    if (!webhookSecret) {
+      return NextResponse.json({ error: "Telegram webhook not configured" }, { status: 503 });
+    }
+    const headerSecret = request.headers.get("x-telegram-bot-api-secret-token");
+    if (headerSecret !== webhookSecret) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const update: TelegramUpdate = await request.json();
@@ -192,7 +191,7 @@ export async function POST(request: NextRequest) {
     if (memories.length > 0) {
       memorySection =
         "\n\n## What You Remember\n" +
-        memories.map((m) => `- **${m.key}:** ${m.value}`).join("\n");
+        memories.map((m) => `- **${m.key}:** [${m.value.replace(/[[\]]/g, '')}]`).join("\n");
     }
 
     const systemPrompt =

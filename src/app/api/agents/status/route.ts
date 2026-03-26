@@ -16,21 +16,21 @@ import { suggestedPlatforms } from "@/lib/suggested-platforms";
 export async function GET(request: NextRequest) {
   const { userId } = await auth();
   if (!userId) {
-    console.error("[agents/status] No userId from auth — Clerk may not be passing credentials");
+    console.error("[agents/status] No userId from auth");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const companyId = request.nextUrl.searchParams.get("companyId");
-  console.log(`[agents/status] userId=${userId}, companyId=${companyId}`);
+  console.error(`[agents/status] request for companyId=${companyId}`);
 
   const ownership = await assertCompanyOwnership(userId, companyId);
   if (!ownership.ok) {
-    console.error(`[agents/status] Ownership check failed for userId=${userId}, companyId=${companyId}`);
+    console.error(`[agents/status] Ownership check failed for companyId=${companyId}`);
     return ownership.response;
   }
 
   const agents = await getAgentsByCompany(ownership.companyId);
-  console.log(`[agents/status] Found ${agents.length} agents for companyId=${ownership.companyId}`);
+  console.error(`[agents/status] Found ${agents.length} agents for companyId=${ownership.companyId}`);
   const agentIds = agents.map((a) => a.id);
 
   // Batch all queries (6 queries total instead of 225)

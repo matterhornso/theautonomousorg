@@ -8,6 +8,7 @@ import {
   createTask,
 } from "@/lib/db";
 import type { Analysis } from "@/lib/types";
+import { sanitizeInput } from "@/lib/validation";
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,6 +26,11 @@ export async function POST(request: NextRequest) {
         skills: string[];
         connectors: string[];
       };
+
+    // Sanitize user inputs
+    const safeName = sanitizeInput(name);
+    const safeDescription = sanitizeInput(description);
+    const safeInstructions = sanitizeInput(instructions);
 
     // Verify user owns this company
     const companies = await getCompaniesByUser(userId);
@@ -44,12 +50,12 @@ export async function POST(request: NextRequest) {
       ? JSON.parse(company.analysis_json)
       : null;
 
-    const systemPrompt = `You are the ${name} Agent for ${company.name}.
+    const systemPrompt = `You are the ${safeName} Agent for ${company.name}.
 
 ## Your Role
-${description}
+${safeDescription}
 
-${instructions ? `## Custom Instructions\n${instructions}` : ""}
+${safeInstructions ? `## Custom Instructions\n${safeInstructions}` : ""}
 
 ## Company Context
 - **Company:** ${company.name}
@@ -77,7 +83,7 @@ To request help from another agent, use @AgentRole in your response. The system 
 
     const agent = await createAgent({
       company_id: companyId,
-      role: name,
+      role: safeName,
       system_prompt: systemPrompt,
       company_context: JSON.stringify({
         name: company.name,
@@ -94,10 +100,10 @@ To request help from another agent, use @AgentRole in your response. The system 
       agent_id: agent.id,
       type: "introduction",
       title: `Initial Analysis & Recommendations`,
-      input_json: `You are the ${name} Agent for ${company.name} (${company.industry || "unknown industry"}). ${company.description || ""}
+      input_json: `You are the ${safeName} Agent for ${company.name} (${company.industry || "unknown industry"}). ${company.description || ""}
 
 Introduce yourself and provide an initial analysis:
-1. Based on the company context, identify the top 3 ways you can add value in your role as ${name}
+1. Based on the company context, identify the top 3 ways you can add value in your role as ${safeName}
 2. Suggest specific first actions you'd take
 3. Ask 2-3 clarifying questions that would help you be more effective
 
@@ -105,7 +111,8 @@ Be proactive and specific.`,
     });
 
     // Trigger task processing
-    fetch(`${request.nextUrl.origin}/api/tasks/process`, {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    fetch(`${baseUrl}/api/tasks/process`, {
       method: "POST",
     }).catch(() => {});
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { getCompaniesByUser, getCompanyActions, getAgentActions } from "@/lib/db";
+import { getCompaniesByUser, getCompanyActions, getAgentActions, getAgent } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   const { userId } = await auth();
@@ -13,6 +13,15 @@ export async function GET(request: NextRequest) {
   const limit = Number(request.nextUrl.searchParams.get("limit")) || 50;
 
   if (agentId) {
+    // Verify the requesting user owns the agent's company
+    const agent = await getAgent(agentId);
+    if (!agent) {
+      return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+    }
+    const companies = await getCompaniesByUser(userId);
+    if (!companies.find((c) => c.id === agent.company_id)) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
     const actions = await getAgentActions(agentId, limit);
     return NextResponse.json(actions);
   }

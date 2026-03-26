@@ -5,10 +5,14 @@ import { buildSystemPrompt } from "@/lib/prompts";
 import { agentRoles } from "@/app/data";
 import { getTaskTemplatesForRole } from "@/lib/task-templates";
 import type { Analysis } from "@/lib/types";
+import { sanitizeInput } from "@/lib/validation";
 
 export async function POST(request: NextRequest) {
   try {
     const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const { analysis, selectedRoles } = (await request.json()) as {
       analysis: Analysis;
@@ -22,11 +26,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Sanitize company name
+    analysis.company.name = sanitizeInput(analysis.company.name);
+
     // Create company record linked to authenticated user
     const company = await createCompany({
       name: analysis.company.name,
       url: analysis.company.description || "",
-      user_id: userId ?? undefined,
+      user_id: userId,
       industry: analysis.company.industry,
       description: analysis.company.description,
       stage: analysis.company.stage,
@@ -72,7 +79,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Trigger task processing (fire-and-forget)
-    const baseUrl = request.nextUrl.origin;
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     fetch(`${baseUrl}/api/tasks/process`, { method: "POST" }).catch(() => {});
 
     return NextResponse.json({
