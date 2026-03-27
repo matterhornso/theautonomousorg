@@ -226,6 +226,12 @@ export function WebsiteForm({
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ analysis, selectedRoles }),
                   });
+                  if (res.status === 401) {
+                    // User needs to sign in first — redirect with return URL
+                    const returnUrl = encodeURIComponent(window.location.href);
+                    router.push(`/sign-in?redirect_url=${returnUrl}`);
+                    return;
+                  }
                   const data = await res.json();
                   if (res.ok && data.companyId) {
                     router.push(`/provisioning/${data.companyId}`);
