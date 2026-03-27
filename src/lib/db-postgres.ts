@@ -1594,7 +1594,7 @@ export async function getEvalsByCompany(companyId: string, limit = 100): Promise
 
 export async function getAverageScores(agentId: string, days = 7): Promise<{ relevance: number; completeness: number; actionability: number; role_specificity: number; overall: number; count: number }> {
   const rows = await sql`
-    SELECT scores FROM agent_evals
+    SELECT scores_json as scores FROM agent_evals
     WHERE agent_id = ${agentId} AND created_at >= NOW() - INTERVAL '1 day' * ${days}
     ORDER BY created_at DESC`;
 
@@ -1850,9 +1850,9 @@ export async function getAgentLeaderboard(companyId: string): Promise<Array<{
     ) task_counts ON task_counts.agent_id = a.id
     LEFT JOIN (
       SELECT agent_id,
-             AVG((scores::json->>'overall')::float) as avg_score,
-             SUM(CASE WHEN user_feedback = 'thumbs_up' THEN 1 ELSE 0 END) as thumbs_up,
-             SUM(CASE WHEN user_feedback = 'thumbs_down' THEN 1 ELSE 0 END) as thumbs_down
+             AVG(CASE WHEN scores_json IS NOT NULL AND scores_json != '' THEN (scores_json::json->>'overall')::float ELSE NULL END) as avg_score,
+             SUM(CASE WHEN feedback = 'thumbs_up' THEN 1 ELSE 0 END) as thumbs_up,
+             SUM(CASE WHEN feedback = 'thumbs_down' THEN 1 ELSE 0 END) as thumbs_down
       FROM agent_evals
       GROUP BY agent_id
     ) eval_scores ON eval_scores.agent_id = a.id

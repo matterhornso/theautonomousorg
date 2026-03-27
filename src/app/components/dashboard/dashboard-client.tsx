@@ -104,16 +104,28 @@ interface TaskItem {
   created_at: string;
 }
 
+interface HealthData {
+  companyId: string;
+  activeAgents: number;
+  totalAgents: number;
+  tasksDoneToday: number;
+  tasksFailedToday: number;
+  lastDebrief: string | null;
+  nextDebriefHours: number | null;
+}
+
 export function DashboardClient({
   company,
   agents,
   initialActivity = [],
   initialTasks = [],
+  healthData,
 }: {
   company: CompanyInfo;
   agents: AgentInfo[];
   initialActivity?: ActivityItem[];
   initialTasks?: TaskItem[];
+  healthData?: HealthData;
 }) {
   const [activeAgent, setActiveAgent] = useState<AgentInfo | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -876,6 +888,26 @@ export function DashboardClient({
           /* ─── Activity Feed (default view) ──────────── */
           <div className="flex-1 overflow-y-auto p-8">
             <div className="max-w-3xl mx-auto">
+              {/* Health Widget */}
+              {healthData && (
+                <div
+                  aria-label="Agent activity summary"
+                  className="flex flex-wrap gap-2 mb-6"
+                >
+                  {[
+                    { label: "Active", value: `${healthData.activeAgents}/${healthData.totalAgents}`, gold: true },
+                    { label: "Done Today", value: String(healthData.tasksDoneToday), gold: true },
+                    { label: "Failed", value: String(healthData.tasksFailedToday), color: healthData.tasksFailedToday > 0 ? "text-[#B33A3A]" : "text-[#2D5A3D]" },
+                    { label: "Next Debrief", value: healthData.nextDebriefHours !== null ? (healthData.nextDebriefHours <= 0 ? "Ready" : `${healthData.nextDebriefHours}h`) : "—", gold: true },
+                  ].map((stat) => (
+                    <div key={stat.label} className="flex items-center gap-2 px-3 py-2 bg-white border border-neutral-200 rounded-lg">
+                      <span className="text-xs text-neutral-400">{stat.label}</span>
+                      <span className={`text-sm font-semibold ${stat.color || (stat.gold ? "text-[#D4A853]" : "")}`}>{stat.value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <h2 className="font-[family-name:var(--font-serif)] text-2xl tracking-tight mb-1">
                 Activity
               </h2>

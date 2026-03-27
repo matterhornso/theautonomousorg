@@ -22,76 +22,60 @@ export function HealthWidget({
   return (
     <div
       aria-label="Agent activity summary"
-      className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6"
+      className="flex flex-wrap gap-3 mb-6"
     >
-      <div className="bg-white border border-neutral-200 rounded-xl p-4">
-        <p className="text-xs text-neutral-400 mb-1">Active Agents</p>
-        <p className="text-2xl font-semibold text-[#D4A853]">
-          {activeAgents}
-          <span className="text-sm text-neutral-400 font-normal">
-            /{totalAgents}
-          </span>
-        </p>
+      <Stat label="Active Agents" value={`${activeAgents}/${totalAgents}`} gold />
+      <Stat label="Done Today" value={String(tasksDoneToday)} gold />
+      <Stat
+        label="Failed"
+        value={String(tasksFailedToday)}
+        color={tasksFailedToday > 0 ? "text-[#B33A3A]" : "text-[#2D5A3D]"}
+      />
+      <div className="flex items-center gap-2 px-4 py-2.5 bg-white border border-neutral-200 rounded-xl">
+        <span className="text-xs text-neutral-400">Next Debrief</span>
+        <span className="text-sm font-medium text-[#D4A853]">
+          {nextDebriefHours !== null
+            ? nextDebriefHours <= 0
+              ? <Link href={`/dashboard/${companyId}/debrief`} className="hover:underline">Ready</Link>
+              : `${nextDebriefHours}h`
+            : "—"}
+        </span>
       </div>
+      {lastDebrief && (
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-white border border-neutral-200 rounded-xl">
+          <span className="text-xs text-neutral-400">Last</span>
+          <Link
+            href={`/dashboard/${companyId}/debrief`}
+            className="text-sm font-medium text-[#D4A853] hover:underline"
+          >
+            {new Date(lastDebrief).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })}
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
 
-      <div className="bg-white border border-neutral-200 rounded-xl p-4">
-        <p className="text-xs text-neutral-400 mb-1">Tasks Done Today</p>
-        <p className="text-2xl font-semibold text-[#D4A853]">
-          {tasksDoneToday}
-        </p>
-      </div>
-
-      <div className="bg-white border border-neutral-200 rounded-xl p-4">
-        <p className="text-xs text-neutral-400 mb-1">Failed Today</p>
-        <p
-          className={`text-2xl font-semibold ${
-            tasksFailedToday > 0 ? "text-[#B33A3A]" : "text-[#2D5A3D]"
-          }`}
-        >
-          {tasksFailedToday}
-        </p>
-      </div>
-
-      <div className="bg-white border border-neutral-200 rounded-xl p-4">
-        <p className="text-xs text-neutral-400 mb-1">Next Debrief</p>
-        <p className="text-sm font-medium">
-          {nextDebriefHours !== null ? (
-            nextDebriefHours <= 0 ? (
-              <Link
-                href={`/dashboard/${companyId}/debrief`}
-                className="text-[#D4A853] hover:underline"
-              >
-                Debrief ready
-              </Link>
-            ) : (
-              <span className="text-[#D4A853]">
-                In {nextDebriefHours}h
-              </span>
-            )
-          ) : (
-            <span className="text-neutral-400">Not configured</span>
-          )}
-        </p>
-      </div>
-
-      <div className="bg-white border border-neutral-200 rounded-xl p-4 col-span-2 sm:col-span-1">
-        <p className="text-xs text-neutral-400 mb-1">Last Debrief</p>
-        <p className="text-sm font-medium">
-          {lastDebrief ? (
-            <Link
-              href={`/dashboard/${companyId}/debrief`}
-              className="text-[#D4A853] hover:underline"
-            >
-              {new Date(lastDebrief).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-              })}
-            </Link>
-          ) : (
-            <span className="text-neutral-400">None yet</span>
-          )}
-        </p>
-      </div>
+function Stat({
+  label,
+  value,
+  gold,
+  color,
+}: {
+  label: string;
+  value: string;
+  gold?: boolean;
+  color?: string;
+}) {
+  return (
+    <div className="flex items-center gap-2 px-4 py-2.5 bg-white border border-neutral-200 rounded-xl">
+      <span className="text-xs text-neutral-400">{label}</span>
+      <span className={`text-lg font-semibold ${color || (gold ? "text-[#D4A853]" : "")}`}>
+        {value}
+      </span>
     </div>
   );
 }
