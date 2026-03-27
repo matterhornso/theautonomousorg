@@ -35,6 +35,11 @@
       "source": "Leonxlnx/taste-skill",
       "sourceType": "github",
       "computedHash": "3aa58992f0fd9673b975cd48cd4f8ae4b4976fd5cdd9f20e26d3d447aee317fb"
+    },
+    "usability-tester": {
+      "source": "daffy0208/ai-dev-standards",
+      "sourceType": "github",
+      "computedHash": "3877011cca4fa8e8dbf1ac7ee1f226f3cfad55cb96fa65e93061ff1c3b14c83b"
     }
   }
 }
