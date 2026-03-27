@@ -704,10 +704,26 @@ export default function Home() {
                     ))}
                   </ul>
 
-                  <ComingSoonButton
-                    label={plan.cta}
-                    featured={plan.featured}
-                  />
+                  {plan.name === "Starter" ? (
+                    <a
+                      href="/sign-up"
+                      className="block w-full py-3 rounded-xl text-sm font-medium text-center transition-all bg-primary text-surface hover:bg-neutral-800"
+                    >
+                      {plan.cta}
+                    </a>
+                  ) : plan.name === "Enterprise" ? (
+                    <a
+                      href="mailto:abhinav@chainflux.io?subject=TheAutonomous Enterprise"
+                      className="block w-full py-3 rounded-xl text-sm font-medium text-center transition-all bg-primary text-surface hover:bg-neutral-800"
+                    >
+                      {plan.cta}
+                    </a>
+                  ) : (
+                    <ComingSoonButton
+                      label={plan.cta}
+                      featured={plan.featured}
+                    />
+                  )}
                 </div>
                 </div>
               </Reveal>
