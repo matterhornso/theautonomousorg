@@ -31,7 +31,8 @@ if (!ANTHROPIC_API_KEY) {
   process.exit(1);
 }
 
-const sql = postgres(DATABASE_URL, { max: 5, idle_timeout: 20 });
+const isPooler = DATABASE_URL.includes(':6543') || DATABASE_URL.includes('pooler.supabase.com');
+const sql = postgres(DATABASE_URL, { max: 5, idle_timeout: 20, ssl: 'require', prepare: isPooler ? false : true });
 const client = new Anthropic();
 
 interface Task {

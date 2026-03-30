@@ -23,11 +23,16 @@ if (!DATABASE_URL) {
   );
 }
 
+// Supabase transaction pooler (port 6543) requires prepare: false
+// SSL required for Railway → Supabase connectivity
+const isPooler = DATABASE_URL?.includes(':6543') || DATABASE_URL?.includes('pooler.supabase.com');
 const sql = DATABASE_URL
   ? postgres(DATABASE_URL, {
       max: 10,
       idle_timeout: 20,
-      connect_timeout: 10,
+      connect_timeout: 15,
+      ssl: 'require',
+      prepare: isPooler ? false : true,
     })
   : (null as unknown as ReturnType<typeof postgres>);
 
