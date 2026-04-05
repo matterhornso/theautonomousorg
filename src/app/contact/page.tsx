@@ -11,10 +11,34 @@ export default function ContactPage() {
     message: "",
   });
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    if (loading) return;
+    setLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || "Failed to send message. Please try again.");
+        return;
+      }
+
+      setSubmitted(true);
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -126,11 +150,16 @@ export default function ContactPage() {
                 />
               </div>
 
+              {error && (
+                <p className="text-sm text-[#B33A3A]">{error}</p>
+              )}
+
               <button
                 type="submit"
-                className="px-8 py-3 bg-primary text-surface font-medium rounded-xl text-sm hover:bg-neutral-800 transition-colors"
+                disabled={loading}
+                className="px-8 py-3 bg-primary text-surface font-medium rounded-xl text-sm hover:bg-neutral-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Send message
+                {loading ? "Sending..." : "Send message"}
               </button>
             </form>
           )}

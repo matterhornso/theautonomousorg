@@ -713,7 +713,7 @@ export default function Home() {
                     </a>
                   ) : plan.name === "Enterprise" ? (
                     <a
-                      href="mailto:abhinav@chainflux.io?subject=TheAutonomous Enterprise"
+                      href="mailto:theautonomousorg@gmail.com?subject=TheAutonomous Enterprise"
                       className="block w-full py-3 rounded-xl text-sm font-medium text-center transition-all bg-primary text-surface hover:bg-neutral-800"
                     >
                       {plan.cta}
