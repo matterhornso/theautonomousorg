@@ -158,7 +158,12 @@ export async function POST(request: NextRequest) {
     // Build user context from profile if authenticated
     let userContext = "";
     if (userId) {
-      const profile = await getUserProfile(userId);
+      let profile;
+      try {
+        profile = await getUserProfile(userId);
+      } catch {
+        // Profile table may not exist yet — continue without profile context
+      }
       if (profile) {
         const parts = [];
         if (profile.role_title) parts.push(`User's role: ${profile.role_title}`);
