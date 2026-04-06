@@ -33,8 +33,16 @@ const sql = DATABASE_URL
       connect_timeout: 15,
       ssl: 'require',
       prepare: isPooler ? false : true,
+      onnotice: () => {},
     })
   : (null as unknown as ReturnType<typeof postgres>);
+
+// Prevent unhandled connection errors from crashing the process
+process.on('unhandledRejection', (reason) => {
+  if (reason instanceof Error && reason.message.includes('Tenant or user not found')) {
+    console.warn('[db-postgres] Supabase connection error (suppressed):', reason.message);
+  }
+});
 
 // ─── Schema Migration ────────────────────────────────────
 export async function initSchema() {

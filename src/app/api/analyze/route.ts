@@ -156,25 +156,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Build user context from profile if authenticated
+    // Wrapped in isolated try/catch — DB failures must never block analysis
     let userContext = "";
-    if (userId) {
-      let profile;
-      try {
-        profile = await getUserProfile(userId);
-      } catch {
-        // Profile table may not exist yet — continue without profile context
-      }
-      if (profile) {
-        const parts = [];
-        if (profile.role_title) parts.push(`User's role: ${profile.role_title}`);
-        if (profile.company_size) parts.push(`Company size: ${profile.company_size} people`);
-        if (profile.current_tools) parts.push(`Tools they currently use: ${profile.current_tools}`);
-        if (profile.biggest_challenges) parts.push(`Their biggest challenges: ${profile.biggest_challenges}`);
-        if (profile.automation_goals) parts.push(`What they want to automate: ${profile.automation_goals}`);
-        if (parts.length > 0) {
-          userContext = `\n\nAdditional context from the user's profile:\n${parts.join("\n")}\n\nUse this context to make your recommendations more specific and relevant to their actual needs.`;
+    try {
+      if (userId) {
+        const profile = await getUserProfile(userId);
+        if (profile) {
+          const parts = [];
+          if (profile.role_title) parts.push(`User's role: ${profile.role_title}`);
+          if (profile.company_size) parts.push(`Company size: ${profile.company_size} people`);
+          if (profile.current_tools) parts.push(`Tools they currently use: ${profile.current_tools}`);
+          if (profile.biggest_challenges) parts.push(`Their biggest challenges: ${profile.biggest_challenges}`);
+          if (profile.automation_goals) parts.push(`What they want to automate: ${profile.automation_goals}`);
+          if (parts.length > 0) {
+            userContext = `\n\nAdditional context from the user's profile:\n${parts.join("\n")}\n\nUse this context to make your recommendations more specific and relevant to their actual needs.`;
+          }
         }
       }
+    } catch (e) {
+      console.warn("[analyze] Could not load user profile, continuing without context:", e instanceof Error ? e.message : e);
     }
 
     // Analyze with Claude
