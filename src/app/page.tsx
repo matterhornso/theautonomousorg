@@ -3,7 +3,7 @@ import { Navbar } from "./components/navbar";
 import { AgentShowcase } from "./components/agent-showcase";
 import { agentRoles } from "./data";
 import { WebsiteForm } from "./components/website-form";
-import { ComingSoonButton } from "./components/coming-soon-button";
+import { PricingSignUpButton } from "./components/pricing-cta-button";
 import { AgentIcon } from "./components/agent-icons";
 import { NewsletterForm } from "./components/newsletter-form";
 import { Logo } from "./components/logo";
@@ -704,14 +704,7 @@ export default function Home() {
                     ))}
                   </ul>
 
-                  {plan.name === "Starter" ? (
-                    <a
-                      href="/sign-up"
-                      className="block w-full py-3 rounded-xl text-sm font-medium text-center transition-all bg-primary text-surface hover:bg-neutral-800"
-                    >
-                      {plan.cta}
-                    </a>
-                  ) : plan.name === "Enterprise" ? (
+                  {plan.name === "Enterprise" ? (
                     <a
                       href="mailto:theautonomousorg@gmail.com?subject=TheAutonomous Enterprise"
                       className="block w-full py-3 rounded-xl text-sm font-medium text-center transition-all bg-primary text-surface hover:bg-neutral-800"
@@ -719,7 +712,7 @@ export default function Home() {
                       {plan.cta}
                     </a>
                   ) : (
-                    <ComingSoonButton
+                    <PricingSignUpButton
                       label={plan.cta}
                       featured={plan.featured}
                     />

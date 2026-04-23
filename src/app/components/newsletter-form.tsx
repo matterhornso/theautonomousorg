@@ -59,23 +59,27 @@ export function NewsletterForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2 max-w-md mx-auto">
-      <input
-        type="email"
-        placeholder="your@email.com"
-        required
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className="flex-1 px-4 py-3 bg-white border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all placeholder:text-neutral-400"
-      />
-      <button
-        type="submit"
-        disabled={loading}
-        className="px-6 py-3 bg-primary text-surface text-sm font-medium rounded-xl hover:bg-neutral-800 transition-colors whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed"
-      >
-        {loading ? "Subscribing..." : "Subscribe"}
-      </button>
-      {error && <p className="text-sm text-[#B33A3A] mt-2">{error}</p>}
-    </form>
+    <div className="max-w-md mx-auto">
+      <form onSubmit={handleSubmit} className="flex gap-2">
+        <input
+          type="email"
+          placeholder="your@email.com"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="flex-1 px-4 py-3 bg-white border border-neutral-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all placeholder:text-neutral-400"
+        />
+        <button
+          type="submit"
+          disabled={loading}
+          className="px-6 py-3 bg-primary text-surface text-sm font-medium rounded-xl hover:bg-neutral-800 transition-colors whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {loading ? "Subscribing..." : "Subscribe"}
+        </button>
+      </form>
+      {error && (
+        <p className="text-sm text-[#B33A3A] mt-2 text-center">{error}</p>
+      )}
+    </div>
   );
 }
