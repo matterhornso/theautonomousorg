@@ -998,8 +998,7 @@ export default function Home() {
               &copy; 2026 The Autonomous. All rights reserved.
             </span>
             <span className="text-xs text-neutral-500">
-              Built by{" "}
-              <span className="text-neutral-400 font-medium">Chainflux</span>
+              The Autonomous Org
             </span>
           </div>
         </div>

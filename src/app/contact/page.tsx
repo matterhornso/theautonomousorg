@@ -196,9 +196,9 @@ export default function ContactPage() {
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold mb-2">Built by</h3>
+              <h3 className="text-sm font-semibold mb-2">About</h3>
               <p className="text-sm text-neutral-500">
-                Chainflux
+                The Autonomous Org
               </p>
             </div>
           </div>

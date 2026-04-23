@@ -26,7 +26,7 @@ export default function PrivacyPage() {
             </h2>
             <p>
               The Autonomous (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;),
-              operated by Chainflux, is committed to protecting your privacy.
+              operated by The Autonomous Org, is committed to protecting your privacy.
               This Privacy Policy explains how we collect, use, disclose, and
               safeguard your information when you use our AI agent platform at
               theautonomous.org (the &quot;Service&quot;).

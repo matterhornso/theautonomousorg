@@ -27,7 +27,7 @@ export default function TermsPage() {
             <p>
               By accessing or using The Autonomous platform at
               theautonomous.org (the &quot;Service&quot;), operated by
-              Chainflux, you agree to be bound by these Terms of Service. If
+              The Autonomous Org, you agree to be bound by these Terms of Service. If
               you do not agree, do not use the Service.
             </p>
           </section>
@@ -152,7 +152,7 @@ export default function TermsPage() {
               9. Limitation of Liability
             </h2>
             <p>
-              To the maximum extent permitted by law, Chainflux and The
+              To the maximum extent permitted by law, The Autonomous Org and The
               Autonomous shall not be liable for any indirect, incidental,
               special, consequential, or punitive damages, including loss of
               profits, data, or business opportunities, arising from your use

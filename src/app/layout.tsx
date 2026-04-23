@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     template: "%s | TheAutonomous — AI Agents for Every Business Role",
   },
   description:
-    "Run your company with AI agents. Sales, Marketing, Accounting, HR, Legal, Strategy, Engineering, and more. Enter your website, get personalized agent recommendations, and start automating your business in 2 minutes. Built by Chainflux.",
+    "Run your company with AI agents. Sales, Marketing, Accounting, HR, Legal, Strategy, Engineering, and more. Enter your website, get personalized agent recommendations, and start automating your business in 2 minutes.",
   keywords: [
     "AI agents for business",
     "AI workforce automation",
@@ -54,7 +54,7 @@ export const metadata: Metadata = {
     description:
       "Run your company with AI agents. 14 roles, 168 skills, real tool integrations. Enter your website and launch your AI workforce in 2 minutes.",
     images: ["https://theautonomous.org/og-image.svg"],
-    creator: "@chainflux",
+    creator: "@theautonomousorg",
   },
   robots: {
     index: true,
@@ -70,7 +70,6 @@ export const metadata: Metadata = {
   verification: {
     // Add your verification codes when you set them up
     // google: "your-google-verification-code",
-    // yandex: "your-yandex-verification-code",
   },
   category: "technology",
 };
@@ -87,8 +86,8 @@ const jsonLd = {
         "AI agents for every role in your company. Sales, Marketing, Accounting, HR, Legal, Strategy, Engineering, and more.",
       publisher: {
         "@type": "Organization",
-        name: "Chainflux",
-        url: "https://chainflux.io",
+        name: "The Autonomous Org",
+        url: "https://theautonomous.org",
       },
       potentialAction: {
         "@type": "SearchAction",
@@ -111,7 +110,7 @@ const jsonLd = {
         "@type": "Offer",
         price: "0",
         priceCurrency: "USD",
-        description: "Free tier with 1000 credits. Paid plans starting at $5.",
+        description: "Free tier with 1000 credits. Paid plans starting at $49/month.",
       },
       featureList: [
         "14 AI agent roles (Sales, Marketing, Accounting, HR, Legal, Strategy, Product, Engineering, AI Expert, Admin, Finance, Customer Success, Data Analyst)",
@@ -128,7 +127,7 @@ const jsonLd = {
       ],
       creator: {
         "@type": "Organization",
-        name: "Chainflux",
+        name: "The Autonomous Org",
       },
     },
     {
@@ -163,7 +162,7 @@ const jsonLd = {
           name: "Is The Autonomous free?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Yes, The Autonomous offers 1000 free credits on signup, which covers approximately 20 conversations with your agents. Additional credits can be purchased starting at $5 for 500 credits. No credit card is required to start.",
+            text: "Yes, The Autonomous offers 1000 free credits on signup. Additional credits can be purchased or upgrade to a Growth plan at $49/month. No credit card is required to start.",
           },
         },
         {
@@ -186,11 +185,11 @@ const jsonLd = {
     },
     {
       "@type": "Organization",
-      name: "Chainflux",
-      url: "https://chainflux.io",
+      name: "The Autonomous Org",
+      url: "https://theautonomous.org",
       foundingDate: "2026",
       description:
-        "Chainflux builds AI-powered business automation tools. Creator of The Autonomous — AI agents for every role in your company.",
+        "The Autonomous Org builds AI-powered business automation tools. Creator of The Autonomous — AI agents for every role in your company.",
     },
   ],
 };
@@ -201,36 +200,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" data-scroll-behavior="smooth">
-      <head>
-        <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#0A0A0B" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta
-          name="apple-mobile-web-app-status-bar-style"
-          content="black-translucent"
-        />
-        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap"
-          rel="stylesheet"
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
-      </head>
-      <body className="antialiased">
-        <ClerkProvider>{children}</ClerkProvider>
-        <PwaRegister />
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en">
+        <head>
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          />
+        </head>
+        <body>
+          <PwaRegister />
+          {children}
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
