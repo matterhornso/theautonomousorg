@@ -6,3 +6,22 @@ data/*.db
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# OS / editor cruft
+.DS_Store
+
+# SQLite WAL/SHM files (transient, per dev-server boot)
+data/*.db-shm
+data/*.db-wal
+
+# Build artifacts
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# Playwright test artifacts
+test-results/
+playwright-report/
+
+# Skill bundles (installed from skills-lock.json)
+.claude/skills/
+.agents/skills/
