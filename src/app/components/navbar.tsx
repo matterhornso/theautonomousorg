@@ -66,6 +66,15 @@ export function Navbar() {
               Pricing
             </a>
             <a
+              href="/memory"
+              className="hover:text-primary transition-colors py-3 inline-flex items-center gap-2"
+            >
+              Memory
+              <span className="text-[10px] uppercase tracking-wide bg-accent/15 text-accent px-1.5 py-0.5 rounded font-medium">
+                New
+              </span>
+            </a>
+            <a
               href="/blog"
               className="hover:text-primary transition-colors py-3"
             >
@@ -173,6 +182,16 @@ export function Navbar() {
               className="block py-3 text-lg text-neutral-700 hover:text-primary transition-colors"
             >
               Pricing
+            </a>
+            <a
+              href="/memory"
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center gap-2 py-3 text-lg text-neutral-700 hover:text-primary transition-colors"
+            >
+              Memory
+              <span className="text-[10px] uppercase tracking-wide bg-accent/15 text-accent px-1.5 py-0.5 rounded font-medium">
+                New
+              </span>
             </a>
             <a
               href="/blog"
