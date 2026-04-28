@@ -1,12 +1,22 @@
 # TODO — Coding Agent Handoff
 
-> This file is the source of truth for outstanding work across both `theautonomousorg` (this repo) and `autonomous-memory/apps/rowboat` (the memory-product fork). Read it first before starting any task. Mark items complete with `[x]` and add the date.
+> Source of truth for outstanding work in **the main app** (`theautonomousorg`). For memory-product work, see `autonomous-memory/TODO.md`. Read this file's "How to use" section first. Mark items complete with `[x]` and add the date.
 
 **Last updated:** 2026-04-28
 **Maintainer:** abhinav@chainflux.com
 **Repos:**
-- Main app: `/Users/abhinavramesh/theautonomousorg`
-- Memory app + rowboat fork: `/Users/abhinavramesh/autonomous-memory`
+- Main app: `/Users/abhinavramesh/theautonomousorg` (this repo's TODO covers items here)
+- Memory app + rowboat fork: `/Users/abhinavramesh/autonomous-memory` (separate `TODO.md` lives there)
+
+## Before you start
+
+Read in order, then return here:
+
+1. `CONTEXT.md` — what this platform is and its current state
+2. `README.md` — how to run, where things live, runbook
+3. (this file) — pick a task
+
+Don't skip the context files even if the task seems self-explanatory — many items here have a *why* that's non-obvious from the file paths alone.
 
 ---
 

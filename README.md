@@ -6,6 +6,22 @@ Built by [Chainflux](https://chainflux.io). Live at [theautonomous.org](https://
 
 ---
 
+## 🤖 Coding Agent Quickstart
+
+If you're an AI coding agent picking up work on this repo, read these files **in this order**:
+
+1. **`CONTEXT.md`** — Platform context, ecosystem map (this app + the memory product), business model, current engineering status. Tells you *why* before *what*.
+2. **`README.md`** (this file) — Engineering setup, env vars, project structure, operational runbook.
+3. **`TODO.md`** — Prioritized backlog with file paths, success criteria, and what blocks each item. Pick the highest unchecked P0 not blocked by user input.
+4. **`CLAUDE.md`** — Project conventions, available skills, design-system reminder.
+5. **`DESIGN.md`** — Design tokens (fonts, colors, spacing). **Read before any UI change.**
+
+After reading, run `curl http://localhost:3000/api/health` to confirm the local environment is healthy before changing code. If `database` is `FAILED`, the Supabase project may have auto-paused — see *Operational Runbook → Database: Supabase pause/restore* below.
+
+The sister product (`autonomous-memory/apps/rowboat` — the memory app) has its own `HANDOFF.md` + `TODO.md`. Don't edit it from this repo; switch directories first.
+
+---
+
 ## Table of Contents
 
 1. [Two Ways to Use The Autonomous](#two-ways-to-use-the-autonomous)

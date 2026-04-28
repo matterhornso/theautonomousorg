@@ -1,6 +1,31 @@
-# The Autonomous — Business Context File
+# The Autonomous — Platform Context
 
-> Use this document to give any AI assistant (ChatGPT, Claude, Gemini, etc.) full context about The Autonomous so it can help you with sales, marketing, business development, customer conversations, content creation, and strategic decisions.
+> Single source of truth for what the platform is, what it does, who it serves, and the current state of the engineering work. Use this document to give any AI assistant (ChatGPT, Claude, Gemini, etc.) full context — for sales, marketing, customer conversations, content, **or as the read-first context for a coding agent**.
+
+## How to Use This File (Coding Agents)
+
+If you are a coding agent picking up work on this platform, read in this order:
+
+1. **`CONTEXT.md`** (this file) — what the platform is and current state
+2. **`README.md`** — engineering setup, env vars, runbook
+3. **`TODO.md`** — prioritized backlog with file paths and acceptance criteria
+4. **`CLAUDE.md`** — project conventions and skill list
+5. **`DESIGN.md`** — design system (read before any UI change)
+
+Then pick the highest-priority unchecked P0 item from `TODO.md` that is not in the "Action Items Requiring User" section, and start there.
+
+---
+
+## Ecosystem Map (Two Products)
+
+The Autonomous Org operates two products in two repos:
+
+| Product | Repo | Local Path | URL | Status |
+|---------|------|-----------|-----|--------|
+| **The Autonomous** (main platform) | `matterhornso/theautonomousorg` | `/Users/abhinavramesh/theautonomousorg` | [theautonomous.org](https://theautonomous.org) | Live, deployed on Railway |
+| **Autonomous Memory** (memory product) | `matterhornso/rowboat-web3` | `/Users/abhinavramesh/autonomous-memory` | memory.theautonomous.org *(planned)* | In development, not deployed |
+
+The memory product lives inside `autonomous-memory/apps/rowboat` — a fork of [rowboat](https://github.com/rowboatlabs/rowboat) customized for executive meeting intelligence. The two products share Clerk auth (single sign-on planned).
 
 ---
 
@@ -244,6 +269,47 @@ A: Admin dashboard for full control, WhatsApp and Telegram for on-the-go access.
 
 **Q: Can agents talk to each other?**
 A: Yes. Agents use @mentions to collaborate. Your Sales agent can ask Admin to draft a contract — the system routes it automatically and relays the response back.
+
+---
+
+## Autonomous Memory (Sister Product)
+
+**What it is:** Persistent AI memory for executives. Record meetings → Deepgram transcription → entity extraction (Claude) → MongoDB knowledge graph. Generate pre-meeting briefs by querying the graph + Claude synthesis.
+
+**Why it exists:** Closes the gap left by Limitless and Rewind for boardroom-grade executive tooling — premium, dark-first UI; no free tier; targets CEOs/COOs/VP Sales who already pay for executive assistants.
+
+**Pricing:** Early Access $99/mo, Executive $299/mo. No free tier.
+
+**Tech:** Next.js 15 App Router, Clerk (shared with main app), MongoDB (knowledge graph) + Redis (queues), Anthropic Claude (entity extraction + synthesis), Deepgram (transcription), AWS S3 (audio), Stripe (billing). Deploys to Railway.
+
+**Status (2026-04-28):**
+- Code scaffolded: voice/memory/brief/fireflies/health APIs, entity extraction lib, Stripe billing routes, PWA support, Clerk auth migration done (replaced upstream Auth0)
+- **Not yet deployed** — needs MongoDB, Redis, Deepgram, S3, Stripe credentials provisioned
+- See `autonomous-memory/HANDOFF.md` and `autonomous-memory/TODO.md` for the engineering checklist
+
+**Key domain concepts:**
+- **Recording:** Audio file uploaded → Deepgram → entity extraction → MongoDB write
+- **Entity types:** Person, Conversation, Commitment, Event, Note
+- **Knowledge graph:** Entities cross-referenced by ID in MongoDB
+- **Pre-meeting brief:** Query knowledge graph → Claude synthesis → structured brief
+- **Voice pipeline target:** <5s from upload to entities stored
+
+---
+
+## Engineering Status (Both Products, 2026-04-28)
+
+**The Autonomous (main app):**
+- ✅ Live at theautonomous.org with Supabase Postgres backend (just restored from auto-pause; consider Pro to prevent recurrence)
+- ✅ 7 commits pushed today: gitignore cleanup, /memory landing + waitlist, marketing skills bundle, CONTEXT.md, README+TODO rewrite, branding fix, pricing CTA fix
+- 🟡 Health endpoint healthy; Clerk still using dev keys; analytics + tracking incomplete
+- See `TODO.md` § "P0 — Action Items Requiring User"
+
+**Autonomous Memory (rowboat fork):**
+- ✅ Auth0 → Clerk migration complete (code-side)
+- ✅ Memory product API stubs + UI scaffolding committed
+- 🔴 Cannot run locally without env credentials (MongoDB / Redis / Deepgram / Clerk / S3 / Stripe)
+- 🔴 Node 25 + Clerk-keyless interaction causes `localStorage.getItem is not a function` SSR error — fix is to pin Node 22 LTS or supply real Clerk keys
+- See `autonomous-memory/TODO.md` § "P0 — Bugs"
 
 ---
 
