@@ -2,8 +2,22 @@
 
 > Source of truth for outstanding work in **the main app** (`theautonomousorg`). For memory-product work, see `autonomous-memory/TODO.md`. Read this file's "How to use" section first. Mark items complete with `[x]` and add the date.
 
-**Last updated:** 2026-04-28
+**Last updated:** 2026-05-02
 **Maintainer:** abhinav@chainflux.com
+
+> **2026-05-02 strategy update:** TheAutonomous repositioned as a horizontal AI workforce platform for Indian MSMEs. JAA & Associates is the first paid customer (verbal; deposit pending). Memory and Vault as standalone products are RETIRED; Vault name is now the per-tenant knowledge base module. See `~/.gstack/projects/matterhornso-theautonomousorg/abhinavramesh-main-design-20260501-162924.md` for the locked design.
+
+## What shipped this session (2026-05-02)
+
+| Commit | Module | Lines | Tests |
+|--------|--------|-------|-------|
+| `8a40301` | gstack skill routing in CLAUDE.md | +18 | — |
+| `d2278ae` | Multi-tenant RLS migration + helper (NOT applied to DB) | +707 | +7 |
+| `1141aa0` | Agent SDK contract + A4 Bank Recon reference | +841 | +22 |
+| `9fa201d` | WhatsApp BSP router (W4) — implements WhatsAppHelper | +661 | +20 |
+| `c54b9fe` | Vault module v1 (W5) — pgvector schema + ingest/query | +715 | +18 |
+
+**Suite total: 144/144 tests passing across 11 files. Type-check clean.**
 **Repos:**
 - Main app: `/Users/abhinavramesh/theautonomousorg` (this repo's TODO covers items here)
 - Memory app + rowboat fork: `/Users/abhinavramesh/autonomous-memory` (separate `TODO.md` lives there)
@@ -42,23 +56,84 @@ These cannot be done by a coding agent alone — they need credentials, account 
 
 ### Main app (theautonomousorg)
 
-- [ ] **Decide: keep Supabase free tier or upgrade to Pro.** Free tier auto-pauses after 7 days of inactivity, which causes `/api/health` to return 503 with `"Tenant or user not found"`. Pro is $25/mo and never pauses. *Required input: yes/no decision.*
+- [ ] **Fix SSL cert on theautonomous.org.** The cert currently served is the Railway wildcard `*.up.railway.app` (issuer: Certainly), not a cert for the custom domain. Browsers throw `NET::ERR_CERT_COMMON_NAME_INVALID`. Re-issue via Railway → Settings → Domains → re-add `theautonomous.org`, wait for Let's Encrypt issuance.
+- [ ] **Fix DATABASE_URL in Railway.** Currently points to `db.znmerxpukimtugwtfysy.supabase.co` (deleted/wrong project). Per `CONTEXT.md` the live project is `hobjxomvmxradkgnivol`. Update `DATABASE_URL` in Railway to the pooler URL for that project. Without this, `/api/health` returns 503 and no production traffic works.
+- [ ] **Decide: keep Supabase free tier or upgrade to Pro.** Free tier auto-pauses after 7 days of inactivity. Pro is $25/mo and never pauses. *Required input: yes/no decision.*
 - [ ] **Switch Clerk to production keys.** Currently using `pk_test_*` / `sk_test_*` (dev keys show "Development mode" badge and have rate limits). *Required input:* `pk_live_*` and `sk_live_*` from [Clerk dashboard](https://dashboard.clerk.com).
-- [ ] **Add production env vars to Railway.** Local `.env.local` is set, but Railway production needs: `RESEND_API_KEY`, production Clerk keys, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `ENCRYPTION_KEY`. *Required input:* run `railway variables set` for each, or paste into Railway dashboard.
-- [ ] **Deploy latest code to Railway.** Several un-deployed commits exist (newsletter API, contact API, PWA icons, scroll-behavior fix, branding). *Required input:* approval to push to `main`.
+- [ ] **Add production env vars to Railway.** Local `.env.local` is set, but Railway production needs: `RESEND_API_KEY`, production Clerk keys, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `ENCRYPTION_KEY`. **NEW for the MSME platform build:** `GUPSHUP_API_KEY`, `GUPSHUP_APP_NAME`, `GUPSHUP_SOURCE_NUMBER`, `WHATSAPP_WEBHOOK_SECRET`, `WHATSAPP_CALLBACK_SECRET`, `COHERE_API_KEY` (for Vault embeddings; OpenAI fallback works), `APP_BASE_URL`. *Required input:* run `railway variables set` for each, or paste into Railway dashboard.
+- [ ] **Deploy latest code to Railway.** **5 un-deployed commits ahead of origin/main as of 2026-05-02**: gstack routing, RLS infra, Agent SDK, WhatsApp router, Vault module. ~3000 lines, 144/144 tests green. *Required input:* approval to push to `main`.
 - [ ] **Add Stripe webhook endpoint in Stripe dashboard** pointing to `https://theautonomous.org/api/billing/webhook`, then copy the signing secret into `STRIPE_WEBHOOK_SECRET`.
-- [ ] **Verify Resend domain** for `theautonomous.org` if not already (lets us send from `hello@theautonomous.org` instead of `onboarding@resend.dev`).
+- [ ] **Verify Resend domain** for `theautonomous.org` if not already.
+- [ ] **Provision Gupshup BSP account** with the platform-shared WhatsApp Business number (locked decision 1C-B). Lead time: 3–7 days for Meta business verification. Required for any WhatsApp agent work.
+- [ ] **Sign Anthropic processor addendum** for cross-border data flow under DPDP. Existing relationship with Anthropic; this is a paperwork item. Blocks production agent runs from being lawful for JAA's data.
+- [ ] **Apply migrations 001 + 002 (RLS + Vault) to a STAGING Supabase project FIRST.** Do NOT apply to production until: (a) every server-side query path is wrapped in `withTenantContext()` (RLS PR 2 below), and (b) staging passes the regression suite. Order: 001 → 002.
 
-### Rowboat fork (autonomous-memory/apps/rowboat)
+### JAA-specific (this week)
 
-- [ ] **Provision MongoDB Atlas cluster** for the knowledge graph. Free M0 tier is fine for pilot. *Required input:* `MONGODB_URI`.
-- [ ] **Provision Redis** (Upstash recommended — has free tier with HTTP API). *Required input:* `REDIS_URL`.
-- [ ] **Create AWS S3 bucket** `autonomous-memory-audio` in `us-east-1` for voice recordings. Configure IAM user with PutObject/GetObject. *Required input:* `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`.
-- [ ] **Get Deepgram API key** from [Deepgram console](https://console.deepgram.com/). *Required input:* `DEEPGRAM_API_KEY`.
-- [ ] **Create Stripe products** for Early Access ($99/mo) and Executive ($299/mo) tiers. *Required input:* `STRIPE_PRICE_EARLY_ACCESS`, `STRIPE_PRICE_EXECUTIVE`.
-- [ ] **Decide hosting:** Railway / Vercel / Fly.io / self-hosted. Each has different MongoDB and Redis ergonomics. *Required input:* hosting platform decision.
-- [ ] **Decide on Clerk strategy:** share the main app's Clerk instance (single sign-on) or use a separate one. Sharing is simpler if both products are owned by the same org. *Required input:* yes/no.
-- [ ] **Domain setup:** point `memory.theautonomous.org` DNS at the chosen host. *Required input:* DNS access (Cloudflare? domain registrar?).
+- [ ] **Pre-call JAA SPOC to confirm restructured SOW shape.** Outside-voice 6A risk you accepted: SOW going out cold without verbal confirmation that JAA will accept ₹2L/month sub + ₹40-80L services (vs. the verbal's likely ₹40-80L flat-fee shape). Have the old-shape SOW drafted as a fallback so you can pivot in hours.
+- [ ] **Send JAA the SOW** (standard sub + implementation services + 25% deposit due before week-1 work begins).
+- [ ] **Track JAA deposit by Friday** as the truth-telling forcing function.
+
+### Rowboat fork (autonomous-memory/apps/rowboat) — **RETIRED**
+
+The Memory product as a standalone offering is retired per the 2026-05-01 strategy lock. The rowboat fork should be archived. The voice → entities → exec brief surface is killed; the cross-run learning pattern moved into the Vault module (`src/lib/vault.ts`) inside the main app.
+
+- [ ] **Archive `/Users/abhinavramesh/autonomous-memory/`** (move to `~/archive/` or push to a dedicated `autonomous-memory-retired` repo with an ARCHIVED.md note explaining the strategy change).
+- [ ] **Send retirement notice** to anyone on the `/memory-waitlist` (Resend campaign: "Memory product is retired; check out TheAutonomous platform sub").
+- [ ] **Disable `/memory` landing page** in the main app, or redirect to the platform sub page.
+
+---
+
+## 🟠 P0 — Coding Agent Can Do (next session priorities)
+
+These are the buildable next steps after the production blockers above are unblocked. Sequence matters: items further down depend on items above.
+
+### Multi-tenant RLS (continuing the d2278ae work)
+
+- [ ] **PR 2: Pick the tenant-context propagation pattern.** Three options (architectural decision needed): (a) explicit `tx` parameter through every db function, (b) AsyncLocalStorage to carry context through async boundaries, (c) `sql.reserve()` per request. Each shapes the 188 db.ts call site refactor differently. **Recommendation: AsyncLocalStorage** — most idiomatic Node.js, no API change to existing db functions, single addition to `src/lib/tenant-context.ts`. Once picked, refactor follows.
+- [ ] **PR 2: Audit + wrap every server-side query path** in `withTenantContext()`. 188 call sites in `src/lib/db-postgres.ts` + 43 API routes. Target: every tenant-scoped read/write has the GUC set.
+- [ ] **PR 3: Apply migrations 001 + 002 to a STAGING Supabase**, run regression suite, verify no existing flow broke.
+- [ ] **PR 4: Apply to production behind feature flag** `RLS_ENFORCED=true`. Roll out to JAA first, then firm #2.
+
+### Agent runtime (using the SDK from 1141aa0)
+
+- [ ] **AgentRunner**: the runtime that loads an `AgentDefinition`, builds `AgentRunContext` (with helpers wired via `buildWhatsAppHelper` + `buildVaultHelper` + lessons + escalation), validates input, calls the LLM with retries + budget enforcement, validates output, runs lifecycle hooks, writes Langfuse trace.
+- [ ] **Lessons table implementation**: thin wrapper over the existing `memory` table (or new `lessons` table) implementing the `LessonsHelper` interface. Per-agent + per-firm partition.
+- [ ] **Escalation helper implementation**: composes `whatsapp.sendNotification` + admin portal notifications.
+- [ ] **Fork the remaining 30 CA pack agents** off `src/lib/packs/ca-firm/a4-bank-recon.ts`: A1, A3, A5, A7, A8, T1, T3, T4, R1, R3, R4, Q1, Q2, Q4, H1, H4, AP1, IT1, P1, P2, P3, Adm1, Adm3, B1, B3, E1, E2, I1, I2, plus the Command Agent. Each is a ~150-200 line file.
+
+### WhatsApp (continuing 9fa201d)
+
+- [ ] **`/api/messaging/whatsapp/webhook` route handler**: validates Gupshup signature, parses inbound messages, calls `routeInboundMessage`, dispatches to AgentRunner.
+- [ ] **`/api/messaging/whatsapp/callback` route handler**: receives signed approval-button clicks, validates HMAC + expiry, executes the action with idempotency.
+- [ ] **WhatsApp template library**: 40–60 utility templates × 2 languages submitted to Meta for first-time-sender approval. Lead time: 24–72 hours per template, sometimes 5–7 days. Submit week 1.
+
+### Vault (continuing c54b9fe)
+
+- [ ] **Bilingual entity extraction (vault-extractors.ts)**: GSTIN/PAN/CIN/IFSC recognizers using regex + Cohere structured-extraction. Indian context tuning that the design doc Vault rich-v1 promised.
+- [ ] **Re-embed delta on source-doc change**: chunk diff + selective re-embed.
+- [ ] **Tombstone cleanup cron**: archive deleted_at + tombstoned chunks past retention.
+
+### Tally on-prem agent (W3) — separate repo
+
+- [ ] **Create `theautonomousorg-tally-agent` repo**: Windows .NET 6 service, polls Tally XML on local TCP 9000, pushes to platform via mTLS tunnel. Per locked decision 1B-B: per-firm cert, read-only by default, writes require SPOC-signed request + audit log.
+- [ ] **`/api/integrations/tally` ingestion endpoint** in main app: receives mTLS-authenticated payloads, validates per-firm cert against issuer chain, writes to Postgres tenant-scoped tables.
+
+### Per-firm KMS encryption (W2) — depends on RLS PR 2
+
+- [ ] **`src/lib/kms.ts`**: per-firm AWS KMS CMK provisioning + envelope-encrypted DEKs per BYOM key. Per locked decision 1D-A.
+- [ ] **Migrate existing user_api_keys table** from `ENCRYPTION_KEY` AES-256-GCM to KMS-envelope.
+
+### Tenant provisioning state machine (W9)
+
+- [ ] **`src/lib/tenant-provisioner.ts`**: idempotent provisioning of per-firm Postgres schema + KMS CMK + Langfuse project + pgvector index. **Cap self-serve sub at "waitlist mode" until provisioner is tested at ≥5 tenants** (outside-voice 3 risk).
+- [ ] **Per-firm cost telemetry**: emit per-tenant token counts + INR cost into Langfuse from week 1 so the Subscription module markup decision (35-50%? 100%?) is data-driven by month 2.
+
+### Production reliability
+
+- [ ] **Postgres connection-pooling check at startup**: detect "Tenant or user not found" at boot, log a clear warning instead of failing per-request. File: `src/lib/db-postgres.ts`.
+- [ ] **Uptime monitoring**: hit `https://theautonomous.org/api/health` every 5 min from BetterStack/UptimeRobot. Alert on 503.
+- [ ] **Sentry or equivalent error tracking**: wire into `src/app/layout.tsx` and `src/lib/db.ts`.
 
 ---
 
