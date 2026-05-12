@@ -250,10 +250,39 @@ Each agent runs in its own isolated instance with persistent memory, role-specif
 | `STRIPE_WEBHOOK_SECRET` | No | Stripe webhook signature verification |
 | `APOLLO_API_KEY` | No | Enables Apollo.io prospect search for Sales/Strategy |
 | `INSTANTLY_API_KEY` | No | Enables Instantly.ai email campaigns for Sales/Marketing |
-| `TELEGRAM_BOT_TOKEN` | No | Enables Telegram messaging bridge |
+| `TELEGRAM_BOT_TOKEN` | For timesheets | Bot token from `@BotFather`. Used by Telegram messaging bridge AND the JAA timesheet reminder vertical. |
+| `TELEGRAM_WEBHOOK_SECRET` | For timesheets | `openssl rand -hex 32`. Verified in `x-telegram-bot-api-secret-token` header on every inbound update. Paste the same value into Telegram's `setWebhook` call. |
 | `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` | No | WhatsApp messaging |
+| `SHOPIFY_STORE_DOMAIN` | For Shopify Editor | The merchant's `<handle>.myshopify.com` (NOT their public custom domain). |
+| `SHOPIFY_CLIENT_ID` | For Shopify Editor | From the merchant's Dev Dashboard custom app. We exchange Client ID + Secret for a 24h `shpat_…` access token via the [client credentials grant](https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens/client-credentials-grant). |
+| `SHOPIFY_CLIENT_SECRET` | For Shopify Editor | Same source. Treat like a password. |
+| `SHOPIFY_API_VERSION` | No | Defaults to `2026-04`. Use whatever version Shopify's Dev Dashboard suggests for your app. |
+| `CRON_SECRET` | For prod cron | `openssl rand -hex 32`. Token-gate for `/api/cron/*` endpoints. Pass as `?token=<value>` or `Authorization: Bearer <value>`. |
 
 Generate a fresh `ENCRYPTION_KEY` with: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+
+### Demo verticals: helper scripts
+
+Live verifiers shipped with the repo. They exercise the full code path against real services — no mocks. Run from project root:
+
+```bash
+# Bootstrap base tables on a fresh DB (idempotent)
+DATABASE_URL='postgresql://…' bun run scripts/init-base-schema.ts
+
+# Shopify
+bun run scripts/shopify-smoke.ts            # token + first 5 products
+bun run scripts/shopify-tags.ts             # print current tags on Soma Sparkling Water
+bun run scripts/shopify-e2e.ts              # plan → apply → verify → rollback → verify clean
+bun run scripts/shopify-insights-test.ts    # Claude category-aware insights against the live catalog
+
+# Timesheets / Telegram
+bun run scripts/timesheet-e2e.ts            # roster + cron pass dry-run
+bun run scripts/telegram-webhook-e2e.ts     # simulate /link, DONE, HELP against the live route
+```
+
+### Supabase connection note (IPv6 vs pooler)
+
+The "Direct connection" string Supabase shows on the Connection Strings page resolves to **IPv6 only**. Many home / corporate networks don't have IPv4-translated IPv6 paths, so `psql` against the direct host will fail with `No route to host`. **Use the Session Pooler URL instead** (port `5432`, host `aws-<region>.pooler.supabase.com`, username `postgres.<project-ref>`). It supports DDL fine and works on IPv4. The Transaction Pooler (port 6543) is what `.env.local`'s `DATABASE_URL` points to for runtime; both are fine on the same DB.
 
 ### Rowboat Fork (`autonomous-memory/apps/rowboat`)
 
