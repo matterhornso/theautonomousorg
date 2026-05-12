@@ -19,6 +19,7 @@ import {
   ClockIcon,
 } from "../../../_components/icons";
 import { recentRuns, roleAgents, slugify, type RunStatus } from "../../../_data/mock";
+import { loadAgentRun } from "../../../_lib/admin-data";
 
 interface TraceEvent {
   ts: number;
@@ -45,7 +46,9 @@ export default async function AgentRunDetailPage({
 }) {
   const { role, runId } = await params;
   const agent = roleAgents.find((r) => slugify(r.role) === role);
-  const run = recentRuns.find((r) => r.id === runId);
+  // Try the real agent_runs table first; fall back to mock if not found.
+  const realRun = await loadAgentRun(runId);
+  const run = realRun ?? recentRuns.find((r) => r.id === runId);
   if (!agent || !run) notFound();
 
   const s = statusMap[run.status];

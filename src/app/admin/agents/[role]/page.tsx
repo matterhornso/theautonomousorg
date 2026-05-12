@@ -24,6 +24,8 @@ import {
   slugify,
   type RunStatus,
 } from "../../_data/mock";
+import { loadAgentRunsByRole } from "../../_lib/admin-data";
+import { resolveTenant } from "../../_lib/resolve-tenant";
 
 const statusMap: Record<
   RunStatus,
@@ -52,7 +54,14 @@ export default async function AgentRoleRunsPage({
   const agent = roleAgents.find((r) => slugify(r.role) === role);
   if (!agent) notFound();
 
-  const roleRuns = recentRuns.filter((r) => r.agentRole === agent.role);
+  // Try real agent_runs first; fall back to filtered mock when empty so the
+  // UI keeps rendering before any real runs exist.
+  const tenant = await resolveTenant();
+  const realRuns = await loadAgentRunsByRole(tenant.firm.id, agent.role, 30);
+  const roleRuns =
+    realRuns.length > 0
+      ? realRuns
+      : recentRuns.filter((r) => r.agentRole === agent.role);
   const lessonsSample = mockLessons(agent.role);
 
   return (

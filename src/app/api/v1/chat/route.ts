@@ -12,6 +12,8 @@ import {
 import { buildLessonsHelper } from "@/lib/lessons";
 import { dispatchMentions } from "@/lib/mention-dispatch";
 import { createCompletion, getLLMConfigForCompany } from "@/lib/llm-router";
+import { createAgentRun, completeAgentRun } from "@/lib/agent-runs";
+import { randomUUID } from "crypto";
 
 export async function POST(request: NextRequest) {
   const auth = await authenticateApiKey(request);
@@ -95,19 +97,43 @@ export async function POST(request: NextRequest) {
     console.warn("[v1/chat] lesson lookup failed; continuing without:", err);
   }
 
+  // Open a run record. Postgres-only — returns null in dev (no DATABASE_URL)
+  // and we fall back to a transient id so the lesson write below still has
+  // a stable foreign-key-shaped value.
+  const runRecord = await createAgentRun({
+    companyId: auth.companyId,
+    agentRole: agent.role,
+    agentId,
+    triggeredBy: "api",
+    triggerDetail: `POST /api/v1/chat · conversation ${convId}`,
+    input: { conversationId: convId, message },
+  });
+  const runId = runRecord?.id ?? `run_tmp_${randomUUID()}`;
+
   // Route through the LLM router so tenants on BYOM (OpenAI / OpenAI-compat /
   // their own Anthropic key) hit the right provider. Falls back to env-level
   // Anthropic if no per-tenant LLM key is configured.
   const llmConfig = await getLLMConfigForCompany(auth.companyId);
-  const completion = await createCompletion(
-    auth.companyId,
-    {
-      system: agent.system_prompt + memorySection + lessonsSection,
-      messages: apiMessages,
-      maxTokens: 4096,
-    },
-    llmConfig
-  );
+  let completion;
+  try {
+    completion = await createCompletion(
+      auth.companyId,
+      {
+        system: agent.system_prompt + memorySection + lessonsSection,
+        messages: apiMessages,
+        maxTokens: 4096,
+      },
+      llmConfig
+    );
+  } catch (err) {
+    await completeAgentRun(runId, {
+      status: "failed",
+      errorDetail: err instanceof Error ? err.message : String(err),
+      modelUsed: llmConfig.model,
+      provider: llmConfig.provider,
+    });
+    throw err;
+  }
   const responseText = completion.text;
 
   // Save assistant response
@@ -128,9 +154,39 @@ export async function POST(request: NextRequest) {
     content: responseText,
   });
 
+  // Close the run record with usage + output snapshot. Fire-and-forget — if
+  // the DB hiccups we still return the response.
+  await completeAgentRun(runId, {
+    status: "completed",
+    output: { response: responseText, mentionsDispatched: mentions.length },
+    modelUsed: completion.model,
+    provider: completion.provider,
+    tokensIn: completion.usage.input_tokens,
+    tokensOut: completion.usage.output_tokens,
+    summary: responseText.slice(0, 200),
+  });
+
+  // Close the closed loop: write a lesson with outputAccepted=unknown.
+  // Future approve/reject UI flips this to approved/rejected/modified and
+  // attaches modificationDetail so the next run reads richer context.
+  try {
+    await buildLessonsHelper({
+      firmId: auth.companyId,
+      agentId,
+    }).write({
+      agentId,
+      runId,
+      taskDescription: message.slice(0, 200),
+      outputAccepted: "unknown",
+    });
+  } catch (err) {
+    console.warn("[v1/chat] lesson write failed; continuing:", err);
+  }
+
   return NextResponse.json({
     conversationId: convId,
     response: responseText,
+    runId,
     model: completion.model,
     provider: completion.provider,
     byom: llmConfig.byom,

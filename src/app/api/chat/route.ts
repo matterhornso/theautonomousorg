@@ -30,6 +30,8 @@ import {
 import { ceoTools, executeCeoTool } from "@/lib/mcp/ceo-tools";
 import { buildLessonsHelper } from "@/lib/lessons";
 import { extractMentions } from "@/lib/mention-dispatch";
+import { createAgentRun, completeAgentRun } from "@/lib/agent-runs";
+import { randomUUID } from "crypto";
 
 const client = new Anthropic();
 
@@ -197,6 +199,18 @@ export async function POST(request: NextRequest) {
 
     const systemPrompt = agent.system_prompt + memorySection + lessonsSection;
 
+    // Open a run record. Postgres-only — null in dev. We fall back to a
+    // transient id so lesson writes have a stable runId either way.
+    const runRecord = await createAgentRun({
+      companyId: agent.company_id,
+      agentRole: agent.role,
+      agentId,
+      triggeredBy: "user",
+      triggerDetail: `POST /api/chat · conversation ${convId}`,
+      input: { conversationId: convId, message },
+    });
+    const runId = runRecord?.id ?? `run_tmp_${randomUUID()}`;
+
     // Determine available tools for this agent
     const tools: Anthropic.Tool[] = [];
     if (isApolloConfigured() && ["Sales", "Strategy"].includes(agent.role)) {
@@ -221,10 +235,11 @@ export async function POST(request: NextRequest) {
     const readable = new ReadableStream({
       async start(controller) {
         try {
-          // Send conversationId first
+          // Send conversationId + runId first so the client can correlate
+          // streamed text back to a specific run (for approve/reject UX).
           controller.enqueue(
             encoder.encode(
-              `data: ${JSON.stringify({ conversationId: convId })}\n\n`
+              `data: ${JSON.stringify({ conversationId: convId, runId })}\n\n`
             )
           );
 
@@ -476,10 +491,45 @@ export async function POST(request: NextRequest) {
             }
           }
 
+          // Close the run record with the final response snapshot.
+          await completeAgentRun(runId, {
+            status: "completed",
+            output: { response: fullResponse },
+            modelUsed: "claude-sonnet-4-6",
+            provider: "anthropic",
+            summary: fullResponse.slice(0, 200),
+          });
+
+          // Close the closed loop: write a lesson with outputAccepted=unknown.
+          // Future approve/reject UX flips this to approved/rejected/modified.
+          try {
+            await buildLessonsHelper({
+              firmId: agent.company_id,
+              agentId,
+            }).write({
+              agentId,
+              runId,
+              taskDescription: message.slice(0, 200),
+              outputAccepted: "unknown",
+            });
+          } catch (err) {
+            console.warn("[chat] lesson write failed; continuing:", err);
+          }
+
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
         } catch (err) {
           console.error("Stream error:", err);
+          // Best-effort: mark the run as failed so /admin/agents/[role] shows
+          // the failure rather than a hanging "running" status.
+          completeAgentRun(runId, {
+            status: "failed",
+            errorDetail: err instanceof Error ? err.message : String(err),
+            modelUsed: "claude-sonnet-4-6",
+            provider: "anthropic",
+          }).catch(() => {
+            /* swallow — already in an error path */
+          });
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({ error: "Stream interrupted" })}\n\n`

@@ -184,6 +184,83 @@ export async function loadNotifications(
   }
 }
 
+/**
+ * Real agent_runs rows mapped onto the legacy AgentRun shape the UI renders.
+ * Returns [] when the table is empty or unreachable — callers should fall
+ * back to mock fixtures so the UI keeps rendering.
+ */
+export async function loadAgentRunsByRole(
+  companyId: string,
+  agentRole: string,
+  limit = 20
+): Promise<AgentRun[]> {
+  if (!HAS_DB) return [];
+  try {
+    const { getAgentRunsByRole } = await import("@/lib/agent-runs");
+    const rows = await getAgentRunsByRole(companyId, agentRole, limit);
+    return rows.map(mapRunToUi);
+  } catch {
+    return [];
+  }
+}
+
+export async function loadAgentRun(id: string): Promise<AgentRun | null> {
+  if (!HAS_DB) return null;
+  try {
+    const { getAgentRun } = await import("@/lib/agent-runs");
+    const row = await getAgentRun(id);
+    return row ? mapRunToUi(row) : null;
+  } catch {
+    return null;
+  }
+}
+
+type DbRun = Awaited<
+  ReturnType<typeof import("@/lib/agent-runs").getAgentRun>
+>;
+type DbRunNonNull = NonNullable<DbRun>;
+
+function mapRunToUi(r: DbRunNonNull): AgentRun {
+  // status: completed → succeeded · queued → running · awaiting_approval → needs_approval
+  const status: AgentRun["status"] =
+    r.status === "completed"
+      ? "succeeded"
+      : r.status === "failed"
+        ? "failed"
+        : r.status === "awaiting_approval"
+          ? "needs_approval"
+          : "running";
+  // triggeredBy: user/api → manual · cron → schedule · event → webhook · mention → orchestrator
+  const triggeredBy: AgentRun["triggeredBy"] =
+    r.triggeredBy === "cron"
+      ? "schedule"
+      : r.triggeredBy === "event"
+        ? "webhook"
+        : r.triggeredBy === "mention"
+          ? "orchestrator"
+          : "manual";
+  const durationMs = r.completedAt
+    ? r.completedAt.getTime() - r.startedAt.getTime()
+    : 0;
+  return {
+    id: r.id,
+    agentId: r.agentId ?? `agent_${r.agentRole.toLowerCase()}`,
+    agentRole: r.agentRole,
+    status,
+    startedAt: r.startedAt,
+    durationMs,
+    tokensUsed: (r.tokensIn ?? 0) + (r.tokensOut ?? 0),
+    toolCallsUsed: 0,
+    summary:
+      r.summary ??
+      (r.output && typeof r.output === "object" && "response" in r.output
+        ? String((r.output as Record<string, unknown>).response).slice(0, 200)
+        : r.errorDetail ?? `${r.agentRole} run`),
+    triggeredBy,
+    triggerDetail: r.triggerDetail,
+  };
+}
+
 export async function loadVaultDocs(companyId: string): Promise<VaultDoc[]> {
   if (!HAS_DB) return mock.vaultDocs;
   try {
