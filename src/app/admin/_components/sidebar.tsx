@@ -8,6 +8,7 @@ import {
   ApprovalsIcon,
   BellIcon,
   VaultIcon,
+  BrainIcon,
   FlowIcon,
   ProvisionIcon,
   ShopIcon,
@@ -34,6 +35,7 @@ const items: NavItem[] = [
   { href: "/admin/approvals", label: "Approvals", icon: ApprovalsIcon, badge: 4 },
   { href: "/admin/notifications", label: "Notifications", icon: BellIcon, badge: 4 },
   { href: "/admin/vault", label: "Vault", icon: VaultIcon },
+  { href: "/admin/memory", label: "Memory", icon: BrainIcon },
   { href: "/admin/integrations", label: "Integrations", icon: FlowIcon },
   { href: "/admin/provisioning", label: "Provisioning", icon: ProvisionIcon },
 ];

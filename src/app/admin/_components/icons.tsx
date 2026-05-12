@@ -268,3 +268,13 @@ export function TimesheetIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function BrainIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M9 4a3 3 0 0 0-3 3v1a3 3 0 0 0-2 2.83V13a3 3 0 0 0 1.5 2.6V17a3 3 0 0 0 3 3 3 3 0 0 0 3-3V5a1 1 0 0 0-1-1H9Z" />
+      <path d="M15 4a3 3 0 0 1 3 3v1a3 3 0 0 1 2 2.83V13a3 3 0 0 1-1.5 2.6V17a3 3 0 0 1-3 3 3 3 0 0 1-3-3V5a1 1 0 0 1 1-1h1.5Z" />
+      <path d="M12 9h0M9 12h0M15 12h0" />
+    </svg>
+  );
+}
