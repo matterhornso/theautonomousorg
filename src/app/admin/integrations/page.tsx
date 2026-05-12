@@ -5,9 +5,12 @@ import {
   StatusDot,
   Button,
   RelativeTime,
+  Code,
 } from "../_components/primitives";
-import { FlowIcon, ArrowUpRight } from "../_components/icons";
+import { FlowIcon, ArrowUpRight, BrainIcon } from "../_components/icons";
 import { integrations, type IntegrationStatus } from "../_data/mock";
+import { resolveTenant } from "../_lib/resolve-tenant";
+import { getLLMConfigForCompany } from "@/lib/llm-router";
 
 const statusMap: Record<
   IntegrationStatus,
@@ -28,7 +31,15 @@ const categoryLabel: Record<string, string> = {
   custom: "Custom",
 };
 
-export default function IntegrationsPage() {
+const PROVIDER_LABEL: Record<string, string> = {
+  anthropic: "Anthropic",
+  openai: "OpenAI",
+  openai_compat: "OpenAI-compatible",
+};
+
+export default async function IntegrationsPage() {
+  const tenant = await resolveTenant();
+  const llm = await getLLMConfigForCompany(tenant.firm.id);
   const connected = integrations.filter((i) => i.status === "connected").length;
   const needsAttention = integrations.filter(
     (i) => i.status === "needs_auth" || i.status === "stale"
@@ -95,6 +106,62 @@ export default function IntegrationsPage() {
       </div>
 
       {/* ── Connector grid ────────────────────────────────────────── */}
+      {/* ── Models (BYOM) ─────────────────────────────────────────── */}
+      <Section
+        title="Models"
+        description="The brain every agent in this workspace runs on. Default is Claude Sonnet 4.6; bring your own Anthropic key, an OpenAI key, or any OpenAI-compatible endpoint (Groq, Together, Anyscale, vLLM, Ollama) by adding a credential via the API."
+      >
+        <div className="-mx-6 px-6 py-5 border-y border-neutral-200/60">
+          <div className="grid md:grid-cols-3 gap-y-4 gap-x-6">
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[10.5px] uppercase tracking-[0.14em] text-neutral-500">
+                Active provider
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <BrainIcon className="w-4 h-4 text-accent" />
+                <span className="text-[15px] text-primary">
+                  {PROVIDER_LABEL[llm.provider] ?? llm.provider}
+                </span>
+                {llm.byom ? (
+                  <Pill tone="accent">BYOM</Pill>
+                ) : (
+                  <Pill tone="neutral">Platform default</Pill>
+                )}
+              </span>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[10.5px] uppercase tracking-[0.14em] text-neutral-500">
+                Model
+              </span>
+              <Code>{llm.model}</Code>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[10.5px] uppercase tracking-[0.14em] text-neutral-500">
+                Endpoint
+              </span>
+              <Code>{llm.baseURL ?? "anthropic.com"}</Code>
+            </div>
+          </div>
+          <p className="text-[12.5px] text-neutral-500 mt-5 leading-relaxed">
+            <strong className="text-neutral-700">Scope note:</strong> chat
+            paths route through this provider. Agent runs that use tool-use
+            (Apollo, CEO orchestrator, Shopify planner) continue to use
+            Anthropic so tool semantics stay consistent. The memory and the
+            agents stay the same — only the brain changes.
+          </p>
+          <p className="text-[12.5px] text-neutral-500 mt-3 leading-relaxed">
+            To switch: <Code>POST /api/user-keys</Code> with{" "}
+            <Code>{`{ companyId, serviceName, displayName, apiKey }`}</Code>{" "}
+            where <Code>serviceName</Code> is{" "}
+            <Code>anthropic</Code>, <Code>openai</Code>, or{" "}
+            <Code>openai_compat</Code>. For{" "}
+            <Code>openai_compat</Code>, supply{" "}
+            <Code>{`apiKey`}</Code> as JSON{" "}
+            <Code>{`{ apiKey, baseURL, model }`}</Code>.
+          </p>
+        </div>
+      </Section>
+
       <Section title="Connectors">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {integrations.map((i, idx) => {

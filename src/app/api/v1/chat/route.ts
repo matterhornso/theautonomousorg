@@ -1,4 +1,3 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateApiKey } from "@/lib/api-auth";
 import {
@@ -12,8 +11,7 @@ import {
 } from "@/lib/db";
 import { buildLessonsHelper } from "@/lib/lessons";
 import { dispatchMentions } from "@/lib/mention-dispatch";
-
-const client = new Anthropic();
+import { createCompletion, getLLMConfigForCompany } from "@/lib/llm-router";
 
 export async function POST(request: NextRequest) {
   const auth = await authenticateApiKey(request);
@@ -97,16 +95,20 @@ export async function POST(request: NextRequest) {
     console.warn("[v1/chat] lesson lookup failed; continuing without:", err);
   }
 
-  // Call Claude (non-streaming for API simplicity)
-  const result = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 4096,
-    system: agent.system_prompt + memorySection + lessonsSection,
-    messages: apiMessages,
-  });
-
-  const responseText =
-    result.content[0].type === "text" ? result.content[0].text : "";
+  // Route through the LLM router so tenants on BYOM (OpenAI / OpenAI-compat /
+  // their own Anthropic key) hit the right provider. Falls back to env-level
+  // Anthropic if no per-tenant LLM key is configured.
+  const llmConfig = await getLLMConfigForCompany(auth.companyId);
+  const completion = await createCompletion(
+    auth.companyId,
+    {
+      system: agent.system_prompt + memorySection + lessonsSection,
+      messages: apiMessages,
+      maxTokens: 4096,
+    },
+    llmConfig
+  );
+  const responseText = completion.text;
 
   // Save assistant response
   await addMessage({
@@ -129,11 +131,10 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     conversationId: convId,
     response: responseText,
-    model: "claude-sonnet-4-6",
-    usage: {
-      input_tokens: result.usage.input_tokens,
-      output_tokens: result.usage.output_tokens,
-    },
+    model: completion.model,
+    provider: completion.provider,
+    byom: llmConfig.byom,
+    usage: completion.usage,
     ...(mentions.length > 0 ? { mentions } : {}),
   });
 }
