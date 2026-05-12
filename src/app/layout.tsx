@@ -207,6 +207,12 @@ export default function RootLayout({
             type="application/ld+json"
             dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
           />
+          {/* Suppress browser-extension errors (MetaMask et al) from the Next dev overlay. */}
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `(function(){var EXT="chrome-extension://";function isExt(s){return typeof s==="string"&&s.indexOf(EXT)===0}window.addEventListener("error",function(e){if(isExt(e.filename))e.stopImmediatePropagation()},true);window.addEventListener("unhandledrejection",function(e){var r=e.reason||{};var stack=(r&&r.stack)||"";var src=(r&&r.fileName)||"";if(isExt(stack)||stack.indexOf(EXT)>-1||isExt(src))e.stopImmediatePropagation()},true);})();`,
+            }}
+          />
         </head>
         <body>
           <PwaRegister />
