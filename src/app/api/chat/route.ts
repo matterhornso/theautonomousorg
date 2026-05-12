@@ -28,6 +28,7 @@ import {
   executeApolloTool,
 } from "@/lib/mcp/apollo";
 import { ceoTools, executeCeoTool } from "@/lib/mcp/ceo-tools";
+import { buildLessonsHelper } from "@/lib/lessons";
 
 const client = new Anthropic();
 
@@ -164,7 +165,36 @@ export async function POST(request: NextRequest) {
         memories.map((m) => `- **${m.key}:** [${m.value.replace(/[[\]]/g, '')}]`).join("\n");
     }
 
-    const systemPrompt = agent.system_prompt + memorySection;
+    // Load recent lessons (closed-loop learning — every run starts smarter than the last)
+    let lessonsSection = "";
+    try {
+      const lessons = await buildLessonsHelper({
+        firmId: agent.company_id,
+        agentId,
+      }).readRecent({ limit: 5 });
+      if (lessons.length > 0) {
+        lessonsSection =
+          "\n\n## Recent Lessons\nApply these when relevant. Each is a real outcome from a prior run.\n" +
+          lessons
+            .map((l) => {
+              const outcome = l.outputAccepted === "approved"
+                ? "approved"
+                : l.outputAccepted === "rejected"
+                ? "rejected"
+                : l.outputAccepted === "modified"
+                ? "modified by the user"
+                : "outcome unknown";
+              const mod = l.modificationDetail ? ` — change: ${l.modificationDetail}` : "";
+              const crit = l.selfCritique ? ` — note: ${l.selfCritique}` : "";
+              return `- ${l.taskDescription} (${outcome})${mod}${crit}`;
+            })
+            .join("\n");
+      }
+    } catch (err) {
+      console.warn("[chat] lesson lookup failed; continuing without:", err);
+    }
+
+    const systemPrompt = agent.system_prompt + memorySection + lessonsSection;
 
     // Determine available tools for this agent
     const tools: Anthropic.Tool[] = [];

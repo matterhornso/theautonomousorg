@@ -10,6 +10,7 @@ import {
   getMemory,
   incrementUsage,
 } from "@/lib/db";
+import { buildLessonsHelper } from "@/lib/lessons";
 
 const client = new Anthropic();
 
@@ -66,11 +67,40 @@ export async function POST(request: NextRequest) {
       memories.map((m) => `- **${m.key}:** ${m.value}`).join("\n");
   }
 
+  // Closed-loop learning: surface recent lessons from prior runs
+  let lessonsSection = "";
+  try {
+    const lessons = await buildLessonsHelper({
+      firmId: agent.company_id,
+      agentId,
+    }).readRecent({ limit: 5 });
+    if (lessons.length > 0) {
+      lessonsSection =
+        "\n\n## Recent Lessons\nApply these when relevant. Each is a real outcome from a prior run.\n" +
+        lessons
+          .map((l) => {
+            const outcome = l.outputAccepted === "approved"
+              ? "approved"
+              : l.outputAccepted === "rejected"
+              ? "rejected"
+              : l.outputAccepted === "modified"
+              ? "modified by the user"
+              : "outcome unknown";
+            const mod = l.modificationDetail ? ` — change: ${l.modificationDetail}` : "";
+            const crit = l.selfCritique ? ` — note: ${l.selfCritique}` : "";
+            return `- ${l.taskDescription} (${outcome})${mod}${crit}`;
+          })
+          .join("\n");
+    }
+  } catch (err) {
+    console.warn("[v1/chat] lesson lookup failed; continuing without:", err);
+  }
+
   // Call Claude (non-streaming for API simplicity)
   const result = await client.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 4096,
-    system: agent.system_prompt + memorySection,
+    system: agent.system_prompt + memorySection + lessonsSection,
     messages: apiMessages,
   });
 
