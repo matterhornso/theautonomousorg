@@ -9,6 +9,7 @@ import {
   BellIcon,
   VaultIcon,
   BrainIcon,
+  BillingIcon,
   FlowIcon,
   ProvisionIcon,
   ShopIcon,
@@ -38,6 +39,7 @@ const items: NavItem[] = [
   { href: "/admin/vault", label: "Vault", icon: VaultIcon },
   { href: "/admin/memory", label: "Memory", icon: BrainIcon },
   { href: "/admin/integrations", label: "Integrations", icon: FlowIcon },
+  { href: "/admin/billing", label: "Billing", icon: BillingIcon },
   { href: "/admin/provisioning", label: "Provisioning", icon: ProvisionIcon },
 ];
 
