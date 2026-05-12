@@ -21,6 +21,10 @@ import {
   markSubmitted,
   currentPeriodKey,
 } from "@/lib/timesheets";
+import { ceoTools, executeCeoTool } from "@/lib/mcp/ceo-tools";
+import { createAgentRun, completeAgentRun } from "@/lib/agent-runs";
+import { buildLessonsHelper } from "@/lib/lessons";
+import { randomUUID } from "crypto";
 
 const client = new Anthropic();
 
@@ -224,12 +228,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Fall back to default agent, or first agent
+    // No @RoleName mention. Prefer the CEO orchestrator if the workspace
+    // has one — it can read company context and delegate to the right role
+    // via the delegate_task tool. Falls back to the user's default agent.
     if (!targetAgent) {
-      if (messagingUser.default_agent_id) {
+      const ceoAgent = agents.find((a) => a.role === "CEO");
+      if (ceoAgent) {
+        targetAgent = ceoAgent;
+      } else if (messagingUser.default_agent_id) {
         targetAgent = await getAgent(messagingUser.default_agent_id);
       }
-      // If default agent not found or not set, use the first active agent
       if (!targetAgent) {
         targetAgent = agents[0];
         await updateDefaultAgent(messagingUser.id, targetAgent.id);
@@ -271,18 +279,111 @@ export async function POST(request: NextRequest) {
         memories.map((m) => `- **${m.key}:** [${m.value.replace(/[[\]]/g, '')}]`).join("\n");
     }
 
+    // Closed-loop learning: surface recent lessons before composing system prompt
+    let lessonsSection = "";
+    try {
+      const lessons = await buildLessonsHelper({
+        firmId: companyId,
+        agentId: targetAgent.id,
+      }).readRecent({ limit: 5 });
+      if (lessons.length > 0) {
+        lessonsSection =
+          "\n\n## Recent Lessons\nApply these when relevant.\n" +
+          lessons
+            .map((l) => `- ${l.taskDescription} (${l.outputAccepted})`)
+            .join("\n");
+      }
+    } catch (err) {
+      console.warn("[telegram] lesson lookup failed:", err);
+    }
+
     const systemPrompt =
       targetAgent.system_prompt +
       memorySection +
+      lessonsSection +
       `\n\n## Messaging Context\nYou are responding via Telegram to ${displayName}. Keep responses concise and mobile-friendly. Use Markdown formatting sparingly — Telegram supports *bold*, _italic_, and \`code\`.`;
 
-    // Call Claude (non-streaming)
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 2048,
-      system: systemPrompt,
-      messages: apiMessages,
+    // Open a run record. Postgres-only — null in dev; we fall back to a
+    // transient id so lesson writes still have a stable runId.
+    const runRecord = await createAgentRun({
+      companyId,
+      agentRole: targetAgent.role,
+      agentId: targetAgent.id,
+      triggeredBy: "user",
+      triggerDetail: `Telegram from ${displayName}`,
+      input: { message: userMessage, conversationId: conversation.id },
     });
+    const runId = runRecord?.id ?? `run_tmp_${randomUUID()}`;
+
+    // CEO orchestrator gets ceoTools so it can delegate_task / query_all_agents.
+    // Other roles run in chat-only mode.
+    const isCeo = targetAgent.role === "CEO";
+    const tools = isCeo ? ceoTools : undefined;
+
+    // First Claude call
+    let response;
+    try {
+      response = await client.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 2048,
+        system: systemPrompt,
+        messages: apiMessages,
+        ...(tools ? { tools } : {}),
+      });
+    } catch (err) {
+      await completeAgentRun(runId, {
+        status: "failed",
+        errorDetail: err instanceof Error ? err.message : String(err),
+        modelUsed: "claude-sonnet-4-6",
+        provider: "anthropic",
+      });
+      throw err;
+    }
+
+    // CEO tool-use loop — single iteration max so we stay inside Telegram's
+    // 60s webhook timeout. CEO either responds directly OR calls one tool
+    // (query_all_agents / get_company_metrics / delegate_task), gets the
+    // result, then composes a final reply.
+    let toolCalledLabel: string | null = null;
+    if (isCeo && response.stop_reason === "tool_use") {
+      const toolUseBlocks = response.content.filter(
+        (b) => b.type === "tool_use"
+      ) as Array<{ type: "tool_use"; id: string; name: string; input: Record<string, unknown> }>;
+      const toolResults: Array<{ type: "tool_result"; tool_use_id: string; content: string }> = [];
+      for (const tu of toolUseBlocks) {
+        try {
+          const result = await executeCeoTool(
+            tu.name,
+            tu.input,
+            companyId,
+            conversation.id
+          );
+          toolResults.push({
+            type: "tool_result",
+            tool_use_id: tu.id,
+            content: result,
+          });
+          toolCalledLabel = tu.name;
+        } catch (err) {
+          toolResults.push({
+            type: "tool_result",
+            tool_use_id: tu.id,
+            content: `tool failed: ${err instanceof Error ? err.message : String(err)}`,
+          });
+        }
+      }
+      // Follow-up turn so CEO can compose a natural-language reply
+      response = await client.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 2048,
+        system: systemPrompt,
+        messages: [
+          ...apiMessages,
+          { role: "assistant", content: response.content },
+          { role: "user", content: toolResults },
+        ],
+      });
+    }
 
     // Extract text from response
     const responseText = response.content
@@ -302,6 +403,30 @@ export async function POST(request: NextRequest) {
 
     // Track usage
     await incrementUsage(companyId, "message_count");
+
+    // Close the run + write a lesson with outputAccepted=unknown
+    await completeAgentRun(runId, {
+      status: "completed",
+      output: { response: responseText, ceoTool: toolCalledLabel ?? undefined },
+      modelUsed: "claude-sonnet-4-6",
+      provider: "anthropic",
+      tokensIn: response.usage?.input_tokens,
+      tokensOut: response.usage?.output_tokens,
+      summary: responseText.slice(0, 200),
+    });
+    try {
+      await buildLessonsHelper({
+        firmId: companyId,
+        agentId: targetAgent.id,
+      }).write({
+        agentId: targetAgent.id,
+        runId,
+        taskDescription: userMessage.slice(0, 200),
+        outputAccepted: "unknown",
+      });
+    } catch (err) {
+      console.warn("[telegram] lesson write failed; continuing:", err);
+    }
 
     // Send response via Telegram
     const agentLabel =
