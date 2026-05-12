@@ -55,19 +55,20 @@ export default function Home() {
 
             <Reveal delay={75}>
               <p className="text-lg sm:text-xl text-neutral-600 leading-relaxed mb-4 max-w-2xl mx-auto">
-                The Autonomous gives you an AI workforce for every part of your
-                business — Sales, Marketing, Accounting, Strategy, Product,
-                Engineering, and more. Each agent comes with the right skills
-                for the job, ready to work 24/7.
+                The operating system for AI-native companies. A workforce of AI
+                agents — Sales, Marketing, Legal, Finance, Strategy, Product,
+                Engineering and more — sharing one brain, taking real action,
+                getting smarter every day.
               </p>
             </Reveal>
 
             <Reveal delay={150}>
               <p className="text-base sm:text-lg text-neutral-500 leading-relaxed mb-10 max-w-2xl mx-auto">
-                Enter your company website and we&apos;ll analyze your business
-                to recommend which agents would have the highest impact.
-                Communicate with your agents via WhatsApp, Telegram, or the
-                admin dashboard — no new tools to learn.
+                Enter your company website. We&apos;ll recommend the agents with
+                the highest impact for your business and launch them in two
+                minutes. Default model is Claude Sonnet 4.6; bring your own if
+                you prefer. Talk to your workforce on WhatsApp, Telegram, or the
+                admin dashboard.
               </p>
             </Reveal>
 
@@ -112,32 +113,33 @@ export default function Home() {
             <div>
               <Reveal>
                 <p className="text-sm text-accent font-medium tracking-wide uppercase mb-3">
-                  The autonomous workforce
+                  Why now
                 </p>
               </Reveal>
               <Reveal delay={75}>
                 <h2 className="font-[family-name:var(--font-serif)] text-3xl sm:text-4xl lg:text-[42px] tracking-tight mb-6">
-                  Every role your company needs.
+                  AI shouldn&apos;t be a tool you use.
                   <br />
-                  <span className="text-neutral-400">Handled by AI.</span>
+                  <span className="text-neutral-400">
+                    It should be the OS you run on.
+                  </span>
                 </h2>
               </Reveal>
               <Reveal delay={150}>
                 <p className="text-neutral-500 text-lg leading-relaxed mb-8">
-                  Most AI tools automate one task. The Autonomous runs entire
-                  departments. Your AI Sales agent doesn&apos;t just send
-                  emails — it researches prospects, qualifies leads, updates
-                  your CRM, and schedules demos. Your AI Marketing agent
-                  doesn&apos;t just write copy — it plans campaigns, optimizes
-                  SEO, manages social, and reports on performance.
+                  Most teams bolt AI onto existing workflows and call it
+                  productivity. The real shift is bigger. Every workflow, every
+                  decision, every artifact should flow through an intelligence
+                  layer that learns and improves on its own. We call that an
+                  autonomous company — and we built the operating system to run
+                  one.
                 </p>
               </Reveal>
               <Reveal delay={225}>
                 <p className="text-neutral-500 text-lg leading-relaxed">
-                  You choose which roles to fill. Each agent arrives
-                  pre-configured with the skills, tools, and domain knowledge
-                  for its job. And they collaborate with each other — just
-                  like a real team.
+                  Open loops lose information. Closed loops learn. Every agent
+                  action writes lessons back into your company&apos;s shared
+                  memory — so month six is materially smarter than month one.
                 </p>
               </Reveal>
             </div>
@@ -224,21 +226,22 @@ export default function Home() {
           <div className="text-center mb-16">
             <Reveal>
               <p className="text-sm text-accent font-medium tracking-wide uppercase mb-3">
-                How agents work
+                One memory. One workforce. One brain.
               </p>
             </Reveal>
             <Reveal delay={75}>
               <h2 className="font-[family-name:var(--font-serif)] text-3xl sm:text-4xl lg:text-[42px] tracking-tight mb-4">
                 Not chatbots.
                 <br />
-                <span className="text-neutral-400">Actual teammates.</span>
+                <span className="text-neutral-400">A workforce.</span>
               </h2>
             </Reveal>
             <Reveal delay={150}>
               <p className="text-neutral-500 text-lg max-w-2xl mx-auto">
-                Each agent runs in its own isolated cloud instance with
-                persistent memory, role-specific tools, and the ability to
-                collaborate with other agents — just like a real team.
+                Every agent reads from the same shared memory, takes real action
+                through real tool integrations, and writes back what it learns.
+                Your Sales agent already knows what Strategy decided yesterday.
+                No re-explaining. No silos. No drift.
               </p>
             </Reveal>
           </div>
@@ -255,8 +258,8 @@ export default function Home() {
                 ),
               },
               {
-                title: "Persistent memory",
-                desc: "Agents remember every conversation, decision, and context. They get smarter the more your team works with them.",
+                title: "Shared memory",
+                desc: "Every agent reads from the same company knowledge graph. The Sales agent already knows what Legal agreed to last week. No re-explaining.",
                 icon: (
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
@@ -264,8 +267,8 @@ export default function Home() {
                 ),
               },
               {
-                title: "Real connectors",
-                desc: "Each agent comes with MCP integrations for its role — Apollo for Sales, Instantly for Marketing, QuickBooks for Accounting.",
+                title: "Real tool integrations",
+                desc: "Agents execute, they don't just answer. Apollo for Sales, Instantly for Marketing, QuickBooks for Accounting, Stripe for Finance, GitHub for Engineering.",
                 icon: (
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
@@ -273,8 +276,8 @@ export default function Home() {
                 ),
               },
               {
-                title: "Agent collaboration",
-                desc: "Agents talk to each other. Your Sales agent can ask the Admin agent to draft a contract — automatically.",
+                title: "Closed-loop learning",
+                desc: "Every run writes lessons back into the brain. The next run starts smarter. Month six is materially better than month one.",
                 icon: (
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
@@ -474,19 +477,17 @@ export default function Home() {
             </Reveal>
             <Reveal delay={75}>
               <h2 className="font-[family-name:var(--font-serif)] text-3xl sm:text-4xl lg:text-[42px] tracking-tight mb-6">
-                Claude Sonnet 4.6 by default.
+                The brain is yours
                 <br />
-                <span className="text-neutral-400">
-                  Your model if you prefer.
-                </span>
+                <span className="text-neutral-400">to choose.</span>
               </h2>
             </Reveal>
             <Reveal delay={150}>
               <p className="text-neutral-500 text-lg leading-relaxed mb-12">
-                Every agent runs on Claude Sonnet 4.6 for best-in-class reasoning. But
-                if you have specific model requirements — latency, cost,
-                compliance — bring your own. GPT-4o, Gemini, Llama, Mistral, or
-                any OpenAI-compatible endpoint.
+                Claude Sonnet 4.6 is our default — best-in-class reasoning, set
+                up out of the box. But the brain is pluggable. Swap in GPT,
+                Gemini, Llama, Mistral, or any OpenAI-compatible endpoint. The
+                memory and the agents stay the same. Only the brain changes.
               </p>
             </Reveal>
           </div>
@@ -805,12 +806,16 @@ export default function Home() {
             <div className="space-y-8">
               {[
                 {
-                  q: "What is TheAutonomous?",
-                  a: "TheAutonomous is an AI platform that provides AI agents for every role in your company — Sales, Marketing, Accounting, HR, Legal, Strategy, Product, Engineering, and more. Each agent comes with role-specific skills, persistent memory, and real tool integrations. You enter your company website, get personalized agent recommendations, and launch your AI workforce in 2 minutes.",
+                  q: "What is The Autonomous?",
+                  a: "The operating system for AI-native companies. Two halves designed as one: a persistent shared memory and a workforce of role agents that read from it. Enter your website, get a recommended workforce, launch in two minutes. Talk to your agents on WhatsApp, Telegram, or the admin dashboard.",
                 },
                 {
                   q: "How do the AI agents work?",
-                  a: "Each AI agent runs on a large language model (Claude Sonnet 4.6 by default) and is configured with role-specific skills, tool integrations, and your company context. Agents don't just answer questions — they proactively research, execute tasks, and collaborate with other agents. They remember every conversation and get smarter over time.",
+                  a: "Each agent runs on Claude Sonnet 4.6 by default (or any model you bring) and has role-specific skills, real tool integrations, and access to your company's shared memory. Agents don't just answer questions — they proactively research, execute tasks, and collaborate via @mentions. Every run writes lessons back, so the next run starts smarter.",
+                },
+                {
+                  q: "What does \"shared memory\" actually mean?",
+                  a: "Every agent in your workspace reads from the same company knowledge graph — meetings, decisions, prior agent runs, documents, customer signals. The Sales agent already knows what Strategy decided yesterday. The Legal agent already knows what Sales agreed to last week. No re-explaining. No silos. The team gets smarter together.",
                 },
                 {
                   q: "What roles can AI agents fill?",
