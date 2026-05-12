@@ -26,7 +26,7 @@ export function AdminTopbar() {
   const parts = pathname.split("/").filter(Boolean); // ["admin", ...rest]
 
   return (
-    <div className="sticky top-0 z-30 flex items-center gap-6 px-10 h-14 border-b border-neutral-200/80 bg-surface/80 backdrop-blur-md">
+    <div className="sticky top-0 z-30 flex items-center gap-6 pl-16 pr-6 lg:px-10 h-14 border-b border-neutral-200/80 bg-surface/80 backdrop-blur-md">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-[13px] text-neutral-500 min-w-0">
         {parts.map((seg, i) => {

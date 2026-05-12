@@ -15,8 +15,9 @@ import {
   TimesheetIcon,
   CheckIcon,
   XIcon,
+  MenuIcon,
 } from "./icons";
-import { useState, type ComponentType, type SVGProps } from "react";
+import { useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { useToast } from "./toast";
 
 interface NavItem {
@@ -64,6 +65,13 @@ export function AdminSidebar({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(firmName);
   const [saving, setSaving] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Close the mobile drawer whenever the user navigates.
+  useEffect(() => {
+    setIsMobileOpen(false);
+  }, [pathname]);
 
   async function saveName() {
     const trimmed = draft.trim();
@@ -109,11 +117,47 @@ export function AdminSidebar({
       setSaving(false);
     }
   }
-  const pathname = usePathname();
 
   return (
-    <aside className="hidden lg:flex flex-col w-[244px] shrink-0 border-r border-neutral-200/80 bg-surface-mid/40 sticky top-0 h-[100dvh]">
-      {/* Brand */}
+    <>
+      {/* Mobile-only hamburger trigger. Floats top-left so it doesn't push
+          page content. lg:hidden mirrors the desktop sticky sidebar. */}
+      <button
+        type="button"
+        onClick={() => setIsMobileOpen(true)}
+        aria-label="Open menu"
+        className="lg:hidden fixed top-3 left-3 z-50 w-10 h-10 rounded-md bg-surface/90 backdrop-blur border border-neutral-200/80 shadow-sm flex items-center justify-center text-primary hover:bg-white transition-colors"
+      >
+        <MenuIcon className="w-5 h-5" />
+      </button>
+
+      {/* Mobile backdrop. Click to close. */}
+      {isMobileOpen && (
+        <button
+          type="button"
+          aria-label="Close menu"
+          onClick={() => setIsMobileOpen(false)}
+          className="lg:hidden fixed inset-0 z-40 bg-primary/40 backdrop-blur-sm animate-fade-up"
+        />
+      )}
+
+      <aside
+        className={`flex flex-col w-[244px] shrink-0 border-r border-neutral-200/80 bg-surface-mid/40 h-[100dvh] z-50 transition-transform duration-200 ease-out
+          fixed inset-y-0 left-0 lg:sticky lg:top-0 lg:z-auto
+          ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
+          lg:translate-x-0`}
+      >
+        {/* Mobile-only close button inside the drawer. */}
+        <button
+          type="button"
+          onClick={() => setIsMobileOpen(false)}
+          aria-label="Close menu"
+          className="lg:hidden absolute top-3 right-3 w-9 h-9 rounded-md flex items-center justify-center text-neutral-500 hover:bg-neutral-100 hover:text-primary transition-colors"
+        >
+          <XIcon className="w-4 h-4" />
+        </button>
+
+        {/* Brand */}
       <Link
         href="/admin"
         className="flex items-baseline gap-2 px-7 pt-9 pb-10 group"
@@ -247,5 +291,6 @@ export function AdminSidebar({
         </div>
       </div>
     </aside>
+    </>
   );
 }
