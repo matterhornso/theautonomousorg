@@ -13,6 +13,14 @@ import {
   updateDefaultAgent,
   incrementUsage,
 } from "@/lib/db";
+import {
+  findEmployeeByEmailGlobal,
+  findEmployeeByTelegramChatId,
+  linkTelegramChatId,
+  getActiveSubmissionForEmployee,
+  markSubmitted,
+  currentPeriodKey,
+} from "@/lib/timesheets";
 
 const client = new Anthropic();
 
@@ -73,20 +81,89 @@ export async function POST(request: NextRequest) {
       .filter(Boolean)
       .join(" ");
 
-    // Handle /start command
-    if (text === "/start") {
+    // ─── Timesheet flow ─────────────────────────────────────────────
+    // Runs BEFORE agent routing because timesheet employees may not have
+    // a messaging_users row. Three keywords: /link <email>, DONE, HELP.
+
+    const linkedEmployee = await findEmployeeByTelegramChatId(chatId);
+
+    // /link <email> — bind this chat_id to an employee row.
+    const linkMatch = text.match(/^\/link\s+(\S+@\S+)$/i);
+    if (linkMatch) {
+      const email = linkMatch[1]!.toLowerCase();
+      // Search across all firms for a matching email; multi-tenant timesheet
+      // setups would scope this by firm. For v1 (one firm) it's fine.
+      // We still rely on the email being unique enough that misbinding is rare.
+      const employee = await findEmployeeByEmailGlobal(email);
+      if (!employee) {
+        await sendMessage(
+          chatId,
+          `I don't see *${email}* on the timesheet roster. Ask your firm admin to add you, then try \`/link ${email}\` again.`
+        );
+        return NextResponse.json({ ok: true });
+      }
+      await linkTelegramChatId(
+        employee.id,
+        chatId,
+        update.message.from.username ? "@" + update.message.from.username : null
+      );
       await sendMessage(
         chatId,
-        `Welcome to TheAutonomous! 🤖\n\n` +
-          `I bridge your AI agents to Telegram so you can chat with them on the go.\n\n` +
-          `*Getting started:*\n` +
-          `1. Link your account at theautonomous.org\n` +
-          `2. Use \`@RoleName message\` to talk to a specific agent (e.g. \`@Sales draft outreach for Acme Corp\`)\n` +
-          `3. Or just send a message to talk to your default agent\n\n` +
-          `*Commands:*\n` +
-          `/agents — List your available agents\n` +
-          `/start — Show this welcome message`
+        `Linked. I'll remind you on Fridays if your timesheet for the current week is still open. Reply *DONE* to confirm submission, or *HELP* if you're stuck.`
       );
+      return NextResponse.json({ ok: true });
+    }
+
+    // DONE / HELP keywords — only meaningful for linked employees.
+    if (linkedEmployee && (text.toUpperCase() === "DONE" || /^DONE\b/i.test(text))) {
+      const submission = await getActiveSubmissionForEmployee(
+        linkedEmployee.id,
+        currentPeriodKey()
+      );
+      if (!submission) {
+        await sendMessage(
+          chatId,
+          `I don't have a tracking row for you this week yet. Your firm admin needs to start the period — try again after the next reminder pass.`
+        );
+        return NextResponse.json({ ok: true });
+      }
+      if (submission.submittedAt) {
+        await sendMessage(
+          chatId,
+          `Already marked submitted for *${submission.periodKey}*. Thanks for following up.`
+        );
+        return NextResponse.json({ ok: true });
+      }
+      await markSubmitted(submission.id, "telegram");
+      await sendMessage(
+        chatId,
+        `Marked your timesheet for *${submission.periodKey}* as submitted. Thanks ${linkedEmployee.name.split(" ")[0]}.`
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    if (linkedEmployee && (text.toUpperCase() === "HELP" || /^HELP\b/i.test(text))) {
+      await sendMessage(
+        chatId,
+        `Got it. I've flagged your firm admin — they'll reach out shortly. Meanwhile reply *DONE* once you've submitted, or describe the blocker and I'll relay.`
+      );
+      // TODO: invoke EscalationHelper once the firm admin contact is wired.
+      return NextResponse.json({ ok: true });
+    }
+
+    // Handle /start command
+    if (text === "/start") {
+      const welcome = linkedEmployee
+        ? `Hi ${linkedEmployee.name.split(" ")[0]} — you're already linked. Reply *DONE* when you've submitted your timesheet for the week, or *HELP* if you need a hand.`
+        : `Welcome to TheAutonomous! 🤖\n\n` +
+          `If you're here for *timesheet reminders*, reply with:\n` +
+          `\`/link your.email@firm.com\`\n\n` +
+          `Otherwise, link your account at theautonomous.org and use \`@RoleName message\` to talk to a specific agent.\n\n` +
+          `*Commands:*\n` +
+          `/link <email> — Bind this chat to your timesheet record\n` +
+          `/agents — List your available agents\n` +
+          `/start — Show this welcome message`;
+      await sendMessage(chatId, welcome);
       return NextResponse.json({ ok: true });
     }
 
