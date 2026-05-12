@@ -158,6 +158,194 @@ body {
   transform: translateY(0) scale(0.99);
 }
 
+/* Admin portal: subtle breathing pulse for "live" status indicators */
+@keyframes adminPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.92); }
+}
+.admin-pulse {
+  animation: adminPulse 2.4s var(--ease-in-out-smooth) infinite;
+}
+
+/* Admin portal: subtle highlight bar for active sidebar item */
+@keyframes adminEnter {
+  from { transform: scaleY(0.2); opacity: 0; }
+  to { transform: scaleY(1); opacity: 1; }
+}
+.admin-enter {
+  animation: adminEnter 0.35s var(--ease-out-expo) both;
+}
+
+/* Admin: tabular numerals for data tables */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Admin CTA: idle-state attention loop. Soft accent glow + gentle scale.
+   Used on Plan / Apply buttons before they're clicked, to draw the eye. */
+@keyframes adminCtaIdle {
+  0%, 100% {
+    box-shadow:
+      0 0 0 0 rgba(212, 168, 83, 0.0),
+      0 1px 2px rgba(10, 10, 11, 0.08);
+    transform: translateY(0);
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px rgba(212, 168, 83, 0.10),
+      0 4px 12px rgba(212, 168, 83, 0.16);
+    transform: translateY(-1px);
+  }
+}
+.admin-cta-idle {
+  animation: adminCtaIdle 2.6s var(--ease-in-out-smooth) infinite;
+}
+
+/* Admin CTA: icon micro-motion. Sparkle/play icons gently rotate or shift
+   while the button is idle so the affordance reads as "ready to fire." */
+@keyframes adminCtaIconSparkle {
+  0%, 100% { transform: rotate(0deg) scale(1); opacity: 1; }
+  50%      { transform: rotate(8deg)  scale(1.08); opacity: 0.85; }
+}
+.admin-cta-icon-sparkle {
+  animation: adminCtaIconSparkle 2.6s var(--ease-in-out-smooth) infinite;
+  transform-origin: center;
+}
+
+@keyframes adminCtaIconNudge {
+  0%, 100% { transform: translateX(0); }
+  50%      { transform: translateX(2px); }
+}
+.admin-cta-icon-nudge {
+  animation: adminCtaIconNudge 2.6s var(--ease-in-out-smooth) infinite;
+}
+
+/* Admin CTA: in-flight spinner. Replaces the icon while planning/applying. */
+@keyframes adminSpinnerRotate {
+  to { transform: rotate(360deg); }
+}
+.admin-spinner {
+  animation: adminSpinnerRotate 0.9s linear infinite;
+  transform-origin: center;
+}
+
+/* Admin: toast slide-in + slide-out from top-right. */
+@keyframes adminToastIn {
+  from { transform: translateX(24px) translateY(-8px); opacity: 0; }
+  to   { transform: translateX(0) translateY(0); opacity: 1; }
+}
+@keyframes adminToastOut {
+  from { transform: translateX(0) translateY(0); opacity: 1; }
+  to   { transform: translateX(40px) translateY(-4px); opacity: 0; }
+}
+.admin-toast-in {
+  animation: adminToastIn 0.35s var(--ease-out-expo) both;
+}
+.admin-toast-out {
+  animation: adminToastOut 0.25s ease-in both;
+}
+
+/* Admin: send burst — centered confirmation overlay when reminders fire. */
+@keyframes adminBurstBackdrop {
+  0%   { opacity: 0; }
+  20%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes adminBurstCard {
+  0%   { transform: scale(0.85) translateY(8px); opacity: 0; }
+  18%  { transform: scale(1.02) translateY(0); opacity: 1; }
+  30%  { transform: scale(1) translateY(0); opacity: 1; }
+  82%  { transform: scale(1) translateY(0); opacity: 1; }
+  100% { transform: scale(0.96) translateY(-6px); opacity: 0; }
+}
+@keyframes adminBurstCheck {
+  0%   { transform: scale(0) rotate(-45deg); opacity: 0; }
+  35%  { transform: scale(1.18) rotate(0deg); opacity: 1; }
+  60%  { transform: scale(1) rotate(0deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+@keyframes adminBurstParticle {
+  0% {
+    transform: translate(0, 0) scale(0.3);
+    opacity: 0;
+  }
+  20% { opacity: 1; }
+  100% {
+    transform: translate(var(--burst-dx), var(--burst-dy)) scale(1);
+    opacity: 0;
+  }
+}
+@keyframes adminBurstRing {
+  0%   { transform: scale(0.4); opacity: 0; border-width: 3px; }
+  35%  { opacity: 0.55; border-width: 3px; }
+  100% { transform: scale(2.4); opacity: 0; border-width: 1px; }
+}
+.admin-burst-backdrop {
+  animation: adminBurstBackdrop 1.8s ease-in-out both;
+}
+.admin-burst-card {
+  animation: adminBurstCard 1.8s var(--ease-out-expo) both;
+}
+.admin-burst-check {
+  animation: adminBurstCheck 0.6s var(--ease-out-expo) 0.05s both;
+}
+.admin-burst-particle {
+  animation: adminBurstParticle 1.1s var(--ease-out-expo) 0.1s both;
+}
+.admin-burst-ring {
+  animation: adminBurstRing 1.4s var(--ease-out-expo) both;
+}
+
+/* Admin: row flash — briefly highlight a row that just received an action. */
+@keyframes adminRowFlash {
+  0%   { background-color: rgba(212, 168, 83, 0.20); }
+  100% { background-color: transparent; }
+}
+.admin-row-flash {
+  animation: adminRowFlash 1.6s var(--ease-out-expo) both;
+}
+
+/* Admin: row removal — slide-fade out before unmount. */
+@keyframes adminRowRemove {
+  0%   { opacity: 1; transform: translateX(0); max-height: 80px; }
+  40%  { opacity: 0;  transform: translateX(24px); max-height: 80px; }
+  100% { opacity: 0;  transform: translateX(24px); max-height: 0; padding-top: 0; padding-bottom: 0; margin: 0; }
+}
+.admin-row-remove {
+  animation: adminRowRemove 0.45s var(--ease-out-expo) forwards;
+  overflow: hidden;
+}
+
+/* Admin CTA: indeterminate progress shimmer along the button's bottom edge,
+   visible only while in flight. */
+@keyframes adminCtaProgress {
+  0%   { background-position: -120% 0; }
+  100% { background-position:  220% 0; }
+}
+.admin-cta-progress {
+  position: relative;
+  overflow: hidden;
+}
+.admin-cta-progress::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(212, 168, 83, 0.0) 20%,
+    rgba(212, 168, 83, 0.85) 50%,
+    rgba(212, 168, 83, 0.0) 80%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: adminCtaProgress 1.4s linear infinite;
+  pointer-events: none;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
