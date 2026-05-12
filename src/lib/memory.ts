@@ -23,8 +23,22 @@ import {
 } from "./db";
 import { buildLessonsHelper } from "./lessons";
 import { buildVaultHelper } from "./vault";
+import {
+  getRecentConversations,
+  getRecentDecisions,
+  getOpenCommitments,
+  getRecentArtifacts,
+  summarizeKnowledgeGraph,
+} from "./knowledge-graph";
 
-export type MemoryHitType = "memory" | "lesson" | "vault" | "activity";
+export type MemoryHitType = "memory" | "lesson" | "vault" | "activity" | "graph";
+
+/** Entity kind within the knowledge graph when type === "graph". */
+export type GraphEntityKind =
+  | "conversation"
+  | "decision"
+  | "commitment"
+  | "artifact";
 
 export interface MemoryHit {
   type: MemoryHitType;
@@ -34,7 +48,7 @@ export interface MemoryHit {
   body: string;
   /** ISO timestamp of when this artifact was produced. */
   createdAt: string;
-  /** Where the hit came from — agent role, doc id, vault chunk, etc. */
+  /** Where the hit came from — agent role, doc id, vault chunk, graph entity. */
   source: {
     agentId?: string;
     agentRole?: string;
@@ -42,6 +56,8 @@ export interface MemoryHit {
     docTitle?: string;
     chunkId?: string;
     runId?: string;
+    entityKind?: GraphEntityKind;
+    entityId?: string;
   };
   /** Optional relevance score in [0, 1] when a query was supplied. */
   score?: number;
@@ -60,7 +76,13 @@ export interface QueryCompanyMemoryOptions {
   limit?: number;
 }
 
-const DEFAULT_TYPES: MemoryHitType[] = ["memory", "lesson", "vault", "activity"];
+const DEFAULT_TYPES: MemoryHitType[] = [
+  "memory",
+  "lesson",
+  "vault",
+  "activity",
+  "graph",
+];
 
 /**
  * Read across the four memory sources for a tenant and return a normalized,
@@ -170,7 +192,76 @@ export async function queryCompanyMemory(
     }
   }
 
-  // ─── 4. Activity feed (tasks + agent relays) ─────────────────────────────
+  // ─── 4. Knowledge graph entities (conversations, decisions, commitments, artifacts)
+  // Surfaces v3 entity rows once tenants populate them. Returns empty when
+  // migrations 007/008 aren't applied yet — zero behavior change for v2.
+  if (types.includes("graph")) {
+    try {
+      const [conversations, decisions, commitments, artifacts] =
+        await Promise.all([
+          getRecentConversations(opts.companyId, perSourceLimit),
+          getRecentDecisions(opts.companyId, perSourceLimit),
+          getOpenCommitments(opts.companyId, perSourceLimit),
+          getRecentArtifacts(opts.companyId, perSourceLimit),
+        ]);
+      for (const c of conversations) {
+        const haystack = `${c.title ?? ""} ${c.transcript ?? ""}`.toLowerCase();
+        if (q && !haystack.includes(q)) continue;
+        hits.push({
+          type: "graph",
+          title: c.title ?? `${c.kind} conversation`,
+          body: c.transcript ? c.transcript.slice(0, 240) : `${c.kind} · ${c.source ?? "unspecified source"}`,
+          createdAt: (c.occurredAt ?? c.createdAt).toISOString(),
+          source: { entityKind: "conversation", entityId: c.id },
+        });
+      }
+      for (const d of decisions) {
+        const haystack = `${d.title} ${d.detail ?? ""}`.toLowerCase();
+        if (q && !haystack.includes(q)) continue;
+        hits.push({
+          type: "graph",
+          title: d.title,
+          body: d.detail ?? `Decision · ${d.category ?? "uncategorized"}${d.decidedBy ? " · " + d.decidedBy : ""}`,
+          createdAt: (d.decidedAt ?? d.createdAt).toISOString(),
+          source: { entityKind: "decision", entityId: d.id },
+        });
+      }
+      for (const cm of commitments) {
+        if (q && !cm.description.toLowerCase().includes(q)) continue;
+        const dueLabel = cm.dueAt
+          ? `Due ${cm.dueAt.toISOString().slice(0, 10)}`
+          : "No due date";
+        hits.push({
+          type: "graph",
+          title: cm.description,
+          body: `Open commitment · ${dueLabel}`,
+          createdAt: cm.createdAt.toISOString(),
+          source: { entityKind: "commitment", entityId: cm.id },
+        });
+      }
+      for (const a of artifacts) {
+        const haystack = `${a.title} ${a.body ?? ""}`.toLowerCase();
+        if (q && !haystack.includes(q)) continue;
+        hits.push({
+          type: "graph",
+          title: a.title,
+          body: a.body ? a.body.slice(0, 240) : `${a.kind} · authored by ${a.agentRole ?? "agent"}`,
+          createdAt: a.createdAt.toISOString(),
+          source: {
+            entityKind: "artifact",
+            entityId: a.id,
+            agentId: a.agentId,
+            agentRole: a.agentRole,
+            runId: a.runId,
+          },
+        });
+      }
+    } catch (err) {
+      console.warn("[memory] knowledge-graph lookup failed:", err);
+    }
+  }
+
+  // ─── 5. Activity feed (tasks + agent relays) ─────────────────────────────
   if (types.includes("activity")) {
     try {
       const items = await getActivityFeed(opts.companyId, perSourceLimit * 2);
@@ -216,6 +307,12 @@ export interface MemorySummary {
   lessons: number;
   vaultDocs: number;
   recentActivity: number;
+  /** Graph entity counts. Populated once migrations 007/008 are applied
+   *  and Memory ingestion produces structured entities. */
+  graphConversations: number;
+  graphDecisions: number;
+  graphOpenCommitments: number;
+  graphArtifacts: number;
 }
 
 export async function summarizeCompanyMemory(
@@ -266,5 +363,17 @@ export async function summarizeCompanyMemory(
     console.warn("[memory] activity count failed:", err);
   }
 
-  return { memoryEntries, lessons, vaultDocs, recentActivity };
+  // Graph counts are no-ops without DATABASE_URL — see knowledge-graph.ts
+  const graph = await summarizeKnowledgeGraph(companyId);
+
+  return {
+    memoryEntries,
+    lessons,
+    vaultDocs,
+    recentActivity,
+    graphConversations: graph.conversations,
+    graphDecisions: graph.decisions,
+    graphOpenCommitments: graph.openCommitments,
+    graphArtifacts: graph.artifacts,
+  };
 }

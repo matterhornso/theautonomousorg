@@ -20,6 +20,7 @@ const typeLabel: Record<MemoryHitType, string> = {
   lesson: "Lesson",
   vault: "Vault chunk",
   activity: "Activity",
+  graph: "Graph entity",
 };
 
 const typeTone: Record<MemoryHitType, "neutral" | "accent" | "info" | "success"> =
@@ -28,6 +29,7 @@ const typeTone: Record<MemoryHitType, "neutral" | "accent" | "info" | "success">
     lesson: "accent",
     vault: "info",
     activity: "success",
+    graph: "accent",
   };
 
 export default async function MemoryPage({
@@ -114,6 +116,12 @@ export default async function MemoryPage({
           active={typeFilter === "activity"}
         >
           Activity
+        </FilterChip>
+        <FilterChip
+          href={pathWith(query, "graph")}
+          active={typeFilter === "graph"}
+        >
+          Graph
         </FilterChip>
       </div>
 
