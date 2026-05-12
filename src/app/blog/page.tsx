@@ -11,6 +11,15 @@ export const metadata: Metadata = {
 
 const posts = [
   {
+    slug: "why-we-are-building-the-autonomous",
+    title:
+      "Why We're Building The Autonomous: The Operating System for AI-Native Companies",
+    description:
+      "Most companies treat AI as a productivity tool. The next decade belongs to companies that treat it as the operating system they run on. Here's why.",
+    date: "2026-05-12",
+    readTime: "9 min read",
+  },
+  {
     slug: "what-are-ai-agents",
     title: "What Are AI Agents? A Complete Guide for Business Leaders (2026)",
     description:
