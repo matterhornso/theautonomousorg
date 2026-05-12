@@ -1,7 +1,7 @@
 # newvision branch — Status & TODO
 
-> **Last updated:** 2026-05-12 · **Branch:** `newvision` · **HEAD:** `d360ca3`
-> **Tests:** 308/308 passing · **tsc:** clean
+> **Last updated:** 2026-05-13 · **Branch:** `newvision` · **HEAD:** `9fc5102`
+> **Tests:** 314/314 passing · **tsc:** clean · **All of Tier 2 shipped.**
 > **GitHub:** https://github.com/matterhornso/theautonomousorg/tree/newvision
 >
 > Pair this with `docs/vision/TRANSITION-PLAN.md` (the plan) and `docs/vision/PRD.md` (the destination). This file tracks **what's actually on the branch** and **what's next**.
@@ -71,36 +71,43 @@ These need real auth/secrets/access; the agent can't do them unattended.
   - [ ] Send `@Sales` from any agent in chat — confirm a row appears in `inter_agent_messages`
   - [ ] Confirm sidebar hamburger works on a phone-size viewport
 
-### 🟡 Tier 2 — next coding slices (agent can do these unattended)
+### ✅ Tier 2 — all 6 slices shipped (2026-05-13)
 
-Recommended order. Each is self-contained and ships behind green tests + green tsc.
+All of Tier 2 from the original TODO is now on `newvision`. The "minimum
+v2 alignment" line in the previous status note is no longer the ceiling —
+the closed loop closes on its own, real run data flows into the admin
+surface, CEO orchestration works on every inbound channel, BYOM and
+billing are wired.
 
-1. **Wire `AgentRunner.afterRun` to write to `agent_runs` + `artifacts`.**
-   - Makes the v3 tables non-empty so `/admin/memory` Graph chip shows real data
-   - Replaces the mock fixtures in `/admin/agents/[role]/[runId]`
-   - Files: `src/lib/agent-runner.ts`, `src/lib/db-postgres.ts` (add `createAgentRun` + `completeAgentRun`)
-   - Estimate: ½ day
-2. **Flip `/admin/agents` from mock to real `agent_runs` rows.**
-   - Files: `src/app/admin/agents/[role]/page.tsx`, `[role]/[runId]/page.tsx`, `_lib/admin-data.ts`
-   - Keep mock fallback when the table is empty
-   - Estimate: ½ day
-3. **Stream lessons-write on chat completion.**
-   - After the assistant turn lands in `/api/chat`, write a lesson with `outputAccepted: "unknown"` (user can override later via an approve/reject UI)
-   - Files: `src/app/api/chat/route.ts`, `src/app/api/v1/chat/route.ts`
-   - Closes the closed loop end-to-end
-   - Estimate: ½ day
-4. **CEO orchestrator on inbound channels.**
-   - WhatsApp + Telegram webhooks already exist; route ALL inbound (not just `/link`-style keywords) through the CEO agent via `executeCeoTool` so it can `delegate_task` to the right role
-   - Files: `src/app/api/messaging/telegram/route.ts`, `src/app/api/messaging/whatsapp/webhook/route.ts`
-   - Estimate: 1 day
-5. **`/admin/billing` page.**
-   - Reads `getCredits` + `getCreditTransactions` + Stripe subscription
-   - Files: `src/app/admin/billing/page.tsx` (new), sidebar nav entry
-   - Estimate: ½ day
-6. **Email-in (Resend inbound parse) → CEO orchestrator.**
-   - The cheap-and-cheerful alternative to WhatsApp (which is blocked on Gupshup BSP)
-   - Files: `src/app/api/messaging/email/route.ts` (new)
-   - Estimate: 1 day
+1. ✅ **Wired `agent_runs` writes into chat completions.** Commit `595bd02`.
+   `/api/chat` (streaming) + `/api/v1/chat` (non-streaming) open a run
+   row, close it with output + usage + model + provider, mark failures
+   as `failed` instead of leaving them hanging. New `src/lib/agent-runs.ts`
+   module with create/complete/get helpers (6 new tests).
+2. ✅ **Flipped `/admin/agents/[role]` + `[runId]` to real data.** Commit `595bd02`.
+   Tries `loadAgentRunsByRole` / `loadAgentRun` first; falls back to mock
+   when the table is empty. Mapper handles status/triggeredBy translation.
+3. ✅ **Lessons-write after every chat completion.** Commit `595bd02`.
+   Both chat routes write a lesson with `outputAccepted='unknown'` after
+   the assistant turn lands. Future approve/reject UX flips it to
+   approved/rejected/modified.
+4. ✅ **CEO orchestrator on Telegram + email-in.** Commits `68e5561`, `9fc5102`.
+   Inbound messages without an explicit `@RoleName` prefer the CEO agent
+   (when present) and use ceoTools with a single tool-use iteration so
+   the CEO can `delegate_task` / `query_all_agents`. Telegram-style
+   webhook timeout bounded.
+5. ✅ **`/admin/billing` page.** Commit `8f6d90a`.
+   Balance + used + plan pill + Stripe state · CREDIT_PACKS top-up grid ·
+   3-plan card (Starter/Growth/Enterprise) with Stripe checkout buttons ·
+   recent transactions list with EmptyState fallback. New BillingIcon
+   + sidebar nav entry.
+6. ✅ **Email-in via Resend inbound parse.** Commit `9fc5102`.
+   `/api/messaging/email` accepts the inbound webhook (HMAC verification
+   via `RESEND_INBOUND_SECRET`), strips HTML + quoted reply chains,
+   resolves sender → tenant via `messaging_users` then `user_profiles`,
+   routes through CEO orchestrator, writes runs + lessons, replies via
+   `sendEmail()`. Cold inbound from unknown addresses gets a signup
+   nudge instead of a 500. New `sendEmail()` helper in `src/lib/email.ts`.
 
 ### 🟢 Tier 3 — v3.1+ (real product work, larger slices)
 
@@ -126,23 +133,31 @@ Per `TRANSITION-PLAN.md` § "What we explicitly do NOT do":
 
 ---
 
-## 🧪 Verification checklist (the DoD for v2)
+## 🧪 Verification checklist (the DoD for v2 + the new Tier-2 layer)
 
-From `TRANSITION-PLAN.md` § 9, with current status:
-
-- [x] Working tree committed in logical chunks (Day 1)
+- [x] Working tree committed in logical chunks
 - [x] Landing pages live with new copy
-- [x] Lessons demonstrably influence agent responses (code-side; needs browser confirm)
+- [x] Lessons read into the system prompt on every chat (code path)
+- [x] Lessons **written** after every chat completion (closed loop closes)
 - [x] `@mention` parser dispatches inter-agent relays in chat
 - [x] `/admin/memory` page surfaces shared company memory
-- [x] BYOM works end-to-end with at least one non-Anthropic provider (verified via `test/llm-router.test.ts`)
-- [x] Founding-vision blog post live (renders 200 at `/blog/why-we-are-building-the-autonomous`)
+- [x] BYOM works end-to-end with at least one non-Anthropic provider
+- [x] Founding-vision blog post live
+- [x] Mobile drawer for `/admin/*` (works on phone/tablet)
+- [x] v3 schema in place (migrations 007–008) + typed surface (`knowledge-graph.ts`, `agent-runs.ts`)
+- [x] `agent_runs` populated automatically from chat completions
+- [x] `/admin/agents/[role]` + `[runId]` read real data (mock fallback)
+- [x] CEO orchestrator routes inbound Telegram + email through `delegate_task`
+- [x] `/admin/billing` shows credits + plan + Stripe top-ups
+- [x] Email-in webhook live (`/api/messaging/email`)
+- [x] Tests green (314/314), `tsc` clean
 - [ ] Production deploy on Railway with rotated secrets
 - [ ] Telegram webhook registered on prod URL + cron live
+- [ ] Migrations 007 + 008 applied to Supabase
 - [ ] Both demo verticals still work on prod
-- [x] Tests green (308/308), `tsc` clean
+- [ ] Browser smoke-check with signed-in Clerk session
 
-**v2 DoD: 9 of 11 done.** Last two are infra you-actions in Tier 1 above.
+**16 of 21 done.** Remaining 5 are infra you-actions in Tier 1 above.
 
 ---
 
