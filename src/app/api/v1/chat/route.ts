@@ -11,6 +11,7 @@ import {
   incrementUsage,
 } from "@/lib/db";
 import { buildLessonsHelper } from "@/lib/lessons";
+import { dispatchMentions } from "@/lib/mention-dispatch";
 
 const client = new Anthropic();
 
@@ -117,6 +118,14 @@ export async function POST(request: NextRequest) {
   // Track usage
   await incrementUsage(auth.companyId, "message_count");
 
+  // Detect @mentions and fire inter-agent relays. Failures here never block
+  // the response — they're logged and reported per-mention.
+  const mentions = await dispatchMentions({
+    fromAgentId: agentId,
+    conversationId: convId,
+    content: responseText,
+  });
+
   return NextResponse.json({
     conversationId: convId,
     response: responseText,
@@ -125,5 +134,6 @@ export async function POST(request: NextRequest) {
       input_tokens: result.usage.input_tokens,
       output_tokens: result.usage.output_tokens,
     },
+    ...(mentions.length > 0 ? { mentions } : {}),
   });
 }

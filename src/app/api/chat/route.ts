@@ -29,6 +29,7 @@ import {
 } from "@/lib/mcp/apollo";
 import { ceoTools, executeCeoTool } from "@/lib/mcp/ceo-tools";
 import { buildLessonsHelper } from "@/lib/lessons";
+import { extractMentions } from "@/lib/mention-dispatch";
 
 const client = new Anthropic();
 
@@ -397,77 +398,80 @@ export async function POST(request: NextRequest) {
           }
 
           // Check for inter-agent mentions and actually relay
-          const mentions = fullResponse.match(/@(\w[\w\s-]*?)(?=[\s,.\n!?]|$)/g);
-          if (mentions && mentions.length > 0) {
+          // Uses the role-whitelist extractor so we don't fire phantom relays
+          // on stray @-words, and the INTERNAL_SECRET header so server→server
+          // calls to /api/agents/relay authenticate (cookies don't carry).
+          const mentionedRoles = extractMentions(fullResponse).slice(0, 2);
+          if (mentionedRoles.length > 0) {
             const agents = await getAgentsByCompany(agent.company_id);
-            const processed = new Set<string>();
-            for (const mention of mentions.slice(0, 2)) {
-              const mentionedRole = mention.slice(1).trim();
-              if (processed.has(mentionedRole.toLowerCase())) continue;
-              processed.add(mentionedRole.toLowerCase());
+            const internalSecret = process.env.INTERNAL_SECRET;
+            const appUrl =
+              process.env.APP_BASE_URL ??
+              process.env.NEXT_PUBLIC_APP_URL ??
+              "http://localhost:3000";
 
+            for (const mentionedRole of mentionedRoles) {
               const mentionedAgent = agents.find(
                 (a) =>
                   a.role.toLowerCase() === mentionedRole.toLowerCase() &&
                   a.id !== agentId
               );
-              if (mentionedAgent) {
-                // Notify user that relay is happening
-                controller.enqueue(
-                  encoder.encode(
-                    `data: ${JSON.stringify({
-                      interAgent: {
-                        from: agent.role,
-                        to: mentionedAgent.role,
-                        agentId: mentionedAgent.id,
-                        status: "relaying",
-                      },
-                    })}\n\n`
-                  )
-                );
+              if (!mentionedAgent) continue;
 
-                // Actually relay the message
-                try {
-                  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-                  const relayRes = await fetch(
-                    `${appUrl}/api/agents/relay`,
-                    {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        sourceAgentId: agentId,
-                        targetRole: mentionedRole,
-                        message: fullResponse,
-                        conversationId: convId,
-                        depth: 0,
-                      }),
-                    }
-                  );
-                  const relayData = await relayRes.json();
-                  if (relayData.response) {
-                    controller.enqueue(
-                      encoder.encode(
-                        `data: ${JSON.stringify({
-                          relay: {
-                            from: mentionedAgent.role,
-                            response: relayData.response,
-                          },
-                        })}\n\n`
-                      )
-                    );
-                  }
-                } catch {
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({
+                    interAgent: {
+                      from: agent.role,
+                      to: mentionedAgent.role,
+                      agentId: mentionedAgent.id,
+                      status: "relaying",
+                    },
+                  })}\n\n`
+                )
+              );
+
+              try {
+                const relayRes = await fetch(`${appUrl}/api/agents/relay`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    ...(internalSecret
+                      ? { "x-internal-secret": internalSecret }
+                      : {}),
+                  },
+                  body: JSON.stringify({
+                    sourceAgentId: agentId,
+                    targetRole: mentionedRole,
+                    message: fullResponse,
+                    conversationId: convId,
+                    depth: 0,
+                  }),
+                });
+                const relayData = await relayRes.json();
+                if (relayData.response) {
                   controller.enqueue(
                     encoder.encode(
                       `data: ${JSON.stringify({
                         relay: {
                           from: mentionedAgent.role,
-                          response: `@${mentionedAgent.role} is unavailable right now.`,
+                          response: relayData.response,
                         },
                       })}\n\n`
                     )
                   );
                 }
+              } catch {
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({
+                      relay: {
+                        from: mentionedAgent.role,
+                        response: `@${mentionedAgent.role} is unavailable right now.`,
+                      },
+                    })}\n\n`
+                  )
+                );
               }
             }
           }
