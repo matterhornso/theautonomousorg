@@ -24,6 +24,7 @@
  *     query path is wrapped or tagged
  */
 
+import { AsyncLocalStorage } from "async_hooks";
 import type { Sql } from "postgres";
 import { sql } from "./db-postgres";
 
@@ -32,6 +33,62 @@ export interface TenantContext {
   companyId: string;
   /** Clerk-derived user id (the human signed in). MUST be present. */
   userId: string;
+}
+
+// ─── AsyncLocalStorage propagation ─────────────────────────────────────────
+// Once a request has called runWithTenantStore() (or withTenantContext()),
+// any nested code path can read the active tenant via getCurrentTenantContext()
+// without threading it through function arguments.
+
+interface TenantStore {
+  ctx: TenantContext;
+  /** The active transaction-scoped Sql, if one is open. */
+  tx?: Sql;
+}
+
+const tenantStore = new AsyncLocalStorage<TenantStore>();
+
+/**
+ * Read the active tenant context, or null if none is set.
+ * Use this in helpers (lessons, escalation, vault) so call sites can drop
+ * explicit `companyId` arguments.
+ */
+export function getCurrentTenantContext(): TenantContext | null {
+  const store = tenantStore.getStore();
+  return store ? store.ctx : null;
+}
+
+/**
+ * Read the active transaction-scoped Sql, or null if no transaction is open.
+ * Used by db helpers that want to participate in the open transaction
+ * without taking an explicit `tx` parameter.
+ */
+export function getCurrentTx(): Sql | null {
+  const store = tenantStore.getStore();
+  return store?.tx ?? null;
+}
+
+/**
+ * Run `fn` with the given tenant context active in AsyncLocalStorage.
+ * Does NOT open a transaction or set Postgres GUCs; that's withTenantContext's
+ * job. Use this for code paths that don't need a transaction (e.g. background
+ * tasks calling `helpers.lessons.write` without the run being inside an open tx).
+ */
+export async function runWithTenantStore<T>(
+  ctx: TenantContext,
+  fn: () => Promise<T>
+): Promise<T> {
+  if (!ctx.companyId || typeof ctx.companyId !== "string") {
+    throw new Error(
+      "runWithTenantStore: companyId is required (got " + JSON.stringify(ctx.companyId) + ")"
+    );
+  }
+  if (!ctx.userId || typeof ctx.userId !== "string") {
+    throw new Error(
+      "runWithTenantStore: userId is required (got " + JSON.stringify(ctx.userId) + ")"
+    );
+  }
+  return await tenantStore.run({ ctx }, fn);
 }
 
 /**
@@ -69,7 +126,9 @@ export async function withTenantContext<T>(
     const txSql = tx as unknown as Sql;
     await txSql`SELECT set_config('app.current_company_id', ${ctx.companyId}, true)`;
     await txSql`SELECT set_config('app.current_user_id', ${ctx.userId}, true)`;
-    return await fn(txSql);
+    // Publish into AsyncLocalStorage so getCurrentTx() / getCurrentTenantContext()
+    // see the active tx for code that runs inside fn() without the tx param.
+    return await tenantStore.run({ ctx, tx: txSql }, () => fn(txSql));
   }) as T;
 }
 

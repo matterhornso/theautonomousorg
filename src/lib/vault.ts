@@ -29,6 +29,7 @@
 
 import { createHash } from "crypto";
 import type { VaultChunk, VaultHelper, VaultQueryOptions } from "./agent-sdk-helpers";
+import { mergeEntitiesIntoMetadata } from "./vault-extractors";
 
 // ─── Config + DI ───────────────────────────────────────────────────────────
 
@@ -229,12 +230,17 @@ export function buildVaultHelper(
       // don't leave dangling document rows.
       // Cast tx → typeof sql because postgres.js TransactionSql call signatures
       // exist at runtime but aren't always exposed in the typings.
+      // Auto-extract Indian-context structured entities (GSTIN/PAN/CIN/IFSC)
+      // from the document content and merge into metadata. User-supplied
+      // metadata wins on conflicts.
+      const enrichedMetadata = mergeEntitiesIntoMetadata(opts.metadata, opts.content);
+
       await sql.begin(async (tx) => {
         const txSql = tx as unknown as typeof sql;
         await txSql`
           INSERT INTO vault_documents (id, company_id, title, content_hash, metadata)
           VALUES (${docId}, ${ctx.firmId}, ${opts.title}, ${contentHash}, ${
-            opts.metadata ? JSON.stringify(opts.metadata) : null
+            JSON.stringify(enrichedMetadata)
           })
         `;
         for (let i = 0; i < chunks.length; i++) {

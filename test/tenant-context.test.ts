@@ -20,7 +20,13 @@ vi.mock("@/lib/db-postgres", () => ({
   sql: sqlMock,
 }));
 
-import { withTenantContext, withSystemContext } from "@/lib/tenant-context";
+import {
+  withTenantContext,
+  withSystemContext,
+  runWithTenantStore,
+  getCurrentTenantContext,
+  getCurrentTx,
+} from "@/lib/tenant-context";
 
 describe("withTenantContext", () => {
   beforeEach(() => {
@@ -111,6 +117,67 @@ describe("withTenantContext", () => {
       async () => obj
     );
     expect(result).toBe(obj);
+  });
+});
+
+describe("AsyncLocalStorage propagation", () => {
+  beforeEach(() => {
+    beginMock.mockReset();
+    sqlMock.mockReset();
+  });
+
+  it("getCurrentTenantContext returns null outside a store", () => {
+    expect(getCurrentTenantContext()).toBeNull();
+    expect(getCurrentTx()).toBeNull();
+  });
+
+  it("runWithTenantStore makes the ctx visible to nested code", async () => {
+    let observed: ReturnType<typeof getCurrentTenantContext> = null;
+    await runWithTenantStore({ companyId: "firm_x", userId: "user_x" }, async () => {
+      observed = getCurrentTenantContext();
+    });
+    expect(observed).toEqual({ companyId: "firm_x", userId: "user_x" });
+    // Outside the run, it goes back to null.
+    expect(getCurrentTenantContext()).toBeNull();
+  });
+
+  it("runWithTenantStore validates companyId/userId", async () => {
+    await expect(
+      runWithTenantStore({ companyId: "", userId: "u1" }, async () => "x")
+    ).rejects.toThrow(/companyId is required/);
+    await expect(
+      runWithTenantStore({ companyId: "c1", userId: "" }, async () => "x")
+    ).rejects.toThrow(/userId is required/);
+  });
+
+  it("withTenantContext exposes the tx via getCurrentTx() inside fn", async () => {
+    const fakeTx = (_strings: TemplateStringsArray, ..._values: unknown[]) =>
+      Promise.resolve([]);
+    beginMock.mockImplementation(async (cb: (tx: typeof fakeTx) => Promise<unknown>) =>
+      cb(fakeTx)
+    );
+
+    let observedCtx: ReturnType<typeof getCurrentTenantContext> = null;
+    let observedTx: ReturnType<typeof getCurrentTx> = null;
+    await withTenantContext({ companyId: "firm_y", userId: "user_y" }, async () => {
+      observedCtx = getCurrentTenantContext();
+      observedTx = getCurrentTx();
+      return "ok";
+    });
+    expect(observedCtx).toEqual({ companyId: "firm_y", userId: "user_y" });
+    expect(observedTx).not.toBeNull();
+  });
+
+  it("nested runWithTenantStore replaces the outer ctx", async () => {
+    let inner: ReturnType<typeof getCurrentTenantContext> = null;
+    await runWithTenantStore({ companyId: "outer", userId: "u" }, async () => {
+      await runWithTenantStore({ companyId: "inner", userId: "u" }, async () => {
+        inner = getCurrentTenantContext();
+      });
+      // After inner exits, outer ctx is restored.
+      expect(getCurrentTenantContext()).toEqual({ companyId: "outer", userId: "u" });
+    });
+    expect(inner).toEqual({ companyId: "inner", userId: "u" });
   });
 });
 
