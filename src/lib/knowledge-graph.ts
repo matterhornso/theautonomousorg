@@ -437,6 +437,128 @@ export async function createCommitment(input: {
   return rows[0] ? mapCommitment(rows[0]) : null;
 }
 
+export async function createEventLog(input: {
+  companyId: string;
+  title: string;
+  startsAt: Date;
+  endsAt?: Date;
+  source?: string;
+  sourceRef?: string;
+  attendees?: unknown[];
+  metadata?: Record<string, unknown>;
+}): Promise<EventLogEntry | null> {
+  const sql = (await getSql()) as SqlTemplate | null;
+  if (!sql) return null;
+  const id = `event_${randomUUID()}`;
+  // Idempotency: if a (company_id, source, source_ref) tuple already exists,
+  // update it in place rather than inserting a duplicate. This lets calendar
+  // sync push the same event multiple times safely.
+  if (input.source && input.sourceRef) {
+    const existing = (await sql`
+      SELECT id FROM events_log
+      WHERE company_id = ${input.companyId}
+        AND source = ${input.source}
+        AND source_ref = ${input.sourceRef}
+      LIMIT 1
+    `) as Array<{ id: string }>;
+    if (existing[0]) {
+      const rows = (await sql`
+        UPDATE events_log SET
+          title = ${input.title},
+          starts_at = ${input.startsAt},
+          ends_at = ${input.endsAt ?? null},
+          attendees = ${JSON.stringify(input.attendees ?? [])}::jsonb,
+          metadata = ${JSON.stringify(input.metadata ?? {})}::jsonb
+        WHERE id = ${existing[0].id}
+        RETURNING id, company_id, title, starts_at, ends_at, source, source_ref,
+                  attendees, metadata, created_at
+      `) as EventRow[];
+      return rows[0] ? mapEvent(rows[0]) : null;
+    }
+  }
+  const rows = (await sql`
+    INSERT INTO events_log
+      (id, company_id, title, starts_at, ends_at, source, source_ref, attendees, metadata)
+    VALUES (
+      ${id}, ${input.companyId}, ${input.title},
+      ${input.startsAt}, ${input.endsAt ?? null},
+      ${input.source ?? null}, ${input.sourceRef ?? null},
+      ${JSON.stringify(input.attendees ?? [])}::jsonb,
+      ${JSON.stringify(input.metadata ?? {})}::jsonb
+    )
+    RETURNING id, company_id, title, starts_at, ends_at, source, source_ref,
+              attendees, metadata, created_at
+  `) as EventRow[];
+  return rows[0] ? mapEvent(rows[0]) : null;
+}
+
+export async function getEventsBetween(
+  companyId: string,
+  from: Date,
+  to: Date
+): Promise<EventLogEntry[]> {
+  const sql = (await getSql()) as SqlTemplate | null;
+  if (!sql) return [];
+  const rows = (await sql`
+    SELECT id, company_id, title, starts_at, ends_at, source, source_ref,
+           attendees, metadata, created_at
+    FROM events_log
+    WHERE company_id = ${companyId}
+      AND starts_at >= ${from}
+      AND starts_at < ${to}
+    ORDER BY starts_at ASC
+  `) as EventRow[];
+  return rows.map(mapEvent);
+}
+
+/**
+ * Cross-tenant scan for events starting within a window. The cron worker
+ * uses this to find every upcoming meeting across all tenants and queue
+ * pre-meeting briefs ahead of them.
+ *
+ * Bypasses RLS by design — only called from server-side cron with the
+ * internal secret. Returns event rows with `companyId` so the caller can
+ * fan out per-tenant.
+ */
+/**
+ * Merge a partial metadata object into an event's existing metadata. Used
+ * by the brief cron to stamp `brief_sent_at` so subsequent runs skip the
+ * event.
+ */
+export async function updateEventMetadata(
+  eventId: string,
+  patch: Record<string, unknown>
+): Promise<boolean> {
+  const sql = (await getSql()) as SqlTemplate | null;
+  if (!sql) return false;
+  const rows = (await sql`
+    UPDATE events_log
+    SET metadata = COALESCE(metadata, '{}'::jsonb) || ${JSON.stringify(patch)}::jsonb
+    WHERE id = ${eventId}
+    RETURNING id
+  `) as Array<{ id: string }>;
+  return rows.length > 0;
+}
+
+export async function getEventsAcrossTenantsBetween(
+  from: Date,
+  to: Date,
+  limit = 500
+): Promise<EventLogEntry[]> {
+  const sql = (await getSql()) as SqlTemplate | null;
+  if (!sql) return [];
+  const rows = (await sql`
+    SELECT id, company_id, title, starts_at, ends_at, source, source_ref,
+           attendees, metadata, created_at
+    FROM events_log
+    WHERE starts_at >= ${from}
+      AND starts_at < ${to}
+    ORDER BY starts_at ASC
+    LIMIT ${limit}
+  `) as EventRow[];
+  return rows.map(mapEvent);
+}
+
 export async function createArtifact(input: {
   companyId: string;
   kind: ArtifactKind;

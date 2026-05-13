@@ -95,6 +95,28 @@ describe("knowledge-graph — graceful no-DB fallback", () => {
     ).toEqual([]);
   });
 
+  it("createEventLog returns null when DATABASE_URL is unset", async () => {
+    expect(
+      await kg.createEventLog({
+        companyId: "co-1",
+        title: "Acme review",
+        startsAt: new Date(),
+      })
+    ).toBeNull();
+  });
+
+  it("getEventsBetween returns [] when DATABASE_URL is unset", async () => {
+    expect(
+      await kg.getEventsBetween("co-1", new Date(), new Date())
+    ).toEqual([]);
+  });
+
+  it("getEventsAcrossTenantsBetween returns [] when DATABASE_URL is unset", async () => {
+    expect(
+      await kg.getEventsAcrossTenantsBetween(new Date(), new Date())
+    ).toEqual([]);
+  });
+
   it("summarizeKnowledgeGraph returns all-zero counts when DATABASE_URL is unset", async () => {
     const summary = await kg.summarizeKnowledgeGraph("co-1");
     expect(summary).toEqual({
