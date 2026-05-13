@@ -1,7 +1,8 @@
 # newvision branch — Status & TODO
 
-> **Last updated:** 2026-05-13 · **Branch:** `newvision` · **HEAD:** `9fc5102`
-> **Tests:** 314/314 passing · **tsc:** clean · **All of Tier 2 shipped.**
+> **Last updated:** 2026-05-13 · **Branch:** `newvision` · **HEAD:** `6e42b65`
+> **Tests:** 336/336 passing · **tsc:** clean
+> **Tier 2 + most of Tier 3 shipped.** Remaining items are infra (you-action) or genuine product work that needs external creds.
 > **GitHub:** https://github.com/matterhornso/theautonomousorg/tree/newvision
 >
 > Pair this with `docs/vision/TRANSITION-PLAN.md` (the plan) and `docs/vision/PRD.md` (the destination). This file tracks **what's actually on the branch** and **what's next**.
@@ -109,17 +110,68 @@ billing are wired.
    `sendEmail()`. Cold inbound from unknown addresses gets a signup
    nudge instead of a 500. New `sendEmail()` helper in `src/lib/email.ts`.
 
-### 🟢 Tier 3 — v3.1+ (real product work, larger slices)
+### ✅ Tier 3 — 7 slices shipped (2026-05-13 cont.)
 
-- [ ] **Memory product standalone deploy** (`memory.theautonomous.org`) — code in sister repo `autonomous-memory`; needs MongoDB / Redis / Deepgram / S3 / Stripe creds + Clerk shared keys on `.theautonomous.org` cookie domain
-- [ ] **Deepgram + Claude entity-extraction pipeline** — the actual writer that fills `persons` / `conversations` / `decisions` / `commitments` from uploaded recordings
-- [ ] **Pre-meeting brief cron** — 30 min before each `events_log` event, query the graph, synthesize via Claude, deliver via existing `debrief.ts` channel chain (Telegram → Email → Dashboard)
-- [ ] **Inter-agent feedback loop** — when human approves/rejects a relay response, write a `lesson` for the target agent so cross-agent learning compounds (today only direct chat lessons write)
-- [ ] **Per-tenant Telegram bot tokens** — current code uses one global `@timesheettrial_bot`; move to `integrations` table per-firm
-- [ ] **Per-tenant Shopify credentials** — same comment; `SHOPIFY_CLIENT_ID/SECRET` are global env right now
-- [ ] **Vault re-ingest UI** — the existing Vault page has a `Re-embed` button that doesn't do anything yet
-- [ ] **Streaming `/api/chat` BYOM** — today only `/api/v1/chat` (non-streaming) routes through the LLM router; the streaming dashboard chat stays Anthropic-only. Add OpenAI streaming for parity.
-- [ ] **Webhook auto-registration on deploy** — `src/lib/telegram.ts:setWebhook` already exists; wire it into a deploy hook so prod webhook registers automatically
+7 more slices landed since the Tier 2 milestone:
+
+- ✅ **Inter-agent feedback loop** (`bc941f6`). New POST
+  `/api/agents/runs/[runId]/feedback` flips a run's lesson from
+  `outputAccepted='unknown'` to approved/rejected/modified. Relay route
+  now writes its own agent_runs row + lesson for the target agent so
+  cross-agent learning compounds. New `updateLessonForRun` in lessons.ts.
+- ✅ **Webhook auto-registration on deploy** (`10749a5`). New
+  `/api/admin/register-webhooks` endpoint (POST to register, GET to
+  introspect). Wire into your CI deploy hook; removes one Tier 1
+  you-action permanently. Internal-secret or Clerk auth.
+- ✅ **Streaming `/api/chat` BYOM** (`03b5d23`). Dashboard chat now resolves
+  the tenant's LLM config and routes non-tool turns through the router.
+  Tool-use turns (Apollo / CEO) stay Anthropic. Initial SSE message
+  includes `{ provider, model, byom }` for client correlation.
+- ✅ **Per-tenant Telegram bot tokens** (`ede73fc`). `telegram.ts` reads
+  `user_api_keys` with service `telegram_bot_token` (env fallback). New
+  `sendMessageForCompany` / `setWebhookForCompany` / `isTelegramBYOK`
+  helpers. Telegram inbound replies use the per-tenant bot when present.
+- ✅ **Per-tenant Shopify credentials** (`af84f23`). `loadShopifyConfigForCompany`
+  reads `shopify_credentials` from `user_api_keys` (JSON blob with
+  storeDomain + clientId + clientSecret). `/api/shopify/{plan,apply,insights}`
+  pass it through.
+- ✅ **Entity extractor pipeline** (`28bf2d9`). `src/lib/entity-extractor.ts`
+  with `ingestConversation` — persists a conversation row, calls Claude
+  with a single forced `extract_entities` tool, writes persons + decisions
+  + commitments, links everything via `knowledge_edges`. POST
+  `/api/memory/ingest` is the writer endpoint. Closes the "v3 schema in
+  place but unwritten" gap.
+- ✅ **Deepgram audio + pre-meeting brief** (`6e42b65`). `src/lib/deepgram.ts`
+  transcribes audio URLs or buffers. POST `/api/memory/ingest/audio`
+  chains Deepgram → entity-extractor. `src/lib/brief.ts` synthesises
+  pre-meeting briefs over the populated graph (Claude path + deterministic
+  fallback). POST `/api/memory/brief` is the endpoint. Tests cover both
+  the parser preferences and the relevance filter.
+
+### 🟡 Tier 3 remaining (smaller; can ship without external creds)
+
+- [ ] **Pre-meeting brief CRON** — calls `/api/memory/brief` ahead of each
+  upcoming `events_log` row. Blocked on a calendar-source ingester
+  populating `events_log` (Google Calendar / Outlook webhook). Generator
+  and endpoint already exist — just need a scheduled trigger.
+- [ ] **Vault re-ingest UI** — the existing Vault page has a "Re-embed"
+  button that's not wired up. Small slice.
+- [ ] **Per-bot Telegram webhook paths** — `/api/messaging/telegram/[botSlug]`
+  so a second tenant doesn't share `@timesheettrial_bot`'s inbound. The
+  outbound side already supports per-tenant tokens (see ede73fc); just
+  need the inbound routing.
+- [ ] **Calendar-source ingester** — webhook from Google Calendar or
+  Outlook that writes `events_log` rows. Currently nothing writes there.
+  Pair with the brief CRON above.
+
+### 🔵 Tier 3 — genuinely blocked on external setup
+
+- [ ] **Memory product standalone deploy** (`memory.theautonomous.org`) —
+  code in sister repo `autonomous-memory`; needs MongoDB / Redis / S3 /
+  Stripe creds + Clerk shared keys on `.theautonomous.org` cookie domain.
+  Note: the entity-extractor + Deepgram + brief pipelines built above
+  cover most of the v3 promise inside `theautonomousorg` itself, so the
+  sister repo is now optional rather than load-bearing.
 
 ### 🔵 Tier 4 — explicit non-goals for v2 (do not do)
 
@@ -150,14 +202,22 @@ Per `TRANSITION-PLAN.md` § "What we explicitly do NOT do":
 - [x] CEO orchestrator routes inbound Telegram + email through `delegate_task`
 - [x] `/admin/billing` shows credits + plan + Stripe top-ups
 - [x] Email-in webhook live (`/api/messaging/email`)
-- [x] Tests green (314/314), `tsc` clean
+- [x] Inter-agent feedback loop — runs from relays + feedback endpoint flip lessons
+- [x] Streaming `/api/chat` honors BYOM (non-tool turns)
+- [x] Per-tenant Telegram bot tokens — `user_api_keys` + `sendMessageForCompany`
+- [x] Per-tenant Shopify creds — `loadShopifyConfigForCompany` wired into all routes
+- [x] Entity extractor — `POST /api/memory/ingest` writes persons/decisions/commitments/edges
+- [x] Audio capture — `POST /api/memory/ingest/audio` chains Deepgram → extractor
+- [x] Pre-meeting brief generator — `POST /api/memory/brief` with Claude + deterministic fallback
+- [x] Webhook self-registration — `POST /api/admin/register-webhooks`
+- [x] Tests green (336/336), `tsc` clean
 - [ ] Production deploy on Railway with rotated secrets
 - [ ] Telegram webhook registered on prod URL + cron live
 - [ ] Migrations 007 + 008 applied to Supabase
 - [ ] Both demo verticals still work on prod
 - [ ] Browser smoke-check with signed-in Clerk session
 
-**16 of 21 done.** Remaining 5 are infra you-actions in Tier 1 above.
+**24 of 29 done.** Remaining 5 are still the same Tier 1 infra you-actions.
 
 ---
 
