@@ -1,9 +1,9 @@
 # newvision branch — Status & TODO
 
-> **Last updated:** 2026-05-13 · **Branch:** `newvision` · **HEAD:** `6e42b65`
-> **Tests:** 336/336 passing · **tsc:** clean
-> **Tier 2 + most of Tier 3 shipped.** Remaining items are infra (you-action) or genuine product work that needs external creds.
-> **GitHub:** https://github.com/matterhornso/theautonomousorg/tree/newvision
+> **Last updated:** 2026-05-13 · **Branch:** `newvision` · **HEAD:** `007637e`
+> **Tests:** 339/339 passing · **tsc:** clean · **29 commits past `main`**
+> **Tier 2 done + 9 of 11 Tier 3 slices shipped.** Remaining items are infra (you-action) or one large slice (per-bot Telegram inbound).
+> **GitHub:** https://github.com/matterhornso/theautonomousorg/tree/newvision · **Pair with** `docs/vision/NEWVISION-CONTEXT.md` for the full session context.
 >
 > Pair this with `docs/vision/TRANSITION-PLAN.md` (the plan) and `docs/vision/PRD.md` (the destination). This file tracks **what's actually on the branch** and **what's next**.
 
@@ -148,21 +148,31 @@ billing are wired.
   fallback). POST `/api/memory/brief` is the endpoint. Tests cover both
   the parser preferences and the relevance filter.
 
-### 🟡 Tier 3 remaining (smaller; can ship without external creds)
+### ✅ Tier 3 — 2 more slices shipped post-milestone
 
-- [ ] **Pre-meeting brief CRON** — calls `/api/memory/brief` ahead of each
-  upcoming `events_log` row. Blocked on a calendar-source ingester
-  populating `events_log` (Google Calendar / Outlook webhook). Generator
-  and endpoint already exist — just need a scheduled trigger.
-- [ ] **Vault re-ingest UI** — the existing Vault page has a "Re-embed"
-  button that's not wired up. Small slice.
-- [ ] **Per-bot Telegram webhook paths** — `/api/messaging/telegram/[botSlug]`
+- ✅ **Vault re-embed UI** (`007c37e`). `POST /api/vault/reembed` +
+  interactive `ReembedButton` (plain click = `mode=missing`, shift-click
+  = `mode=all`). New `reembedAllForCompany` helper iterates chunks,
+  re-runs the embedding provider, UPDATEs each row. Toast + page refresh.
+- ✅ **Calendar ingester + pre-meeting brief CRON** (`007637e`). Two
+  endpoints close the brief loop end-to-end:
+  - `POST /api/calendar/ingest` writes `events_log` (idempotent on
+    `source` + `sourceRef` — Google Calendar / Outlook / Fireflies /
+    manual all OK). Accepts batch or single-event shorthand.
+  - `GET|POST /api/cron/pre-meeting-briefs?token=$CRON_SECRET` scans
+    `events_log` across tenants in [now+lookAhead-window, now+lookAhead+
+    window] (default 30 min ± 10 min), generates a brief, emails the
+    first attendee, stamps `metadata.brief_sent_at` for idempotency.
+    Tuneable via query params; `?dryRun=1` for testing.
+  - New helpers in knowledge-graph.ts: `createEventLog` (with idempotent
+    upsert), `updateEventMetadata`, `getEventsAcrossTenantsBetween`.
+
+### 🟡 Tier 3 remaining
+
+- [ ] **Per-bot Telegram webhook paths** — `/api/messaging/telegram/[botSlug]/route.ts`
   so a second tenant doesn't share `@timesheettrial_bot`'s inbound. The
-  outbound side already supports per-tenant tokens (see ede73fc); just
-  need the inbound routing.
-- [ ] **Calendar-source ingester** — webhook from Google Calendar or
-  Outlook that writes `events_log` rows. Currently nothing writes there.
-  Pair with the brief CRON above.
+  outbound side already supports per-tenant tokens (see `ede73fc`); just
+  need the inbound routing. ~1 day.
 
 ### 🔵 Tier 3 — genuinely blocked on external setup
 
@@ -210,14 +220,17 @@ Per `TRANSITION-PLAN.md` § "What we explicitly do NOT do":
 - [x] Audio capture — `POST /api/memory/ingest/audio` chains Deepgram → extractor
 - [x] Pre-meeting brief generator — `POST /api/memory/brief` with Claude + deterministic fallback
 - [x] Webhook self-registration — `POST /api/admin/register-webhooks`
-- [x] Tests green (336/336), `tsc` clean
+- [x] Vault re-embed UI — wired button + `POST /api/vault/reembed`
+- [x] Calendar ingester — `POST /api/calendar/ingest` writes `events_log`
+- [x] Pre-meeting brief CRON — `GET|POST /api/cron/pre-meeting-briefs`
+- [x] Tests green (339/339), `tsc` clean
 - [ ] Production deploy on Railway with rotated secrets
 - [ ] Telegram webhook registered on prod URL + cron live
 - [ ] Migrations 007 + 008 applied to Supabase
 - [ ] Both demo verticals still work on prod
 - [ ] Browser smoke-check with signed-in Clerk session
 
-**24 of 29 done.** Remaining 5 are still the same Tier 1 infra you-actions.
+**27 of 32 done.** Remaining 5 are still the same Tier 1 infra you-actions (Railway deploy + secrets, migrations apply, webhook + cron registration, browser smoke-check).
 
 ---
 
