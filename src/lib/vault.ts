@@ -319,3 +319,103 @@ export function buildVaultHelper(
     },
   };
 }
+
+// ─── Re-embed ───────────────────────────────────────────────────────────────
+// Re-runs the embedding provider over vault_chunks for a company. Two modes:
+//   - missing (default): only chunks where embedding IS NULL (e.g. ingested
+//     during a dev-mode window when COHERE_API_KEY wasn't set)
+//   - all: every chunk (use when switching embedding model / dimensions)
+//
+// Returns a summary so the admin UI can show "embedded 23 chunks" or
+// "skipped — 0 chunks needed embedding".
+
+export interface ReembedSummary {
+  totalChunks: number;
+  embedded: number;
+  skipped: number;
+  failed: number;
+  provider: string | null;
+}
+
+export async function reembedAllForCompany(
+  companyId: string,
+  options?: {
+    mode?: "missing" | "all";
+    configOverrides?: Partial<VaultConfig>;
+    /** Batch size for the embedding provider. Default 32. */
+    batchSize?: number;
+  }
+): Promise<ReembedSummary> {
+  const mode = options?.mode ?? "missing";
+  const batchSize = options?.batchSize ?? 32;
+  const cfg = getConfig(options?.configOverrides);
+  const provider = pickProvider(cfg);
+
+  const { sql } = await import("./db-postgres");
+  if (!sql) {
+    return { totalChunks: 0, embedded: 0, skipped: 0, failed: 0, provider: null };
+  }
+  if (!provider) {
+    return { totalChunks: 0, embedded: 0, skipped: 0, failed: 0, provider: null };
+  }
+
+  // Discover candidate chunks. `mode=missing` is the safe default — never
+  // overwrites existing embeddings.
+  const candidates = (mode === "all"
+    ? ((await sql`
+        SELECT id, text FROM vault_chunks
+        WHERE company_id = ${companyId}
+        ORDER BY id
+      `) as Array<{ id: string; text: string }>)
+    : ((await sql`
+        SELECT id, text FROM vault_chunks
+        WHERE company_id = ${companyId} AND embedding IS NULL
+        ORDER BY id
+      `) as Array<{ id: string; text: string }>));
+
+  if (candidates.length === 0) {
+    return {
+      totalChunks: 0,
+      embedded: 0,
+      skipped: 0,
+      failed: 0,
+      provider: provider.name,
+    };
+  }
+
+  let embedded = 0;
+  let failed = 0;
+  for (let i = 0; i < candidates.length; i += batchSize) {
+    const batch = candidates.slice(i, i + batchSize);
+    try {
+      const vectors = await provider.embed(batch.map((c) => c.text));
+      for (let j = 0; j < batch.length; j++) {
+        const vec = vectors[j];
+        if (!vec) {
+          failed++;
+          continue;
+        }
+        await sql`
+          UPDATE vault_chunks
+          SET embedding = ${vectorLiteral(vec)}::vector
+          WHERE id = ${batch[j].id} AND company_id = ${companyId}
+        `;
+        embedded++;
+      }
+    } catch (err) {
+      console.warn(
+        `[vault] re-embed batch ${i}/${candidates.length} failed:`,
+        err
+      );
+      failed += batch.length;
+    }
+  }
+
+  return {
+    totalChunks: candidates.length,
+    embedded,
+    skipped: 0,
+    failed,
+    provider: provider.name,
+  };
+}

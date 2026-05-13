@@ -14,6 +14,7 @@ import {
 } from "../_components/icons";
 import { loadVaultDocs } from "../_lib/admin-data";
 import { resolveTenant } from "../_lib/resolve-tenant";
+import { ReembedButton } from "./_components/reembed-button";
 
 const docTypeLabel: Record<string, string> = {
   brand_guidelines: "Brand",
@@ -43,9 +44,7 @@ export default async function VaultPage() {
         description="Universal knowledge base for the workspace. Anything an agent reads, anything you feed in — voice memos, contracts, customer data, brand guides. Tenant-isolated via Postgres RLS; agents query a pgvector index over Cohere multilingual embeddings."
         rail={
           <>
-            <Button variant="outline" size="sm">
-              Re-embed
-            </Button>
+            <ReembedButton />
             <Button size="sm">
               <FileIcon className="w-4 h-4" />
               Ingest

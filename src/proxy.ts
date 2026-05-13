@@ -12,6 +12,12 @@ const isProtectedRoute = createRouteMatcher([
   "/api/provisioning(.*)",
   "/api/shopify(.*)",
   "/api/timesheets(.*)",
+  "/api/vault(.*)",
+  // NOT gated here (route handlers do their own auth with internal-secret bypass):
+  //   /api/memory/*           — Deepgram / Fireflies / Zoom webhooks
+  //   /api/admin/register-*   — CI deploy hooks
+  //   /api/agents/relay       — server→server inter-agent calls
+  //   /api/agents/runs/*/feedback — agent self-rating with internal secret
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
