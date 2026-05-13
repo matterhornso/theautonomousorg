@@ -19,6 +19,7 @@
 
 import { randomUUID } from "crypto";
 import type { EscalationHelper, WhatsAppHelper } from "./agent-sdk-helpers";
+import { buildWhatsAppHelper } from "./whatsapp";
 
 export interface EscalationHelperContext {
   /** Active firm. */
@@ -120,8 +121,10 @@ export function buildEscalationHelper(ctx: EscalationHelperContext): EscalationH
 
 interface PersistArgs {
   firmId: string;
-  agentId: string;
-  runId: string;
+  /** Null when the notification is composed outside an agent run (e.g. webhook keyword). */
+  agentId: string | null;
+  /** Null when there is no associated agent run. */
+  runId: string | null;
   severity: "P1" | "P2" | "P3" | "INFO";
   kind: string;
   subject: string;
@@ -129,11 +132,76 @@ interface PersistArgs {
   roleHint?: string;
 }
 
-async function persistNotification(args: PersistArgs): Promise<void> {
+// ─── Webhook-context escalation ────────────────────────────────────────────
+// Used by bare webhook handlers (e.g. the Telegram timesheet bot's HELP
+// keyword) that don't have an agent run to attach to. Persists an
+// admin_notifications row and best-effort pings the SPOC via WhatsApp.
+
+export interface NotifyHelpRequestOptions {
+  /** Tenant whose admin should see the notification. */
+  companyId: string;
+  /** Short headline shown in the admin notifications inbox. */
+  subject: string;
+  /** Multi-line context — who asked, what period, what channel, raw message. */
+  detail: string;
+  /** Optional routing hint (e.g. "partner", "admin"). Stored on the row. */
+  roleHint?: string;
+  /** Injectable for tests. Defaults to companies.spoc_phone lookup. */
+  resolveSpocPhone?: (firmId: string) => Promise<string | null>;
+  /** Injectable for tests. Defaults to env-configured Gupshup helper. */
+  whatsapp?: WhatsAppHelper;
+}
+
+export async function notifyHelpRequest(
+  opts: NotifyHelpRequestOptions
+): Promise<{ persisted: boolean; whatsappSent: boolean }> {
+  const resolveSpocPhone = opts.resolveSpocPhone ?? defaultResolveSpocPhone;
+  let persisted = false;
+  let whatsappSent = false;
+
+  try {
+    persisted = await persistNotification({
+      firmId: opts.companyId,
+      agentId: null,
+      runId: null,
+      severity: "P2",
+      kind: "help_request",
+      subject: opts.subject,
+      detail: opts.detail,
+      roleHint: opts.roleHint,
+    });
+  } catch (err) {
+    console.warn("[escalation] notifyHelpRequest: persist failed:", err);
+  }
+
+  try {
+    const phone = await resolveSpocPhone(opts.companyId);
+    if (phone) {
+      const wa =
+        opts.whatsapp ??
+        buildWhatsAppHelper({
+          firmId: opts.companyId,
+          agentId: "system",
+          runId: `notif_${randomUUID()}`,
+        });
+      await wa.sendNotification({
+        to: phone,
+        body: `[Help requested] ${opts.subject}\n${opts.detail}`,
+      });
+      whatsappSent = true;
+    }
+  } catch (err) {
+    console.warn("[escalation] notifyHelpRequest: WhatsApp send failed:", err);
+  }
+
+  return { persisted, whatsappSent };
+}
+
+async function persistNotification(args: PersistArgs): Promise<boolean> {
   const { sql } = await import("./db-postgres");
   if (!sql) {
     console.warn("[escalation] notification not persisted; DATABASE_URL missing", args);
-    return;
+    return false;
   }
   const id = `note_${randomUUID()}`;
   await sql`
@@ -151,4 +219,5 @@ async function persistNotification(args: PersistArgs): Promise<void> {
       ${args.roleHint ?? null}
     )
   `;
+  return true;
 }

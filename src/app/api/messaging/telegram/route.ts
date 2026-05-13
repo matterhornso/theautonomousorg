@@ -24,6 +24,7 @@ import {
 import { ceoTools, executeCeoTool } from "@/lib/mcp/ceo-tools";
 import { createAgentRun, completeAgentRun } from "@/lib/agent-runs";
 import { buildLessonsHelper } from "@/lib/lessons";
+import { notifyHelpRequest } from "@/lib/escalation";
 import { randomUUID } from "crypto";
 
 const client = new Anthropic();
@@ -151,7 +152,25 @@ export async function POST(request: NextRequest) {
         chatId,
         `Got it. I've flagged your firm admin — they'll reach out shortly. Meanwhile reply *DONE* once you've submitted, or describe the blocker and I'll relay.`
       );
-      // TODO: invoke EscalationHelper once the firm admin contact is wired.
+      // Best-effort: write admin_notifications + ping SPOC on WhatsApp.
+      // Both branches log on failure rather than throwing so the webhook
+      // always returns 200 to Telegram.
+      const periodKey = currentPeriodKey();
+      const rawMessage = text.trim().slice(0, 500);
+      try {
+        await notifyHelpRequest({
+          companyId: linkedEmployee.companyId,
+          subject: `Timesheet HELP from ${linkedEmployee.name} (${periodKey})`,
+          detail:
+            `Employee: ${linkedEmployee.name} <${linkedEmployee.email}>\n` +
+            `Channel: Telegram (chat_id ${chatId})\n` +
+            `Period: ${periodKey}\n` +
+            `Raw message: ${rawMessage}`,
+          roleHint: "admin",
+        });
+      } catch (err) {
+        console.warn("[telegram] HELP escalation failed:", err);
+      }
       return NextResponse.json({ ok: true });
     }
 

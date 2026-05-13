@@ -14,7 +14,7 @@ vi.mock("@/lib/db-postgres", () => ({
   sql: sqlMock,
 }));
 
-import { buildEscalationHelper } from "@/lib/escalation";
+import { buildEscalationHelper, notifyHelpRequest } from "@/lib/escalation";
 import type { WhatsAppHelper } from "@/lib/agent-sdk-helpers";
 
 function makeMockWhatsApp(): { helper: WhatsAppHelper; sendNotification: ReturnType<typeof vi.fn> } {
@@ -144,6 +144,84 @@ describe("buildEscalationHelper", () => {
     const values = sqlMock.mock.calls[0].slice(1) as unknown[];
     expect(values).toContain("partner");
     expect(values).toContain("human_escalation");
+  });
+
+  it("notifyHelpRequest persists an admin_notifications row + WhatsApps the SPOC", async () => {
+    const { helper, sendNotification } = makeMockWhatsApp();
+    sqlMock.mockResolvedValueOnce([]); // INSERT admin_notifications
+    const result = await notifyHelpRequest({
+      companyId: "firm_a",
+      subject: "Timesheet HELP from Girish (2026-W19)",
+      detail: "Employee: Girish <girish@jaa-associates.com>\nChannel: Telegram",
+      roleHint: "admin",
+      resolveSpocPhone: async () => "+919999911111",
+      whatsapp: helper,
+    });
+    expect(result).toEqual({ persisted: true, whatsappSent: true });
+
+    expect(sqlMock).toHaveBeenCalledTimes(1);
+    const values = sqlMock.mock.calls[0].slice(1) as unknown[];
+    expect(values).toContain("firm_a");
+    expect(values).toContain("P2");
+    expect(values).toContain("help_request");
+    expect(values).toContain("admin");
+    // agent_id + run_id are null for webhook-context notifications
+    expect(values).toContain(null);
+
+    expect(sendNotification).toHaveBeenCalledTimes(1);
+    expect(sendNotification.mock.calls[0][0]).toMatchObject({
+      to: "+919999911111",
+      body: expect.stringContaining("[Help requested]"),
+    });
+  });
+
+  it("notifyHelpRequest still persists when WhatsApp send throws", async () => {
+    const sendNotification = vi.fn().mockRejectedValue(new Error("Gupshup down"));
+    const helper = {
+      sendNotification,
+      sendApprovalCard: vi.fn(),
+    } as unknown as WhatsAppHelper;
+    sqlMock.mockResolvedValueOnce([]);
+    const result = await notifyHelpRequest({
+      companyId: "firm_a",
+      subject: "boom",
+      detail: "oh no",
+      resolveSpocPhone: async () => "+919999911111",
+      whatsapp: helper,
+    });
+    expect(result).toEqual({ persisted: true, whatsappSent: false });
+    expect(sendNotification).toHaveBeenCalledTimes(1);
+  });
+
+  it("notifyHelpRequest skips WhatsApp when no SPOC phone is configured", async () => {
+    const { helper, sendNotification } = makeMockWhatsApp();
+    sqlMock.mockResolvedValueOnce([]);
+    const result = await notifyHelpRequest({
+      companyId: "firm_a",
+      subject: "info only",
+      detail: "fyi",
+      resolveSpocPhone: async () => null,
+      whatsapp: helper,
+    });
+    expect(result).toEqual({ persisted: true, whatsappSent: false });
+    expect(sendNotification).not.toHaveBeenCalled();
+  });
+
+  it("when DATABASE_URL is missing, notifyHelpRequest reports not persisted but does not throw", async () => {
+    vi.doMock("@/lib/db-postgres", () => ({ sql: null }));
+    vi.resetModules();
+    const { notifyHelpRequest: notify } = await import("@/lib/escalation");
+    const { helper, sendNotification } = makeMockWhatsApp();
+    const result = await notify({
+      companyId: "firm_a",
+      subject: "no db",
+      detail: "fyi",
+      resolveSpocPhone: async () => "+919999911111",
+      whatsapp: helper,
+    });
+    expect(result).toEqual({ persisted: false, whatsappSent: true });
+    expect(sendNotification).toHaveBeenCalledTimes(1);
+    vi.doUnmock("@/lib/db-postgres");
   });
 
   it("when DATABASE_URL is missing, handoff is a no-op (logs only)", async () => {
