@@ -1,7 +1,7 @@
 # newvision branch — Status & TODO
 
-> **Last updated:** 2026-05-13 · **Branch:** `newvision` · **HEAD:** _next commit_
-> **Tests:** 345/345 passing · **tsc:** clean · **33 commits past `main`**
+> **Last updated:** 2026-05-13 · **Branch:** `newvision` · **HEAD:** `d684e94`
+> **Tests:** 345/345 passing · **tsc:** clean · **37 commits past `main`**
 > **Tier 2 done + all of Tier 3 shipped + AgentRunner persistence wired.** All remaining items are infra (Tier 1 you-actions). Nothing left for me to build unattended.
 > **GitHub:** https://github.com/matterhornso/theautonomousorg/tree/newvision · **Pair with** `docs/vision/NEWVISION-CONTEXT.md` for the full session context.
 >
