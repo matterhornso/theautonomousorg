@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { sendMessage, isTelegramConfigured } from "@/lib/telegram";
+import { sendMessage, sendMessageForCompany, isTelegramConfigured } from "@/lib/telegram";
 import {
   getMessagingUser,
   getAgent,
@@ -186,7 +186,8 @@ export async function POST(request: NextRequest) {
     const agents = await getAgentsByCompany(companyId);
 
     if (agents.length === 0) {
-      await sendMessage(
+      await sendMessageForCompany(
+        companyId,
         chatId,
         "You don't have any agents yet. Visit theautonomous.org to set up your company and provision agents."
       );
@@ -202,7 +203,8 @@ export async function POST(request: NextRequest) {
         })
         .join("\n");
 
-      await sendMessage(
+      await sendMessageForCompany(
+        companyId,
         chatId,
         `*Your agents:*\n${agentList}\n\nUse \`@RoleName message\` to talk to a specific agent, or just send a message to talk to your default agent.`
       );
@@ -428,10 +430,10 @@ export async function POST(request: NextRequest) {
       console.warn("[telegram] lesson write failed; continuing:", err);
     }
 
-    // Send response via Telegram
+    // Send response via Telegram using the company's BYO bot when present
     const agentLabel =
       agents.length > 1 ? `*@${targetAgent.role}:*\n` : "";
-    await sendMessage(chatId, agentLabel + responseText);
+    await sendMessageForCompany(companyId, chatId, agentLabel + responseText);
 
     return NextResponse.json({ ok: true });
   } catch (error) {
