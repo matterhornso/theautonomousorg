@@ -441,14 +441,14 @@ export default function WhyWeAreBuildingTheAutonomousPage() {
 
           <div className="mt-12 grid sm:grid-cols-2 gap-4">
             <Link
-              href="/blog/ai-agents-vs-chatbots"
+              href="/blog/inside-two-ai-native-companies"
               className="block p-5 bg-white border border-neutral-200/80 rounded-xl hover:shadow-md hover:-translate-y-px transition-all duration-300"
             >
               <p className="text-xs text-accent font-medium uppercase tracking-wider mb-1">
                 Related reading
               </p>
               <h3 className="font-semibold text-sm">
-                AI Agents vs Chatbots: A Workforce, Not Chat Windows
+                Inside Two AI-Native Companies (Case Studies)
               </h3>
             </Link>
             <Link
