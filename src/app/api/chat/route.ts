@@ -31,6 +31,7 @@ import { ceoTools, executeCeoTool } from "@/lib/mcp/ceo-tools";
 import { buildLessonsHelper } from "@/lib/lessons";
 import { extractMentions } from "@/lib/mention-dispatch";
 import { createAgentRun, completeAgentRun } from "@/lib/agent-runs";
+import { createCompletion, getLLMConfigForCompany } from "@/lib/llm-router";
 import { randomUUID } from "crypto";
 
 const client = new Anthropic();
@@ -220,14 +221,23 @@ export async function POST(request: NextRequest) {
       tools.push(...ceoTools);
     }
 
-    // Stream response (with tool use if tools available)
-    const stream = client.messages.stream({
-      model: "claude-sonnet-4-6",
-      max_tokens: 4096,
-      system: systemPrompt,
-      messages: apiMessages,
-      ...(tools.length > 0 ? { tools } : {}),
-    });
+    // Resolve BYOM. Tool-use stays Anthropic-only (semantics differ across
+    // providers), so we only honor BYOM when this turn doesn't need tools.
+    // Default tenants (no per-tenant LLM key) flow through the existing
+    // Anthropic streaming path unchanged.
+    const llmConfig = await getLLMConfigForCompany(agent.company_id);
+    const useBYOM = tools.length === 0 && llmConfig.provider !== "anthropic";
+
+    // Only create the Anthropic stream if we're going to use it.
+    const stream = useBYOM
+      ? null
+      : client.messages.stream({
+          model: "claude-sonnet-4-6",
+          max_tokens: 4096,
+          system: systemPrompt,
+          messages: apiMessages,
+          ...(tools.length > 0 ? { tools } : {}),
+        });
 
     const encoder = new TextEncoder();
     let fullResponse = "";
@@ -235,16 +245,62 @@ export async function POST(request: NextRequest) {
     const readable = new ReadableStream({
       async start(controller) {
         try {
-          // Send conversationId + runId first so the client can correlate
-          // streamed text back to a specific run (for approve/reject UX).
+          // Send conversationId + runId + provider so the client can
+          // correlate streamed text back to a specific run (for approve/
+          // reject UX) and know which model produced it.
           controller.enqueue(
             encoder.encode(
-              `data: ${JSON.stringify({ conversationId: convId, runId })}\n\n`
+              `data: ${JSON.stringify({
+                conversationId: convId,
+                runId,
+                provider: useBYOM ? llmConfig.provider : "anthropic",
+                model: useBYOM ? llmConfig.model : "claude-sonnet-4-6",
+                byom: llmConfig.byom,
+              })}\n\n`
             )
           );
 
           const toolCalls: { id: string; name: string; input: Record<string, unknown> }[] = [];
 
+          // BYOM path: non-streaming. We get the full text in one shot,
+          // emit it as a single SSE chunk, and short-circuit the rest of
+          // the streaming loop. Tool-use runs (CEO/Apollo) never hit
+          // this branch because tools.length > 0 above.
+          if (useBYOM) {
+            try {
+              const completion = await createCompletion(
+                agent.company_id,
+                {
+                  system: systemPrompt,
+                  messages: apiMessages,
+                  maxTokens: 4096,
+                },
+                llmConfig
+              );
+              fullResponse = completion.text;
+              if (fullResponse) {
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({ text: fullResponse })}\n\n`
+                  )
+                );
+              }
+            } catch (err) {
+              await completeAgentRun(runId, {
+                status: "failed",
+                errorDetail: err instanceof Error ? err.message : String(err),
+                modelUsed: llmConfig.model,
+                provider: llmConfig.provider,
+              });
+              throw err;
+            }
+          }
+
+          // skip Anthropic streaming when BYOM owns this turn
+          if (!stream) {
+            // fall through to the post-stream block (clean response, persist,
+            // mentions, run/lesson writes, credits, [DONE])
+          } else
           for await (const event of stream) {
             if (
               event.type === "content_block_delta" &&
@@ -282,8 +338,9 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // Handle tool calls: execute tools and get a follow-up response from Claude
-          if (toolCalls.length > 0) {
+          // Handle tool calls: execute tools and get a follow-up response from Claude.
+          // BYOM path never reaches here (tools are gated to Anthropic) so stream is non-null.
+          if (toolCalls.length > 0 && stream) {
             const finalMessage = await stream.finalMessage();
 
             // Extract full tool inputs from final message
@@ -495,8 +552,8 @@ export async function POST(request: NextRequest) {
           await completeAgentRun(runId, {
             status: "completed",
             output: { response: fullResponse },
-            modelUsed: "claude-sonnet-4-6",
-            provider: "anthropic",
+            modelUsed: useBYOM ? llmConfig.model : "claude-sonnet-4-6",
+            provider: useBYOM ? llmConfig.provider : "anthropic",
             summary: fullResponse.slice(0, 200),
           });
 
@@ -525,8 +582,8 @@ export async function POST(request: NextRequest) {
           completeAgentRun(runId, {
             status: "failed",
             errorDetail: err instanceof Error ? err.message : String(err),
-            modelUsed: "claude-sonnet-4-6",
-            provider: "anthropic",
+            modelUsed: useBYOM ? llmConfig.model : "claude-sonnet-4-6",
+            provider: useBYOM ? llmConfig.provider : "anthropic",
           }).catch(() => {
             /* swallow — already in an error path */
           });
