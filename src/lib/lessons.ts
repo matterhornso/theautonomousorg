@@ -86,3 +86,38 @@ export function buildLessonsHelper(ctx: LessonsHelperContext): LessonsHelper {
     },
   };
 }
+
+/**
+ * Update the most recent lesson for a given (companyId, runId) with a new
+ * outcome. Used by the feedback endpoint when a human approves/rejects/
+ * modifies a run's output.
+ *
+ * Returns { updated: number } — 0 when no lesson exists for the run (dev
+ * mode or pre-Tier-2 runs that never wrote one), 1 on success.
+ */
+export async function updateLessonForRun(input: {
+  companyId: string;
+  runId: string;
+  outputAccepted: "approved" | "rejected" | "modified";
+  modificationDetail?: string;
+  selfCritique?: string;
+}): Promise<{ updated: number }> {
+  const { sql } = await import("./db-postgres");
+  if (!sql) return { updated: 0 };
+  const rows = (await sql`
+    UPDATE lessons SET
+      output_accepted = ${input.outputAccepted},
+      modification_detail = COALESCE(${input.modificationDetail ?? null}, modification_detail),
+      self_critique = COALESCE(${input.selfCritique ?? null}, self_critique)
+    WHERE company_id = ${input.companyId}
+      AND run_id = ${input.runId}
+      AND id = (
+        SELECT id FROM lessons
+        WHERE company_id = ${input.companyId} AND run_id = ${input.runId}
+        ORDER BY created_at DESC
+        LIMIT 1
+      )
+    RETURNING id
+  `) as Array<{ id: string }>;
+  return { updated: rows.length };
+}
