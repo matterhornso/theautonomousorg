@@ -41,6 +41,12 @@ import { buildVaultHelper } from "./vault";
 import { buildLessonsHelper } from "./lessons";
 import { buildEscalationHelper } from "./escalation";
 import { runWithTenantStore } from "./tenant-context";
+import {
+  createAgentRun as defaultRecordStart,
+  completeAgentRun as defaultRecordComplete,
+  type AgentRunStatus,
+  type AgentRunTrigger,
+} from "./agent-runs";
 
 // ─── LLM client abstraction ────────────────────────────────────────────────
 // Lets tests swap in a mock without touching @anthropic-ai/sdk. The real
@@ -153,6 +159,41 @@ export interface AgentTrace {
 
 // ─── Run options ───────────────────────────────────────────────────────────
 
+/**
+ * Persistence shim for agent_runs writes. The runner calls `recordStart`
+ * before the tool-use loop and `recordComplete` after success or failure.
+ * Both calls are wrapped in try/catch — a DB write failure is logged to
+ * the trace but never aborts the run.
+ *
+ * Tests pass a stubbed `persistence` to assert call shape. Production
+ * code can omit it; the defaults in `./agent-runs` short-circuit to
+ * `null` when DATABASE_URL is unset.
+ */
+export interface AgentRunPersistence {
+  recordStart?: (input: {
+    id: string;
+    companyId: string;
+    agentRole: string;
+    agentId?: string;
+    triggeredBy: AgentRunTrigger;
+    triggerDetail?: string;
+    input: Record<string, unknown>;
+  }) => Promise<unknown>;
+  recordComplete?: (
+    id: string,
+    data: {
+      status: AgentRunStatus;
+      output?: Record<string, unknown>;
+      modelUsed?: string;
+      provider?: string;
+      tokensIn?: number;
+      tokensOut?: number;
+      summary?: string;
+      errorDetail?: string;
+    }
+  ) => Promise<unknown>;
+}
+
 export interface RunAgentOptions {
   /** Tenant context — companyId + userId. */
   companyId: string;
@@ -167,6 +208,16 @@ export interface RunAgentOptions {
   model?: string;
   /** Override the runId (tests). */
   runId?: string;
+  /** How this run was triggered. Defaults to `"api"`. */
+  triggeredBy?: AgentRunTrigger;
+  /** Short human-readable trigger context (caller name, cron job id, etc.). */
+  triggerDetail?: string;
+  /** Override the agent_role column. Defaults to `def.id`. */
+  agentRole?: string;
+  /** Set to false to skip writing to `agent_runs`. Default true. */
+  persistRun?: boolean;
+  /** Override the persistence layer (tests). */
+  persistence?: AgentRunPersistence;
 }
 
 export interface AgentRunResult<TOutput> {
@@ -207,6 +258,71 @@ export async function runAgent<
   // The SDK doesn't currently bind a default model, so we use the platform default.
   const model = opts.model ?? "claude-sonnet-4-6";
   const client = opts.llmClient ?? getAnthropicClient();
+
+  // ── Persistence wiring ──────────────────────────────────────────────────
+  // Mirror the trace to the `agent_runs` table so /admin/agents/[role] can
+  // surface real runs without going through Langfuse.
+  const persistRun = opts.persistRun !== false;
+  const recordStart = opts.persistence?.recordStart ?? defaultRecordStart;
+  const recordComplete = opts.persistence?.recordComplete ?? defaultRecordComplete;
+  const agentRole = opts.agentRole ?? def.id;
+  const triggeredBy: AgentRunTrigger = opts.triggeredBy ?? "api";
+
+  // Tokens are tracked split (in/out) so completeAgentRun can populate
+  // both columns. The legacy `tokensUsed` counter (sum) is retained for
+  // budget enforcement.
+  let tokensIn = 0;
+  let tokensOut = 0;
+
+  async function safeRecordStart() {
+    if (!persistRun) return;
+    try {
+      await recordStart({
+        id: runId,
+        companyId: opts.companyId,
+        agentRole,
+        agentId: def.id,
+        triggeredBy,
+        triggerDetail: opts.triggerDetail,
+        input: (rawInput ?? {}) as Record<string, unknown>,
+      });
+    } catch (err) {
+      pushEvent({
+        level: "warn",
+        kind: "lifecycle",
+        message: "recordStart failed (continuing)",
+        data: { error: err instanceof Error ? err.message : String(err) },
+      });
+    }
+  }
+
+  async function safeRecordComplete(data: {
+    status: AgentRunStatus;
+    output?: Record<string, unknown>;
+    summary?: string;
+    errorDetail?: string;
+  }) {
+    if (!persistRun) return;
+    try {
+      await recordComplete(runId, {
+        status: data.status,
+        output: data.output,
+        modelUsed: model,
+        provider: "anthropic",
+        tokensIn,
+        tokensOut,
+        summary: data.summary,
+        errorDetail: data.errorDetail,
+      });
+    } catch (err) {
+      pushEvent({
+        level: "warn",
+        kind: "lifecycle",
+        message: "recordComplete failed (continuing)",
+        data: { error: err instanceof Error ? err.message : String(err) },
+      });
+    }
+  }
 
   // ── Validate input ───────────────────────────────────────────────────────
   const inputParse = def.input.safeParse(rawInput);
@@ -272,6 +388,7 @@ export async function runAgent<
       try {
         // beforeRun hook
         pushEvent({ level: "info", kind: "lifecycle", message: "beforeRun", data: { agentId: def.id } });
+        await safeRecordStart();
         if (def.hooks?.beforeRun) {
           try {
             await def.hooks.beforeRun(ctx, input);
@@ -315,6 +432,8 @@ export async function runAgent<
             messages,
             tools: toolSpecs.length > 0 ? toolSpecs : undefined,
           });
+          tokensIn += response.usage.input_tokens;
+          tokensOut += response.usage.output_tokens;
           tokensUsed += response.usage.input_tokens + response.usage.output_tokens;
           trace.totalTokens = tokensUsed;
           stopReason = response.stop_reason;
@@ -438,6 +557,12 @@ export async function runAgent<
           data: { tokens: tokensUsed, toolCalls: toolCallsUsed },
         });
 
+        await safeRecordComplete({
+          status: "completed",
+          output: output as Record<string, unknown>,
+          summary: assistantText.slice(0, 200) || undefined,
+        });
+
         return { output, trace, rawText: assistantText };
       } catch (err) {
         trace.success = false;
@@ -446,6 +571,10 @@ export async function runAgent<
           level: "error",
           kind: "error",
           message: err instanceof Error ? err.message : String(err),
+        });
+        await safeRecordComplete({
+          status: "failed",
+          errorDetail: err instanceof Error ? err.message : String(err),
         });
         throw err;
       }

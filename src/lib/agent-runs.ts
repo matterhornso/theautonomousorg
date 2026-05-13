@@ -102,6 +102,11 @@ async function getSql(): Promise<SqlTemplate | null> {
 // ─── Writes ────────────────────────────────────────────────────────────────
 
 export async function createAgentRun(input: {
+  /** Optional pre-allocated id. Callers that mint their own runId (e.g.
+   * AgentRunner, which embeds runId in the trace) pass it here so the DB
+   * row and the trace stay in lockstep. If omitted, a fresh `run_<uuid>`
+   * is generated. */
+  id?: string;
   companyId: string;
   agentRole: string;
   agentId?: string;
@@ -112,7 +117,7 @@ export async function createAgentRun(input: {
 }): Promise<AgentRun | null> {
   const sql = await getSql();
   if (!sql) return null;
-  const id = `run_${randomUUID()}`;
+  const id = input.id ?? `run_${randomUUID()}`;
   const rows = (await sql`
     INSERT INTO agent_runs
       (id, company_id, agent_role, agent_id, triggered_by, trigger_detail, input, status)

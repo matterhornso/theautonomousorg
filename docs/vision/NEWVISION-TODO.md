@@ -1,8 +1,8 @@
 # newvision branch — Status & TODO
 
-> **Last updated:** 2026-05-13 · **Branch:** `newvision` · **HEAD:** `35ac88b`
-> **Tests:** 339/339 passing · **tsc:** clean · **31 commits past `main`**
-> **Tier 2 done + all of Tier 3 shipped.** All remaining items are infra (Tier 1 you-actions). Nothing left for me to build unattended.
+> **Last updated:** 2026-05-13 · **Branch:** `newvision` · **HEAD:** _next commit_
+> **Tests:** 345/345 passing · **tsc:** clean · **33 commits past `main`**
+> **Tier 2 done + all of Tier 3 shipped + AgentRunner persistence wired.** All remaining items are infra (Tier 1 you-actions). Nothing left for me to build unattended.
 > **GitHub:** https://github.com/matterhornso/theautonomousorg/tree/newvision · **Pair with** `docs/vision/NEWVISION-CONTEXT.md` for the full session context.
 >
 > Pair this with `docs/vision/TRANSITION-PLAN.md` (the plan) and `docs/vision/PRD.md` (the destination). This file tracks **what's actually on the branch** and **what's next**.
@@ -179,12 +179,25 @@ billing are wired.
   `sendMessageForCompany`. Skips the timesheet keyword handlers — those
   belong to the env trial bot only.
 
+### ✅ Tier 3 — AgentRunner persistence (post-final cleanup)
+
+- ✅ **AgentRunner writes to `agent_runs`.** `src/lib/agent-runner.ts` now
+  calls `createAgentRun` before the tool-use loop and `completeAgentRun`
+  on success or failure. Tokens are tracked split (in/out) for accurate
+  cost accounting. New `persistence`, `persistRun`, `triggeredBy`,
+  `triggerDetail`, `agentRole` options on `RunAgentOptions`. Persistence
+  errors are non-fatal — they log to the trace and the run continues.
+  `createAgentRun` extended to accept an optional `id` so the runner's
+  local `runId` matches the DB row. **Closes the last gap between the
+  trace and the admin surface — every background SDK run now shows up
+  on `/admin/agents/[role]` alongside chat completions.** 6 new tests.
+
 ### 🎯 Nothing left for the agent to build
 
-All Tier 3 coding slices are in. The only remaining items are infra
-you-actions (Tier 1 above). Memory product standalone deploy is now
-optional rather than load-bearing — the in-repo `/api/memory/*`
-pipelines cover the v3 promise.
+All Tier 3 coding slices are in, plus AgentRunner persistence. The only
+remaining items are infra you-actions (Tier 1 above). Memory product
+standalone deploy is now optional rather than load-bearing — the in-repo
+`/api/memory/*` pipelines cover the v3 promise.
 
 ### 🔵 Tier 3 — genuinely blocked on external setup
 
@@ -236,14 +249,15 @@ Per `TRANSITION-PLAN.md` § "What we explicitly do NOT do":
 - [x] Calendar ingester — `POST /api/calendar/ingest` writes `events_log`
 - [x] Pre-meeting brief CRON — `GET|POST /api/cron/pre-meeting-briefs`
 - [x] Per-tenant Telegram inbound — `/api/messaging/telegram/[companyId]`
-- [x] Tests green (339/339), `tsc` clean
+- [x] AgentRunner persists to `agent_runs` — every SDK run shows up in admin
+- [x] Tests green (345/345), `tsc` clean
 - [ ] Production deploy on Railway with rotated secrets
 - [ ] Telegram webhook registered on prod URL + cron live
 - [ ] Migrations 007 + 008 applied to Supabase
 - [ ] Both demo verticals still work on prod
 - [ ] Browser smoke-check with signed-in Clerk session
 
-**28 of 33 done.** Remaining 5 are all Tier 1 infra you-actions (Railway deploy + secrets, migrations apply, webhook + cron registration, browser smoke-check). **No more agent-doable slices remain.**
+**29 of 34 done.** Remaining 5 are all Tier 1 infra you-actions (Railway deploy + secrets, migrations apply, webhook + cron registration, browser smoke-check). **No more agent-doable slices remain.**
 
 ---
 

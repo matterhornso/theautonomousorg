@@ -522,3 +522,199 @@ describe("runAgent — timeout", () => {
     ).rejects.toBeInstanceOf(AgentTimeoutError);
   });
 });
+
+// ─── Persistence: agent_runs writes ─────────────────────────────────────────
+//
+// runAgent mirrors its trace to the `agent_runs` table so /admin/agents/[role]
+// can render real runs without round-tripping Langfuse. Tests assert call
+// shape via a stubbed `persistence` option; nothing here hits Postgres.
+
+describe("runAgent — agent_runs persistence", () => {
+  function makePersistence() {
+    return {
+      recordStart: vi.fn().mockResolvedValue(null),
+      recordComplete: vi.fn().mockResolvedValue(null),
+    };
+  }
+
+  it("calls recordStart with the run id and recordComplete on success with split token usage", async () => {
+    const persistence = makePersistence();
+    const def = makeAgent();
+    const llm = makeMockLLM([
+      {
+        content: [{ type: "text", text: '{"summary":"ok","score":1}' }],
+        stop_reason: "end_turn",
+        usage: { input_tokens: 7, output_tokens: 11 },
+      },
+    ]).client;
+    const result = await runAgent(
+      def,
+      { task: "do thing" },
+      {
+        companyId: "firm-1",
+        userId: "user-1",
+        runId: "run_test_1",
+        llmClient: llm,
+        helpers: makeStubHelpers(),
+        persistence,
+        triggeredBy: "cron",
+        triggerDetail: "nightly:test",
+      }
+    );
+    expect(persistence.recordStart).toHaveBeenCalledOnce();
+    expect(persistence.recordStart.mock.calls[0][0]).toMatchObject({
+      id: "run_test_1",
+      companyId: "firm-1",
+      agentRole: "test_agent",
+      agentId: "test_agent",
+      triggeredBy: "cron",
+      triggerDetail: "nightly:test",
+      input: { task: "do thing" },
+    });
+    expect(persistence.recordComplete).toHaveBeenCalledOnce();
+    expect(persistence.recordComplete.mock.calls[0][0]).toBe("run_test_1");
+    expect(persistence.recordComplete.mock.calls[0][1]).toMatchObject({
+      status: "completed",
+      modelUsed: "claude-sonnet-4-6",
+      provider: "anthropic",
+      tokensIn: 7,
+      tokensOut: 11,
+    });
+    expect(persistence.recordComplete.mock.calls[0][1].output).toEqual({
+      summary: "ok",
+      score: 1,
+    });
+    expect(result.trace.success).toBe(true);
+  });
+
+  it("records 'failed' status when output validation fails", async () => {
+    const persistence = makePersistence();
+    const def = makeAgent();
+    const llm = makeMockLLM([
+      {
+        content: [{ type: "text", text: "not json at all" }],
+        stop_reason: "end_turn",
+        usage: { input_tokens: 3, output_tokens: 4 },
+      },
+    ]).client;
+    await expect(
+      runAgent(def, { task: "t" }, {
+        companyId: "f",
+        userId: "u",
+        llmClient: llm,
+        helpers: makeStubHelpers(),
+        persistence,
+      })
+    ).rejects.toBeInstanceOf(OutputValidationError);
+    expect(persistence.recordStart).toHaveBeenCalledOnce();
+    expect(persistence.recordComplete).toHaveBeenCalledOnce();
+    expect(persistence.recordComplete.mock.calls[0][1]).toMatchObject({
+      status: "failed",
+      tokensIn: 3,
+      tokensOut: 4,
+    });
+    expect(persistence.recordComplete.mock.calls[0][1].errorDetail).toBeTruthy();
+  });
+
+  it("records 'failed' with accumulated tokens on budget overrun", async () => {
+    const persistence = makePersistence();
+    const def = makeAgent({
+      budget: { maxTokens: 10, maxToolCalls: 3, timeoutMs: 5000 },
+    });
+    const llm = makeMockLLM([
+      {
+        content: [{ type: "text", text: '{"summary":"ok","score":1}' }],
+        stop_reason: "end_turn",
+        usage: { input_tokens: 50, output_tokens: 50 },
+      },
+    ]).client;
+    await expect(
+      runAgent(def, { task: "t" }, {
+        companyId: "f",
+        userId: "u",
+        llmClient: llm,
+        helpers: makeStubHelpers(),
+        persistence,
+      })
+    ).rejects.toBeInstanceOf(BudgetExceededError);
+    expect(persistence.recordComplete).toHaveBeenCalledOnce();
+    expect(persistence.recordComplete.mock.calls[0][1]).toMatchObject({
+      status: "failed",
+      tokensIn: 50,
+      tokensOut: 50,
+    });
+  });
+
+  it("skips persistence entirely when persistRun=false", async () => {
+    const persistence = makePersistence();
+    const def = makeAgent();
+    const llm = makeMockLLM([
+      {
+        content: [{ type: "text", text: '{"summary":"ok","score":1}' }],
+        stop_reason: "end_turn",
+        usage: { input_tokens: 1, output_tokens: 1 },
+      },
+    ]).client;
+    await runAgent(def, { task: "t" }, {
+      companyId: "f",
+      userId: "u",
+      llmClient: llm,
+      helpers: makeStubHelpers(),
+      persistRun: false,
+      persistence,
+    });
+    expect(persistence.recordStart).not.toHaveBeenCalled();
+    expect(persistence.recordComplete).not.toHaveBeenCalled();
+  });
+
+  it("treats recordStart failure as non-fatal and still records completion", async () => {
+    const persistence = {
+      recordStart: vi.fn().mockRejectedValue(new Error("DB down")),
+      recordComplete: vi.fn().mockResolvedValue(null),
+    };
+    const def = makeAgent();
+    const llm = makeMockLLM([
+      {
+        content: [{ type: "text", text: '{"summary":"ok","score":1}' }],
+        stop_reason: "end_turn",
+        usage: { input_tokens: 1, output_tokens: 1 },
+      },
+    ]).client;
+    const result = await runAgent(def, { task: "t" }, {
+      companyId: "f",
+      userId: "u",
+      llmClient: llm,
+      helpers: makeStubHelpers(),
+      persistence,
+    });
+    expect(result.trace.success).toBe(true);
+    expect(persistence.recordStart).toHaveBeenCalledOnce();
+    expect(persistence.recordComplete).toHaveBeenCalledOnce();
+    const warnEvent = result.trace.events.find(
+      (e) => e.kind === "lifecycle" && e.message.includes("recordStart failed")
+    );
+    expect(warnEvent).toBeDefined();
+  });
+
+  it("uses opts.agentRole when provided and defaults triggeredBy to 'api'", async () => {
+    const persistence = makePersistence();
+    const def = makeAgent();
+    const llm = makeMockLLM([
+      {
+        content: [{ type: "text", text: '{"summary":"ok","score":1}' }],
+        stop_reason: "end_turn",
+        usage: { input_tokens: 1, output_tokens: 1 },
+      },
+    ]).client;
+    await runAgent(def, { task: "t" }, {
+      companyId: "f",
+      userId: "u",
+      agentRole: "Sales",
+      llmClient: llm,
+      helpers: makeStubHelpers(),
+      persistence,
+    });
+    expect(persistence.recordStart.mock.calls[0][0].agentRole).toBe("Sales");
+    expect(persistence.recordStart.mock.calls[0][0].triggeredBy).toBe("api");
+  });
+});
