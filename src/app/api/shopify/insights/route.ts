@@ -7,19 +7,26 @@
 
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { isShopifyConfigured } from "@/lib/shopify";
+import {
+  isShopifyConfigured,
+  loadShopifyConfigForCompany,
+} from "@/lib/shopify";
 import { generateInsights } from "@/lib/shopify-insights";
+import { resolveTenant } from "@/app/admin/_lib/resolve-tenant";
 
 export async function POST() {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  if (!isShopifyConfigured()) {
+
+  const tenant = await resolveTenant();
+  const shopifyConfig = await loadShopifyConfigForCompany(tenant.firm.id);
+  if (!shopifyConfig && !isShopifyConfigured()) {
     return NextResponse.json(
       {
         error:
-          "Shopify is not configured. Set SHOPIFY_STORE_DOMAIN, SHOPIFY_CLIENT_ID, and SHOPIFY_CLIENT_SECRET.",
+          "Shopify is not configured for this workspace. Add credentials via POST /api/user-keys with serviceName='shopify_credentials' or set the SHOPIFY_* env vars.",
       },
       { status: 503 }
     );
@@ -32,7 +39,9 @@ export async function POST() {
   }
 
   try {
-    const result = await generateInsights();
+    const result = await generateInsights({
+      shopifyConfig: shopifyConfig ?? undefined,
+    });
     return NextResponse.json(result);
   } catch (err) {
     return NextResponse.json(

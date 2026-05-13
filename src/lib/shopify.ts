@@ -58,6 +58,61 @@ export function isShopifyConfigured(): boolean {
   );
 }
 
+/**
+ * Service name in user_api_keys for a tenant's Shopify credentials.
+ * The encrypted value is a JSON blob: { storeDomain, clientId, clientSecret, apiVersion? }
+ */
+const SHOPIFY_CREDS_SERVICE = "shopify_credentials";
+
+/**
+ * Resolve the Shopify config for a specific company.
+ *
+ * Order of preference:
+ *   1. user_api_keys row with service_name='shopify_credentials' (JSON blob)
+ *   2. env (SHOPIFY_STORE_DOMAIN + SHOPIFY_CLIENT_ID + SHOPIFY_CLIENT_SECRET)
+ *
+ * Returns null if neither is configured.
+ */
+export async function loadShopifyConfigForCompany(
+  companyId: string
+): Promise<ShopifyConfig | null> {
+  try {
+    const { getUserApiKey } = await import("./db");
+    const raw = await getUserApiKey(companyId, SHOPIFY_CREDS_SERVICE);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<ShopifyConfig>;
+      if (parsed.storeDomain && parsed.clientId && parsed.clientSecret) {
+        return {
+          storeDomain: parsed.storeDomain,
+          clientId: parsed.clientId,
+          clientSecret: parsed.clientSecret,
+          apiVersion: parsed.apiVersion ?? DEFAULT_API_VERSION,
+        };
+      }
+    }
+  } catch {
+    // db unavailable or row malformed — fall through to env
+  }
+  if (isShopifyConfigured()) {
+    try {
+      return loadShopifyConfig();
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/** True if the company has its own Shopify credentials configured (BYOK). */
+export async function isShopifyBYOK(companyId: string): Promise<boolean> {
+  try {
+    const { getUserApiKey } = await import("./db");
+    return Boolean(await getUserApiKey(companyId, SHOPIFY_CREDS_SERVICE));
+  } catch {
+    return false;
+  }
+}
+
 // ─── Token cache (per process, per store) ──────────────────────────────
 // 24h tokens are cached in memory keyed by storeDomain. We refresh ~5 min
 // before expiry so a long-running serverless invocation doesn't hit a fresh

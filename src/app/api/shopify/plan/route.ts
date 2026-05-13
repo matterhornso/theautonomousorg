@@ -11,8 +11,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
-import { isShopifyConfigured } from "@/lib/shopify";
+import {
+  isShopifyConfigured,
+  loadShopifyConfigForCompany,
+} from "@/lib/shopify";
 import { planShopifyEdit } from "@/lib/shopify-planner";
+import { resolveTenant } from "@/app/admin/_lib/resolve-tenant";
 
 const bodySchema = z.object({
   prompt: z.string().trim().min(1).max(2000),
@@ -23,11 +27,14 @@ export async function POST(request: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  if (!isShopifyConfigured()) {
+
+  const tenant = await resolveTenant();
+  const shopifyConfig = await loadShopifyConfigForCompany(tenant.firm.id);
+  if (!shopifyConfig && !isShopifyConfigured()) {
     return NextResponse.json(
       {
         error:
-          "Shopify is not configured. Set SHOPIFY_STORE_DOMAIN and SHOPIFY_ADMIN_TOKEN in your environment.",
+          "Shopify is not configured for this workspace. Add credentials via POST /api/user-keys with serviceName='shopify_credentials' (JSON: { storeDomain, clientId, clientSecret }) or set SHOPIFY_STORE_DOMAIN + SHOPIFY_CLIENT_ID + SHOPIFY_CLIENT_SECRET in env.",
       },
       { status: 503 }
     );
@@ -54,7 +61,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await planShopifyEdit(parsed.data.prompt);
+    const result = await planShopifyEdit(parsed.data.prompt, {
+      shopifyConfig: shopifyConfig ?? undefined,
+    });
     return NextResponse.json({
       plan: result.plan,
       toolCalls: result.toolCalls,

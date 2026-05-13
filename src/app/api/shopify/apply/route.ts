@@ -9,9 +9,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { isShopifyConfigured } from "@/lib/shopify";
+import {
+  isShopifyConfigured,
+  loadShopifyConfigForCompany,
+} from "@/lib/shopify";
 import { applyPlan } from "@/lib/shopify-apply";
 import { planSchema } from "@/lib/shopify-planner";
+import { resolveTenant } from "@/app/admin/_lib/resolve-tenant";
 import { z } from "zod";
 
 const bodySchema = z.object({
@@ -23,11 +27,14 @@ export async function POST(request: NextRequest) {
   if (!userId) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  if (!isShopifyConfigured()) {
+
+  const tenant = await resolveTenant();
+  const shopifyConfig = await loadShopifyConfigForCompany(tenant.firm.id);
+  if (!shopifyConfig && !isShopifyConfigured()) {
     return NextResponse.json(
       {
         error:
-          "Shopify is not configured. Set SHOPIFY_STORE_DOMAIN and SHOPIFY_ADMIN_TOKEN in your environment.",
+          "Shopify is not configured for this workspace. Add credentials via POST /api/user-keys with serviceName='shopify_credentials' or set the SHOPIFY_* env vars.",
       },
       { status: 503 }
     );
@@ -55,7 +62,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await applyPlan(parsed.data.plan);
+    const result = await applyPlan(parsed.data.plan, shopifyConfig ?? undefined);
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
