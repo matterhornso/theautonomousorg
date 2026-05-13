@@ -1,8 +1,8 @@
 # newvision branch — Status & TODO
 
-> **Last updated:** 2026-05-13 · **Branch:** `newvision` · **HEAD:** `007637e`
-> **Tests:** 339/339 passing · **tsc:** clean · **29 commits past `main`**
-> **Tier 2 done + 9 of 11 Tier 3 slices shipped.** Remaining items are infra (you-action) or one large slice (per-bot Telegram inbound).
+> **Last updated:** 2026-05-13 · **Branch:** `newvision` · **HEAD:** `35ac88b`
+> **Tests:** 339/339 passing · **tsc:** clean · **31 commits past `main`**
+> **Tier 2 done + all of Tier 3 shipped.** All remaining items are infra (Tier 1 you-actions). Nothing left for me to build unattended.
 > **GitHub:** https://github.com/matterhornso/theautonomousorg/tree/newvision · **Pair with** `docs/vision/NEWVISION-CONTEXT.md` for the full session context.
 >
 > Pair this with `docs/vision/TRANSITION-PLAN.md` (the plan) and `docs/vision/PRD.md` (the destination). This file tracks **what's actually on the branch** and **what's next**.
@@ -167,12 +167,24 @@ billing are wired.
   - New helpers in knowledge-graph.ts: `createEventLog` (with idempotent
     upsert), `updateEventMetadata`, `getEventsAcrossTenantsBetween`.
 
-### 🟡 Tier 3 remaining
+### ✅ Tier 3 — final slice shipped
 
-- [ ] **Per-bot Telegram webhook paths** — `/api/messaging/telegram/[botSlug]/route.ts`
-  so a second tenant doesn't share `@timesheettrial_bot`'s inbound. The
-  outbound side already supports per-tenant tokens (see `ede73fc`); just
-  need the inbound routing. ~1 day.
+- ✅ **Per-tenant Telegram inbound** (`35ac88b`). New
+  `/api/messaging/telegram/[companyId]/route.ts`. 404s if the tenant
+  hasn't enrolled their own bot via `user_api_keys`. Verifies the
+  webhook secret, namespaces `platform_user_id` as
+  `tg:<companyId>:<telegramUserId>` so the same Telegram user can be in
+  multiple tenants without colliding, routes through CEO orchestrator
+  (one tool-use iteration), writes agent_runs + lesson, replies via
+  `sendMessageForCompany`. Skips the timesheet keyword handlers — those
+  belong to the env trial bot only.
+
+### 🎯 Nothing left for the agent to build
+
+All Tier 3 coding slices are in. The only remaining items are infra
+you-actions (Tier 1 above). Memory product standalone deploy is now
+optional rather than load-bearing — the in-repo `/api/memory/*`
+pipelines cover the v3 promise.
 
 ### 🔵 Tier 3 — genuinely blocked on external setup
 
@@ -223,6 +235,7 @@ Per `TRANSITION-PLAN.md` § "What we explicitly do NOT do":
 - [x] Vault re-embed UI — wired button + `POST /api/vault/reembed`
 - [x] Calendar ingester — `POST /api/calendar/ingest` writes `events_log`
 - [x] Pre-meeting brief CRON — `GET|POST /api/cron/pre-meeting-briefs`
+- [x] Per-tenant Telegram inbound — `/api/messaging/telegram/[companyId]`
 - [x] Tests green (339/339), `tsc` clean
 - [ ] Production deploy on Railway with rotated secrets
 - [ ] Telegram webhook registered on prod URL + cron live
@@ -230,7 +243,7 @@ Per `TRANSITION-PLAN.md` § "What we explicitly do NOT do":
 - [ ] Both demo verticals still work on prod
 - [ ] Browser smoke-check with signed-in Clerk session
 
-**27 of 32 done.** Remaining 5 are still the same Tier 1 infra you-actions (Railway deploy + secrets, migrations apply, webhook + cron registration, browser smoke-check).
+**28 of 33 done.** Remaining 5 are all Tier 1 infra you-actions (Railway deploy + secrets, migrations apply, webhook + cron registration, browser smoke-check). **No more agent-doable slices remain.**
 
 ---
 
