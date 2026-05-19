@@ -28,6 +28,11 @@ import {
   executeApolloTool,
 } from "@/lib/mcp/apollo";
 import { ceoTools, executeCeoTool } from "@/lib/mcp/ceo-tools";
+import { buildLessonsHelper } from "@/lib/lessons";
+import { extractMentions } from "@/lib/mention-dispatch";
+import { createAgentRun, completeAgentRun } from "@/lib/agent-runs";
+import { createCompletion, getLLMConfigForCompany } from "@/lib/llm-router";
+import { randomUUID } from "crypto";
 
 const client = new Anthropic();
 
@@ -164,7 +169,48 @@ export async function POST(request: NextRequest) {
         memories.map((m) => `- **${m.key}:** [${m.value.replace(/[[\]]/g, '')}]`).join("\n");
     }
 
-    const systemPrompt = agent.system_prompt + memorySection;
+    // Load recent lessons (closed-loop learning — every run starts smarter than the last)
+    let lessonsSection = "";
+    try {
+      const lessons = await buildLessonsHelper({
+        firmId: agent.company_id,
+        agentId,
+      }).readRecent({ limit: 5 });
+      if (lessons.length > 0) {
+        lessonsSection =
+          "\n\n## Recent Lessons\nApply these when relevant. Each is a real outcome from a prior run.\n" +
+          lessons
+            .map((l) => {
+              const outcome = l.outputAccepted === "approved"
+                ? "approved"
+                : l.outputAccepted === "rejected"
+                ? "rejected"
+                : l.outputAccepted === "modified"
+                ? "modified by the user"
+                : "outcome unknown";
+              const mod = l.modificationDetail ? ` — change: ${l.modificationDetail}` : "";
+              const crit = l.selfCritique ? ` — note: ${l.selfCritique}` : "";
+              return `- ${l.taskDescription} (${outcome})${mod}${crit}`;
+            })
+            .join("\n");
+      }
+    } catch (err) {
+      console.warn("[chat] lesson lookup failed; continuing without:", err);
+    }
+
+    const systemPrompt = agent.system_prompt + memorySection + lessonsSection;
+
+    // Open a run record. Postgres-only — null in dev. We fall back to a
+    // transient id so lesson writes have a stable runId either way.
+    const runRecord = await createAgentRun({
+      companyId: agent.company_id,
+      agentRole: agent.role,
+      agentId,
+      triggeredBy: "user",
+      triggerDetail: `POST /api/chat · conversation ${convId}`,
+      input: { conversationId: convId, message },
+    });
+    const runId = runRecord?.id ?? `run_tmp_${randomUUID()}`;
 
     // Determine available tools for this agent
     const tools: Anthropic.Tool[] = [];
@@ -175,14 +221,23 @@ export async function POST(request: NextRequest) {
       tools.push(...ceoTools);
     }
 
-    // Stream response (with tool use if tools available)
-    const stream = client.messages.stream({
-      model: "claude-sonnet-4-6",
-      max_tokens: 4096,
-      system: systemPrompt,
-      messages: apiMessages,
-      ...(tools.length > 0 ? { tools } : {}),
-    });
+    // Resolve BYOM. Tool-use stays Anthropic-only (semantics differ across
+    // providers), so we only honor BYOM when this turn doesn't need tools.
+    // Default tenants (no per-tenant LLM key) flow through the existing
+    // Anthropic streaming path unchanged.
+    const llmConfig = await getLLMConfigForCompany(agent.company_id);
+    const useBYOM = tools.length === 0 && llmConfig.provider !== "anthropic";
+
+    // Only create the Anthropic stream if we're going to use it.
+    const stream = useBYOM
+      ? null
+      : client.messages.stream({
+          model: "claude-sonnet-4-6",
+          max_tokens: 4096,
+          system: systemPrompt,
+          messages: apiMessages,
+          ...(tools.length > 0 ? { tools } : {}),
+        });
 
     const encoder = new TextEncoder();
     let fullResponse = "";
@@ -190,15 +245,62 @@ export async function POST(request: NextRequest) {
     const readable = new ReadableStream({
       async start(controller) {
         try {
-          // Send conversationId first
+          // Send conversationId + runId + provider so the client can
+          // correlate streamed text back to a specific run (for approve/
+          // reject UX) and know which model produced it.
           controller.enqueue(
             encoder.encode(
-              `data: ${JSON.stringify({ conversationId: convId })}\n\n`
+              `data: ${JSON.stringify({
+                conversationId: convId,
+                runId,
+                provider: useBYOM ? llmConfig.provider : "anthropic",
+                model: useBYOM ? llmConfig.model : "claude-sonnet-4-6",
+                byom: llmConfig.byom,
+              })}\n\n`
             )
           );
 
           const toolCalls: { id: string; name: string; input: Record<string, unknown> }[] = [];
 
+          // BYOM path: non-streaming. We get the full text in one shot,
+          // emit it as a single SSE chunk, and short-circuit the rest of
+          // the streaming loop. Tool-use runs (CEO/Apollo) never hit
+          // this branch because tools.length > 0 above.
+          if (useBYOM) {
+            try {
+              const completion = await createCompletion(
+                agent.company_id,
+                {
+                  system: systemPrompt,
+                  messages: apiMessages,
+                  maxTokens: 4096,
+                },
+                llmConfig
+              );
+              fullResponse = completion.text;
+              if (fullResponse) {
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({ text: fullResponse })}\n\n`
+                  )
+                );
+              }
+            } catch (err) {
+              await completeAgentRun(runId, {
+                status: "failed",
+                errorDetail: err instanceof Error ? err.message : String(err),
+                modelUsed: llmConfig.model,
+                provider: llmConfig.provider,
+              });
+              throw err;
+            }
+          }
+
+          // skip Anthropic streaming when BYOM owns this turn
+          if (!stream) {
+            // fall through to the post-stream block (clean response, persist,
+            // mentions, run/lesson writes, credits, [DONE])
+          } else
           for await (const event of stream) {
             if (
               event.type === "content_block_delta" &&
@@ -236,8 +338,9 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // Handle tool calls: execute tools and get a follow-up response from Claude
-          if (toolCalls.length > 0) {
+          // Handle tool calls: execute tools and get a follow-up response from Claude.
+          // BYOM path never reaches here (tools are gated to Anthropic) so stream is non-null.
+          if (toolCalls.length > 0 && stream) {
             const finalMessage = await stream.finalMessage();
 
             // Extract full tool inputs from final message
@@ -367,85 +470,123 @@ export async function POST(request: NextRequest) {
           }
 
           // Check for inter-agent mentions and actually relay
-          const mentions = fullResponse.match(/@(\w[\w\s-]*?)(?=[\s,.\n!?]|$)/g);
-          if (mentions && mentions.length > 0) {
+          // Uses the role-whitelist extractor so we don't fire phantom relays
+          // on stray @-words, and the INTERNAL_SECRET header so server→server
+          // calls to /api/agents/relay authenticate (cookies don't carry).
+          const mentionedRoles = extractMentions(fullResponse).slice(0, 2);
+          if (mentionedRoles.length > 0) {
             const agents = await getAgentsByCompany(agent.company_id);
-            const processed = new Set<string>();
-            for (const mention of mentions.slice(0, 2)) {
-              const mentionedRole = mention.slice(1).trim();
-              if (processed.has(mentionedRole.toLowerCase())) continue;
-              processed.add(mentionedRole.toLowerCase());
+            const internalSecret = process.env.INTERNAL_SECRET;
+            const appUrl =
+              process.env.APP_BASE_URL ??
+              process.env.NEXT_PUBLIC_APP_URL ??
+              "http://localhost:3000";
 
+            for (const mentionedRole of mentionedRoles) {
               const mentionedAgent = agents.find(
                 (a) =>
                   a.role.toLowerCase() === mentionedRole.toLowerCase() &&
                   a.id !== agentId
               );
-              if (mentionedAgent) {
-                // Notify user that relay is happening
-                controller.enqueue(
-                  encoder.encode(
-                    `data: ${JSON.stringify({
-                      interAgent: {
-                        from: agent.role,
-                        to: mentionedAgent.role,
-                        agentId: mentionedAgent.id,
-                        status: "relaying",
-                      },
-                    })}\n\n`
-                  )
-                );
+              if (!mentionedAgent) continue;
 
-                // Actually relay the message
-                try {
-                  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-                  const relayRes = await fetch(
-                    `${appUrl}/api/agents/relay`,
-                    {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        sourceAgentId: agentId,
-                        targetRole: mentionedRole,
-                        message: fullResponse,
-                        conversationId: convId,
-                        depth: 0,
-                      }),
-                    }
-                  );
-                  const relayData = await relayRes.json();
-                  if (relayData.response) {
-                    controller.enqueue(
-                      encoder.encode(
-                        `data: ${JSON.stringify({
-                          relay: {
-                            from: mentionedAgent.role,
-                            response: relayData.response,
-                          },
-                        })}\n\n`
-                      )
-                    );
-                  }
-                } catch {
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({
+                    interAgent: {
+                      from: agent.role,
+                      to: mentionedAgent.role,
+                      agentId: mentionedAgent.id,
+                      status: "relaying",
+                    },
+                  })}\n\n`
+                )
+              );
+
+              try {
+                const relayRes = await fetch(`${appUrl}/api/agents/relay`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    ...(internalSecret
+                      ? { "x-internal-secret": internalSecret }
+                      : {}),
+                  },
+                  body: JSON.stringify({
+                    sourceAgentId: agentId,
+                    targetRole: mentionedRole,
+                    message: fullResponse,
+                    conversationId: convId,
+                    depth: 0,
+                  }),
+                });
+                const relayData = await relayRes.json();
+                if (relayData.response) {
                   controller.enqueue(
                     encoder.encode(
                       `data: ${JSON.stringify({
                         relay: {
                           from: mentionedAgent.role,
-                          response: `@${mentionedAgent.role} is unavailable right now.`,
+                          response: relayData.response,
                         },
                       })}\n\n`
                     )
                   );
                 }
+              } catch {
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({
+                      relay: {
+                        from: mentionedAgent.role,
+                        response: `@${mentionedAgent.role} is unavailable right now.`,
+                      },
+                    })}\n\n`
+                  )
+                );
               }
             }
+          }
+
+          // Close the run record with the final response snapshot.
+          await completeAgentRun(runId, {
+            status: "completed",
+            output: { response: fullResponse },
+            modelUsed: useBYOM ? llmConfig.model : "claude-sonnet-4-6",
+            provider: useBYOM ? llmConfig.provider : "anthropic",
+            summary: fullResponse.slice(0, 200),
+          });
+
+          // Close the closed loop: write a lesson with outputAccepted=unknown.
+          // Future approve/reject UX flips this to approved/rejected/modified.
+          try {
+            await buildLessonsHelper({
+              firmId: agent.company_id,
+              agentId,
+            }).write({
+              agentId,
+              runId,
+              taskDescription: message.slice(0, 200),
+              outputAccepted: "unknown",
+            });
+          } catch (err) {
+            console.warn("[chat] lesson write failed; continuing:", err);
           }
 
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
         } catch (err) {
           console.error("Stream error:", err);
+          // Best-effort: mark the run as failed so /admin/agents/[role] shows
+          // the failure rather than a hanging "running" status.
+          completeAgentRun(runId, {
+            status: "failed",
+            errorDetail: err instanceof Error ? err.message : String(err),
+            modelUsed: useBYOM ? llmConfig.model : "claude-sonnet-4-6",
+            provider: useBYOM ? llmConfig.provider : "anthropic",
+          }).catch(() => {
+            /* swallow — already in an error path */
+          });
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({ error: "Stream interrupted" })}\n\n`

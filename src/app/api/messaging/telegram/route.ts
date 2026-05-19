@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { sendMessage, isTelegramConfigured } from "@/lib/telegram";
+import { sendMessage, sendMessageForCompany, isTelegramConfigured } from "@/lib/telegram";
 import {
   getMessagingUser,
   getAgent,
@@ -13,6 +13,27 @@ import {
   updateDefaultAgent,
   incrementUsage,
 } from "@/lib/db";
+import {
+  findEmployeeByEmailGlobal,
+  findEmployeeByTelegramChatId,
+  linkTelegramChatId,
+  getActiveSubmissionForEmployee,
+  markSubmitted,
+  currentPeriodKey,
+} from "@/lib/timesheets";
+import {
+  findBroadcastAdmin,
+  registerBroadcastAdmin,
+  interpretCommand,
+  runBroadcast,
+  sendReminders,
+  logBroadcast,
+} from "@/lib/broadcast";
+import { ceoTools, executeCeoTool } from "@/lib/mcp/ceo-tools";
+import { createAgentRun, completeAgentRun } from "@/lib/agent-runs";
+import { buildLessonsHelper } from "@/lib/lessons";
+import { notifyHelpRequest } from "@/lib/escalation";
+import { randomUUID } from "crypto";
 
 const client = new Anthropic();
 
@@ -73,20 +94,203 @@ export async function POST(request: NextRequest) {
       .filter(Boolean)
       .join(" ");
 
-    // Handle /start command
-    if (text === "/start") {
+    // Best-effort status reply to the admin. A failed status send (e.g. the
+    // admin blocked the bot) must never abort the actual broadcast work.
+    const tellAdmin = async (msg: string) => {
+      try {
+        await sendMessage(chatId, msg);
+      } catch (err) {
+        console.warn("[telegram] admin reply send failed:", err);
+      }
+    };
+
+    // ─── Broadcast-admin flow ───────────────────────────────────────
+    // Runs FIRST: a registered admin's chat is a fan-out command channel,
+    // not an employee or end-user chat. `/register <code>` enrols a chat.
+
+    const registerMatch = text.match(/^\/register\s+(\S+)\s*$/i);
+    const broadcastAdmin = await findBroadcastAdmin(chatId);
+
+    if (registerMatch && !broadcastAdmin) {
+      const result = await registerBroadcastAdmin(
+        chatId,
+        registerMatch[1]!,
+        displayName || null
+      );
+      await tellAdmin(
+        result.ok
+          ? `You're registered as a broadcast admin. ✅\n\n` +
+            `Message me in plain English — e.g. *"tell everyone the office is closed Friday"* — ` +
+            `and I'll send it to every contact by email and Telegram. ` +
+            `Or say *"send timesheet reminders"* to trigger the weekly pass.`
+          : `Couldn't register: ${result.error}`
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    if (broadcastAdmin) {
+      if (text === "/start" || registerMatch) {
+        await tellAdmin(
+          `You're a *broadcast admin*. 📣\n\n` +
+            `• Send a plain-English instruction and I'll broadcast it to all firm ` +
+            `contacts (email + Telegram).\n` +
+            `• Say *"send timesheet reminders"* to run the weekly reminder pass.\n\n` +
+            `Add contacts in bulk via CSV on the admin dashboard.`
+        );
+        return NextResponse.json({ ok: true });
+      }
+
+      const cmd = await interpretCommand(text);
+      await tellAdmin(cmd.reply);
+
+      if (cmd.action === "broadcast") {
+        const res = await runBroadcast(
+          broadcastAdmin.companyId,
+          cmd.message,
+          cmd.subject
+        );
+        const failed = res.emailFailed + res.telegramFailed;
+        await logBroadcast({
+          companyId: broadcastAdmin.companyId,
+          adminChatId: chatId,
+          instruction: text,
+          action: "broadcast",
+          message: cmd.message,
+          emailSent: res.emailSent,
+          telegramSent: res.telegramSent,
+          failed,
+        });
+        await tellAdmin(
+          `Done — ${res.totalContacts} contact(s): ` +
+            `*${res.emailSent}* email, *${res.telegramSent}* Telegram` +
+            (failed > 0 ? `, ${failed} failed.` : `.`)
+        );
+      } else if (cmd.action === "send_reminders") {
+        const res = await sendReminders(broadcastAdmin.companyId);
+        await logBroadcast({
+          companyId: broadcastAdmin.companyId,
+          adminChatId: chatId,
+          instruction: text,
+          action: "send_reminders",
+          telegramSent: res.sent,
+          failed: res.failed,
+        });
+        await tellAdmin(
+          `Timesheet reminders for *${res.periodKey}*: ` +
+            `${res.sent} sent, ${res.failed} not reachable (no linked Telegram).`
+        );
+      } else {
+        await logBroadcast({
+          companyId: broadcastAdmin.companyId,
+          adminChatId: chatId,
+          instruction: text,
+          action: "unknown",
+        });
+      }
+      return NextResponse.json({ ok: true });
+    }
+
+    // ─── Timesheet flow ─────────────────────────────────────────────
+    // Runs BEFORE agent routing because timesheet employees may not have
+    // a messaging_users row. Three keywords: /link <email>, DONE, HELP.
+
+    const linkedEmployee = await findEmployeeByTelegramChatId(chatId);
+
+    // /link <email> — bind this chat_id to an employee row.
+    const linkMatch = text.match(/^\/link\s+(\S+@\S+)$/i);
+    if (linkMatch) {
+      const email = linkMatch[1]!.toLowerCase();
+      // Search across all firms for a matching email; multi-tenant timesheet
+      // setups would scope this by firm. For v1 (one firm) it's fine.
+      // We still rely on the email being unique enough that misbinding is rare.
+      const employee = await findEmployeeByEmailGlobal(email);
+      if (!employee) {
+        await sendMessage(
+          chatId,
+          `I don't see *${email}* on the timesheet roster. Ask your firm admin to add you, then try \`/link ${email}\` again.`
+        );
+        return NextResponse.json({ ok: true });
+      }
+      await linkTelegramChatId(
+        employee.id,
+        chatId,
+        update.message.from.username ? "@" + update.message.from.username : null
+      );
       await sendMessage(
         chatId,
-        `Welcome to TheAutonomous! 🤖\n\n` +
-          `I bridge your AI agents to Telegram so you can chat with them on the go.\n\n` +
-          `*Getting started:*\n` +
-          `1. Link your account at theautonomous.org\n` +
-          `2. Use \`@RoleName message\` to talk to a specific agent (e.g. \`@Sales draft outreach for Acme Corp\`)\n` +
-          `3. Or just send a message to talk to your default agent\n\n` +
-          `*Commands:*\n` +
-          `/agents — List your available agents\n` +
-          `/start — Show this welcome message`
+        `Linked. I'll remind you on Fridays if your timesheet for the current week is still open. Reply *DONE* to confirm submission, or *HELP* if you're stuck.`
       );
+      return NextResponse.json({ ok: true });
+    }
+
+    // DONE / HELP keywords — only meaningful for linked employees.
+    if (linkedEmployee && (text.toUpperCase() === "DONE" || /^DONE\b/i.test(text))) {
+      const submission = await getActiveSubmissionForEmployee(
+        linkedEmployee.id,
+        currentPeriodKey()
+      );
+      if (!submission) {
+        await sendMessage(
+          chatId,
+          `I don't have a tracking row for you this week yet. Your firm admin needs to start the period — try again after the next reminder pass.`
+        );
+        return NextResponse.json({ ok: true });
+      }
+      if (submission.submittedAt) {
+        await sendMessage(
+          chatId,
+          `Already marked submitted for *${submission.periodKey}*. Thanks for following up.`
+        );
+        return NextResponse.json({ ok: true });
+      }
+      await markSubmitted(submission.id, "telegram");
+      await sendMessage(
+        chatId,
+        `Marked your timesheet for *${submission.periodKey}* as submitted. Thanks ${linkedEmployee.name.split(" ")[0]}.`
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    if (linkedEmployee && (text.toUpperCase() === "HELP" || /^HELP\b/i.test(text))) {
+      await sendMessage(
+        chatId,
+        `Got it. I've flagged your firm admin — they'll reach out shortly. Meanwhile reply *DONE* once you've submitted, or describe the blocker and I'll relay.`
+      );
+      // Best-effort: write admin_notifications + ping SPOC on WhatsApp.
+      // Both branches log on failure rather than throwing so the webhook
+      // always returns 200 to Telegram.
+      const periodKey = currentPeriodKey();
+      const rawMessage = text.trim().slice(0, 500);
+      try {
+        await notifyHelpRequest({
+          companyId: linkedEmployee.companyId,
+          subject: `Timesheet HELP from ${linkedEmployee.name} (${periodKey})`,
+          detail:
+            `Employee: ${linkedEmployee.name} <${linkedEmployee.email}>\n` +
+            `Channel: Telegram (chat_id ${chatId})\n` +
+            `Period: ${periodKey}\n` +
+            `Raw message: ${rawMessage}`,
+          roleHint: "admin",
+        });
+      } catch (err) {
+        console.warn("[telegram] HELP escalation failed:", err);
+      }
+      return NextResponse.json({ ok: true });
+    }
+
+    // Handle /start command
+    if (text === "/start") {
+      const welcome = linkedEmployee
+        ? `Hi ${linkedEmployee.name.split(" ")[0]} — you're already linked. Reply *DONE* when you've submitted your timesheet for the week, or *HELP* if you need a hand.`
+        : `Welcome to TheAutonomous! 🤖\n\n` +
+          `If you're here for *timesheet reminders*, reply with:\n` +
+          `\`/link your.email@firm.com\`\n\n` +
+          `Otherwise, link your account at theautonomous.org and use \`@RoleName message\` to talk to a specific agent.\n\n` +
+          `*Commands:*\n` +
+          `/link <email> — Bind this chat to your timesheet record\n` +
+          `/agents — List your available agents\n` +
+          `/start — Show this welcome message`;
+      await sendMessage(chatId, welcome);
       return NextResponse.json({ ok: true });
     }
 
@@ -105,7 +309,8 @@ export async function POST(request: NextRequest) {
     const agents = await getAgentsByCompany(companyId);
 
     if (agents.length === 0) {
-      await sendMessage(
+      await sendMessageForCompany(
+        companyId,
         chatId,
         "You don't have any agents yet. Visit theautonomous.org to set up your company and provision agents."
       );
@@ -121,7 +326,8 @@ export async function POST(request: NextRequest) {
         })
         .join("\n");
 
-      await sendMessage(
+      await sendMessageForCompany(
+        companyId,
         chatId,
         `*Your agents:*\n${agentList}\n\nUse \`@RoleName message\` to talk to a specific agent, or just send a message to talk to your default agent.`
       );
@@ -147,12 +353,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Fall back to default agent, or first agent
+    // No @RoleName mention. Prefer the CEO orchestrator if the workspace
+    // has one — it can read company context and delegate to the right role
+    // via the delegate_task tool. Falls back to the user's default agent.
     if (!targetAgent) {
-      if (messagingUser.default_agent_id) {
+      const ceoAgent = agents.find((a) => a.role === "CEO");
+      if (ceoAgent) {
+        targetAgent = ceoAgent;
+      } else if (messagingUser.default_agent_id) {
         targetAgent = await getAgent(messagingUser.default_agent_id);
       }
-      // If default agent not found or not set, use the first active agent
       if (!targetAgent) {
         targetAgent = agents[0];
         await updateDefaultAgent(messagingUser.id, targetAgent.id);
@@ -194,18 +404,111 @@ export async function POST(request: NextRequest) {
         memories.map((m) => `- **${m.key}:** [${m.value.replace(/[[\]]/g, '')}]`).join("\n");
     }
 
+    // Closed-loop learning: surface recent lessons before composing system prompt
+    let lessonsSection = "";
+    try {
+      const lessons = await buildLessonsHelper({
+        firmId: companyId,
+        agentId: targetAgent.id,
+      }).readRecent({ limit: 5 });
+      if (lessons.length > 0) {
+        lessonsSection =
+          "\n\n## Recent Lessons\nApply these when relevant.\n" +
+          lessons
+            .map((l) => `- ${l.taskDescription} (${l.outputAccepted})`)
+            .join("\n");
+      }
+    } catch (err) {
+      console.warn("[telegram] lesson lookup failed:", err);
+    }
+
     const systemPrompt =
       targetAgent.system_prompt +
       memorySection +
+      lessonsSection +
       `\n\n## Messaging Context\nYou are responding via Telegram to ${displayName}. Keep responses concise and mobile-friendly. Use Markdown formatting sparingly — Telegram supports *bold*, _italic_, and \`code\`.`;
 
-    // Call Claude (non-streaming)
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 2048,
-      system: systemPrompt,
-      messages: apiMessages,
+    // Open a run record. Postgres-only — null in dev; we fall back to a
+    // transient id so lesson writes still have a stable runId.
+    const runRecord = await createAgentRun({
+      companyId,
+      agentRole: targetAgent.role,
+      agentId: targetAgent.id,
+      triggeredBy: "user",
+      triggerDetail: `Telegram from ${displayName}`,
+      input: { message: userMessage, conversationId: conversation.id },
     });
+    const runId = runRecord?.id ?? `run_tmp_${randomUUID()}`;
+
+    // CEO orchestrator gets ceoTools so it can delegate_task / query_all_agents.
+    // Other roles run in chat-only mode.
+    const isCeo = targetAgent.role === "CEO";
+    const tools = isCeo ? ceoTools : undefined;
+
+    // First Claude call
+    let response;
+    try {
+      response = await client.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 2048,
+        system: systemPrompt,
+        messages: apiMessages,
+        ...(tools ? { tools } : {}),
+      });
+    } catch (err) {
+      await completeAgentRun(runId, {
+        status: "failed",
+        errorDetail: err instanceof Error ? err.message : String(err),
+        modelUsed: "claude-sonnet-4-6",
+        provider: "anthropic",
+      });
+      throw err;
+    }
+
+    // CEO tool-use loop — single iteration max so we stay inside Telegram's
+    // 60s webhook timeout. CEO either responds directly OR calls one tool
+    // (query_all_agents / get_company_metrics / delegate_task), gets the
+    // result, then composes a final reply.
+    let toolCalledLabel: string | null = null;
+    if (isCeo && response.stop_reason === "tool_use") {
+      const toolUseBlocks = response.content.filter(
+        (b) => b.type === "tool_use"
+      ) as Array<{ type: "tool_use"; id: string; name: string; input: Record<string, unknown> }>;
+      const toolResults: Array<{ type: "tool_result"; tool_use_id: string; content: string }> = [];
+      for (const tu of toolUseBlocks) {
+        try {
+          const result = await executeCeoTool(
+            tu.name,
+            tu.input,
+            companyId,
+            conversation.id
+          );
+          toolResults.push({
+            type: "tool_result",
+            tool_use_id: tu.id,
+            content: result,
+          });
+          toolCalledLabel = tu.name;
+        } catch (err) {
+          toolResults.push({
+            type: "tool_result",
+            tool_use_id: tu.id,
+            content: `tool failed: ${err instanceof Error ? err.message : String(err)}`,
+          });
+        }
+      }
+      // Follow-up turn so CEO can compose a natural-language reply
+      response = await client.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 2048,
+        system: systemPrompt,
+        messages: [
+          ...apiMessages,
+          { role: "assistant", content: response.content },
+          { role: "user", content: toolResults },
+        ],
+      });
+    }
 
     // Extract text from response
     const responseText = response.content
@@ -226,10 +529,34 @@ export async function POST(request: NextRequest) {
     // Track usage
     await incrementUsage(companyId, "message_count");
 
-    // Send response via Telegram
+    // Close the run + write a lesson with outputAccepted=unknown
+    await completeAgentRun(runId, {
+      status: "completed",
+      output: { response: responseText, ceoTool: toolCalledLabel ?? undefined },
+      modelUsed: "claude-sonnet-4-6",
+      provider: "anthropic",
+      tokensIn: response.usage?.input_tokens,
+      tokensOut: response.usage?.output_tokens,
+      summary: responseText.slice(0, 200),
+    });
+    try {
+      await buildLessonsHelper({
+        firmId: companyId,
+        agentId: targetAgent.id,
+      }).write({
+        agentId: targetAgent.id,
+        runId,
+        taskDescription: userMessage.slice(0, 200),
+        outputAccepted: "unknown",
+      });
+    } catch (err) {
+      console.warn("[telegram] lesson write failed; continuing:", err);
+    }
+
+    // Send response via Telegram using the company's BYO bot when present
     const agentLabel =
       agents.length > 1 ? `*@${targetAgent.role}:*\n` : "";
-    await sendMessage(chatId, agentLabel + responseText);
+    await sendMessageForCompany(companyId, chatId, agentLabel + responseText);
 
     return NextResponse.json({ ok: true });
   } catch (error) {

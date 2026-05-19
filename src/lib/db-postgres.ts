@@ -26,7 +26,10 @@ if (!DATABASE_URL) {
 // Supabase transaction pooler (port 6543) requires prepare: false
 // SSL required for Railway → Supabase connectivity
 const isPooler = DATABASE_URL?.includes(':6543') || DATABASE_URL?.includes('pooler.supabase.com');
-const sql = DATABASE_URL
+// Exported so tenant-context.ts and tests can share the same connection pool.
+// Do NOT use this directly from app code — go through withTenantContext() so
+// Postgres RLS policies see the active company_id/user_id (see migrations/001_rls_policies.sql).
+export const sql = DATABASE_URL
   ? postgres(DATABASE_URL, {
       max: 10,
       idle_timeout: 20,

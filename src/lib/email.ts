@@ -40,3 +40,43 @@ export async function sendTeamInviteEmail(params: {
     return { sent: false, reason: 'send_failed' };
   }
 }
+
+/**
+ * Generic outbound email — used by the inbound-email handler to reply, and
+ * by other agent paths that need to send mail directly. Degrades gracefully
+ * when RESEND_API_KEY is unset (returns { sent: false } instead of throwing).
+ */
+export async function sendEmail(params: {
+  to: string;
+  subject: string;
+  body: string;
+  html?: string;
+  replyTo?: string;
+  from?: string;
+}): Promise<{ sent: boolean; messageId?: string; reason?: string }> {
+  const resend = getResend();
+  if (!resend) {
+    console.log('[email] RESEND_API_KEY not set — skipping email delivery');
+    return { sent: false, reason: 'no_api_key' };
+  }
+  try {
+    const result = await resend.emails.send({
+      from: params.from ?? 'The Autonomous <agents@theautonomous.org>',
+      to: params.to,
+      subject: params.subject,
+      replyTo: params.replyTo ?? 'support@theautonomous.org',
+      text: params.body,
+      html:
+        params.html ??
+        `<div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; white-space: pre-wrap; line-height: 1.55;">${params.body
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')}</div>`,
+    });
+    const id = (result as { data?: { id?: string } }).data?.id;
+    return { sent: true, messageId: id };
+  } catch (error) {
+    console.error('[email] sendEmail failed:', error);
+    return { sent: false, reason: 'send_failed' };
+  }
+}

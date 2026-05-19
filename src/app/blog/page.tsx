@@ -11,6 +11,24 @@ export const metadata: Metadata = {
 
 const posts = [
   {
+    slug: "inside-two-ai-native-companies",
+    title:
+      "Inside Two AI-Native Companies: An Accounting Firm and a Revenue Agent",
+    description:
+      "Two case studies from The Autonomous — a chartered accountancy firm closing its compliance loop on Telegram, and an e-commerce revenue agent shipping catalog edits in minutes. Same platform, different shapes.",
+    date: "2026-05-13",
+    readTime: "8 min read",
+  },
+  {
+    slug: "why-we-are-building-the-autonomous",
+    title:
+      "Why We're Building The Autonomous: The Operating System for AI-Native Companies",
+    description:
+      "Most companies treat AI as a productivity tool. The next decade belongs to companies that treat it as the operating system they run on. Here's why.",
+    date: "2026-05-12",
+    readTime: "9 min read",
+  },
+  {
     slug: "what-are-ai-agents",
     title: "What Are AI Agents? A Complete Guide for Business Leaders (2026)",
     description:

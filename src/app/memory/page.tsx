@@ -60,8 +60,9 @@ export default function MemoryLanding() {
               <p className="text-base sm:text-lg text-white/55 leading-relaxed mb-10 max-w-2xl">
                 Before your next meeting, get a pre-meeting brief that
                 remembers what you promised, what they said last time, and what
-                you actually need to decide. It&apos;s the memory Limitless
-                couldn&apos;t keep running and Rewind sold off.
+                you actually need to decide. The same memory feeds the
+                Autonomous workforce — so the agents running your company always
+                start from what you already know.
               </p>
             </Reveal>
 

@@ -10,6 +10,9 @@ import {
   completeInterAgentMessage,
   addMessage,
 } from "@/lib/db";
+import { createAgentRun, completeAgentRun } from "@/lib/agent-runs";
+import { buildLessonsHelper } from "@/lib/lessons";
+import { randomUUID } from "crypto";
 
 const client = new Anthropic();
 const MAX_DEPTH = 3;
@@ -86,7 +89,20 @@ export async function POST(request: NextRequest) {
       conversation_id: conversationId,
     });
 
-    // Load target agent's memory
+    // Open an agent_runs row for the target agent — relays flow into the
+    // same run+lesson surface as chat completions so cross-agent learning
+    // shows up in /admin/agents and the closed loop.
+    const runRecord = await createAgentRun({
+      companyId: sourceAgent.company_id,
+      agentRole: targetAgent.role,
+      agentId: targetAgent.id,
+      triggeredBy: "mention",
+      triggerDetail: `@${sourceAgent.role} → @${targetAgent.role}`,
+      input: { sourceAgentId, sourceRole: sourceAgent.role, message, conversationId, depth },
+    });
+    const runId = runRecord?.id ?? `run_tmp_${randomUUID()}`;
+
+    // Load target agent's memory + recent lessons (closed-loop learning).
     const memories = await getMemory(targetAgent.id);
     let memorySection = "";
     if (memories.length > 0) {
@@ -94,19 +110,46 @@ export async function POST(request: NextRequest) {
         "\n\n## What You Remember\n" +
         memories.map((m) => `- **${m.key}:** [${m.value.replace(/[[\]]/g, '')}]`).join("\n");
     }
+    let lessonsSection = "";
+    try {
+      const lessons = await buildLessonsHelper({
+        firmId: sourceAgent.company_id,
+        agentId: targetAgent.id,
+      }).readRecent({ limit: 5 });
+      if (lessons.length > 0) {
+        lessonsSection =
+          "\n\n## Recent Lessons\nApply when relevant.\n" +
+          lessons
+            .map((l) => `- ${l.taskDescription} (${l.outputAccepted})`)
+            .join("\n");
+      }
+    } catch {
+      /* dev mode without DB — quietly continue */
+    }
 
     // Call Claude as the target agent
-    const result = await client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 2048,
-      system: targetAgent.system_prompt + memorySection,
-      messages: [
-        {
-          role: "user",
-          content: `[Inter-agent request from @${sourceAgent.role}]\n\n${message}`,
-        },
-      ],
-    });
+    let result;
+    try {
+      result = await client.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 2048,
+        system: targetAgent.system_prompt + memorySection + lessonsSection,
+        messages: [
+          {
+            role: "user",
+            content: `[Inter-agent request from @${sourceAgent.role}]\n\n${message}`,
+          },
+        ],
+      });
+    } catch (err) {
+      await completeAgentRun(runId, {
+        status: "failed",
+        errorDetail: err instanceof Error ? err.message : String(err),
+        modelUsed: "claude-sonnet-4-6",
+        provider: "anthropic",
+      });
+      throw err;
+    }
 
     const responseText =
       result.content[0].type === "text" ? result.content[0].text : "";
@@ -123,9 +166,37 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Close the run + write a lesson with outputAccepted=unknown so the
+    // target agent learns from this cross-agent interaction. POST
+    // /api/agents/runs/[runId]/feedback flips this to approved/rejected/
+    // modified once a human (or the source agent) signals.
+    await completeAgentRun(runId, {
+      status: "completed",
+      output: { response: responseText, sourceAgentId, sourceRole: sourceAgent.role },
+      modelUsed: "claude-sonnet-4-6",
+      provider: "anthropic",
+      tokensIn: result.usage?.input_tokens,
+      tokensOut: result.usage?.output_tokens,
+      summary: responseText.slice(0, 200),
+    });
+    try {
+      await buildLessonsHelper({
+        firmId: sourceAgent.company_id,
+        agentId: targetAgent.id,
+      }).write({
+        agentId: targetAgent.id,
+        runId,
+        taskDescription: `Inter-agent from @${sourceAgent.role}: ${message.slice(0, 160)}`,
+        outputAccepted: "unknown",
+      });
+    } catch {
+      /* dev mode without DB — quietly continue */
+    }
+
     return NextResponse.json({
       response: responseText,
       targetRole: targetAgent.role,
+      runId,
       status: "done",
     });
   } catch (error) {

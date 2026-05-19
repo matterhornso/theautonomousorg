@@ -1,227 +1,162 @@
-# TODO — Coding Agent Handoff
+# TODO — Go-Live Checklist
 
-> Source of truth for outstanding work in **the main app** (`theautonomousorg`). For memory-product work, see `autonomous-memory/TODO.md`. Read this file's "How to use" section first. Mark items complete with `[x]` and add the date.
-
-**Last updated:** 2026-04-28
-**Maintainer:** abhinav@chainflux.com
-**Repos:**
-- Main app: `/Users/abhinavramesh/theautonomousorg` (this repo's TODO covers items here)
-- Memory app + rowboat fork: `/Users/abhinavramesh/autonomous-memory` (separate `TODO.md` lives there)
-
-## Before you start
-
-Read in order, then return here:
-
-1. `CONTEXT.md` — what this platform is and its current state
-2. `README.md` — how to run, where things live, runbook
-3. (this file) — pick a task
-
-Don't skip the context files even if the task seems self-explanatory — many items here have a *why* that's non-obvious from the file paths alone.
+> **Last updated:** 2026-05-07 · **Maintainer:** abhinav@chainflux.com
+> Pair this with `HANDOFF.md` (what's been built) and `.env.example` (every env var).
 
 ---
 
-## How to use this file
+## 🟢 STATUS SNAPSHOT (2026-05-07)
 
-1. Pick the highest-priority unchecked item from the section that matches your task type.
-2. Read the linked file paths before changing anything.
-3. Run `npm test` and `curl http://localhost:3000/api/health` before committing.
-4. Update this file: check the box, add the date, note any follow-ups.
-5. Commit with conventional-commit prefix (`feat:`, `fix:`, `chore:`, `docs:`).
-
-Section legend:
-- 🔴 **P0 — Blocking:** must be done before launch / before next user touches the app
-- 🟠 **P1 — High impact:** measurable conversion / revenue / reliability win
-- 🟡 **P2 — Polish:** quality-of-life, technical debt, nice-to-have
-- 🔵 **Backlog:** ideas, not yet scoped
-
----
-
-## 🔴 P0 — Action Items Requiring User (Abhinav)
-
-These cannot be done by a coding agent alone — they need credentials, account access, or human decisions. List what's needed from you below; pass values to the agent via secure channel (1Password, env vars, etc.).
-
-### Main app (theautonomousorg)
-
-- [ ] **Decide: keep Supabase free tier or upgrade to Pro.** Free tier auto-pauses after 7 days of inactivity, which causes `/api/health` to return 503 with `"Tenant or user not found"`. Pro is $25/mo and never pauses. *Required input: yes/no decision.*
-- [ ] **Switch Clerk to production keys.** Currently using `pk_test_*` / `sk_test_*` (dev keys show "Development mode" badge and have rate limits). *Required input:* `pk_live_*` and `sk_live_*` from [Clerk dashboard](https://dashboard.clerk.com).
-- [ ] **Add production env vars to Railway.** Local `.env.local` is set, but Railway production needs: `RESEND_API_KEY`, production Clerk keys, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `ENCRYPTION_KEY`. *Required input:* run `railway variables set` for each, or paste into Railway dashboard.
-- [ ] **Deploy latest code to Railway.** Several un-deployed commits exist (newsletter API, contact API, PWA icons, scroll-behavior fix, branding). *Required input:* approval to push to `main`.
-- [ ] **Add Stripe webhook endpoint in Stripe dashboard** pointing to `https://theautonomous.org/api/billing/webhook`, then copy the signing secret into `STRIPE_WEBHOOK_SECRET`.
-- [ ] **Verify Resend domain** for `theautonomous.org` if not already (lets us send from `hello@theautonomous.org` instead of `onboarding@resend.dev`).
-
-### Rowboat fork (autonomous-memory/apps/rowboat)
-
-- [ ] **Provision MongoDB Atlas cluster** for the knowledge graph. Free M0 tier is fine for pilot. *Required input:* `MONGODB_URI`.
-- [ ] **Provision Redis** (Upstash recommended — has free tier with HTTP API). *Required input:* `REDIS_URL`.
-- [ ] **Create AWS S3 bucket** `autonomous-memory-audio` in `us-east-1` for voice recordings. Configure IAM user with PutObject/GetObject. *Required input:* `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`.
-- [ ] **Get Deepgram API key** from [Deepgram console](https://console.deepgram.com/). *Required input:* `DEEPGRAM_API_KEY`.
-- [ ] **Create Stripe products** for Early Access ($99/mo) and Executive ($299/mo) tiers. *Required input:* `STRIPE_PRICE_EARLY_ACCESS`, `STRIPE_PRICE_EXECUTIVE`.
-- [ ] **Decide hosting:** Railway / Vercel / Fly.io / self-hosted. Each has different MongoDB and Redis ergonomics. *Required input:* hosting platform decision.
-- [ ] **Decide on Clerk strategy:** share the main app's Clerk instance (single sign-on) or use a separate one. Sharing is simpler if both products are owned by the same org. *Required input:* yes/no.
-- [ ] **Domain setup:** point `memory.theautonomous.org` DNS at the chosen host. *Required input:* DNS access (Cloudflare? domain registrar?).
+| Surface | State |
+|---|---|
+| Tests | ✅ 264/264 passing across 20 files |
+| Type-check | ✅ `tsc --noEmit` exit 0 |
+| Migrations 001–006 | ✅ Applied to Supabase project `znmerxpukimtugwtfysy` |
+| `companies`, `agents`, `messaging_users`, base tables | ✅ Bootstrapped via `scripts/init-base-schema.ts` |
+| `employees`, `timesheet_submissions`, `reminder_schedules` | ✅ Migration applied + JAA seeded |
+| Shopify Editor (`/admin/shopify`) | ✅ Live-verified plan/apply/rollback against `zizrev-ej.myshopify.com` |
+| Shopify Insights | ✅ Live (Claude returns category-aware suggestions in ~45s) |
+| Telegram timesheet bot (`@timesheettrial_bot`) | ✅ Live, all 7 keyword paths verified |
+| Telegram webhook handler | ✅ Verified end-to-end (link / DONE / HELP / start) |
+| Reminder schedule UI + DB | ✅ Daily 5pm IST default, edit / pause / resume |
+| Admin UI: toasts, send burst, button animations | ✅ Shipped |
+| Onboarding bug (no companies row created) | ✅ Fixed via `POST /api/companies` |
+| Workspace inline rename | ✅ `PATCH /api/companies/[id]` + sidebar inline edit |
+| Working tree | ⚠ **Uncommitted since `74b2e50`** — task #6 below |
+| Production deploy | ❌ Not started |
+| Telegram webhook registration | ❌ Needs ngrok or production URL |
+| Cron schedule (Railway / Vercel) | ❌ Not configured |
 
 ---
 
-## 🔴 P0 — Bugs / Blockers (Coding Agent Can Do)
+## 🚨 SECURITY — DO BEFORE PROD
 
-### Main app
+These were exposed in the chat transcript during setup. Rotate before any production use.
 
-- [x] ~~Supabase project paused → DB connection fails~~ — Restored 2026-04-28 via Supabase MCP.
-- [x] ~~Rowboat fork: missing `framer-motion` peer dep~~ — Installed 2026-04-28 (`npm install framer-motion --legacy-peer-deps`).
-- [ ] **Rowboat fork: `localStorage.getItem is not a function` SSR error.** Happens on Node 25 in Clerk keyless mode. Two possible fixes:
-  - **A) Pin Node 22 LTS** in `apps/rowboat/.nvmrc` and `package.json` `engines` field.
-  - **B) Provide real Clerk keys via `.env.local`** so Clerk doesn't go into keyless mode.
-  Recommend doing both. Verify with `cd apps/rowboat && npm run dev` then `curl http://localhost:3001/`.
-
-### Cross-cutting
-
-- [ ] **`/pricing` returns 404.** Pricing CTAs are wired to a Clerk modal (per recent commit), but search engines and direct links to `/pricing` will 404. Either:
-  - Build a real `/pricing` page with the same tiers shown elsewhere, or
-  - Add `/pricing` → `/#pricing` redirect in `next.config.ts`.
-
-- [ ] **Console 401 from Clerk on page load.** Single 401 from a Clerk background request appears in browser console. Cosmetic but noisy. Investigate `proxy.ts` middleware config.
+- [ ] **Supabase database password** — Settings → Database → Reset password → update `DATABASE_URL` in `.env.local`. Pooler URL embeds the password, so all places that reference it need to be re-pasted. *(Original value is in `.env.local` only; rotate before any prod use.)*
+- [ ] **Shopify API secret** (`shpss_***`) — Develop apps → custom app → API credentials → reset secret.
+- [ ] **Shopify Client ID + Secret in `.env.local`** — both are still the originals; rotate after the rotate above.
+- [ ] **Telegram bot token** — `@BotFather` → `/revoke` → get new token → update `.env.local` and re-register webhook with new token. *(Current token lives in `.env.local` and was exposed during setup; treat as compromised.)*
+- [ ] **Decide whether to keep legacy password references** in any backups / docs / commit history. If you commit the working tree, scrub first.
 
 ---
 
-## 🟠 P1 — High Impact (Coding Agent Can Do)
+## 🟦 PRE-DEMO (do before tomorrow's client meetings)
 
-### Conversion / UX (Main app)
+### Browser spot-check (10 min, must do)
+- [ ] Open `http://localhost:3007/admin` in a regular Chrome window (no incognito needed)
+- [ ] One-time: DevTools → Application → Service Workers → **Unregister** any worker for `localhost:3007`, then Application → Storage → **Clear site data**, then `Cmd+Shift+R`
+- [ ] Confirm sidebar shows 9 nav items (Overview, Agents, Timesheets, Shopify Editor, Approvals, Notifications, Vault, Integrations, Provisioning)
+- [ ] Confirm sidebar workspace pill says **"Abhinav's Workspace"** (or whatever you've renamed it to)
+- [ ] `/admin/shopify` — header reads "shop.getsoma.store · Shopify Editor"
+- [ ] Click **Get competitor insights** → confirm cards render after ~45s
+- [ ] Click **Use this prompt** on a HIGH-priority suggestion → prompt fills the editor textarea → Plan → Apply → confirm SendBurst fires
+- [ ] Open `https://admin.shopify.com/store/zizrev-ej/products` → confirm change landed (or run `bun run scripts/shopify-tags.ts`)
+- [ ] `/admin/timesheets` — confirm Schedule card shows "Daily at 5:00 PM" + roster shows Girish + 🗑 / 🔄 icons on row
+- [ ] Click **Mark submitted** on Girish → confirm toast + status pill flips green
+- [ ] Click 🔄 reset on Girish → confirm pill flips back to Outstanding
 
-- [ ] **Add loading progress for `/api/analyze`.** Claude takes 25–45s; users see only "Analyzing…" spinner. This is the #1 abandonment point. Implement either:
-  - SSE streaming with milestones ("Reading site…", "Identifying agents…", "Building recommendations…")
-  - Or a static "This usually takes 20–30 seconds" message + indeterminate progress bar
-  - File: `src/app/components/dashboard/` (analyze form), `src/app/api/analyze/route.ts`
-- [ ] **Add product demo video or GIF.** No media on landing page. A 30-second screen recording of the analysis flow (URL → recommendations → launch) would massively increase conversion. Place in `public/demo.mp4` and embed below the hero.
-- [ ] **Replace hypothetical use cases with real ones.** "A B2B SaaS startup" reads as fabricated. Even one real customer name + quote 10x's credibility. Find and update in landing-page sections.
-- [ ] **Add OG-image as a proper PNG.** Current `og-image` is SVG. LinkedIn and iMessage don't render SVG previews. Generate 1200×630 PNG and update `metadata` in `src/app/layout.tsx`.
+### Tabs to pre-open before each client meeting
+- `http://localhost:3007/admin/shopify` (for getsoma)
+- `http://localhost:3007/admin/timesheets` (for JAA)
+- `https://admin.shopify.com/store/zizrev-ej/products` (Shopify side proof)
+- Telegram desktop with `@timesheettrial_bot` chat ready (for JAA)
+- A terminal running `tail -f /tmp/admin-dev.log` (catch 500s instantly if anything errors mid-demo)
 
-### Reliability
-
-- [ ] **Add Postgres connection pooling check to startup.** Detect "Tenant or user not found" at boot and log a clear warning instead of failing per-request. File: `src/lib/db-postgres.ts`.
-- [ ] **Set up uptime monitoring.** Hit `https://theautonomous.org/api/health` every 5 minutes from BetterStack / UptimeRobot. Alert on 503 to Slack/email.
-- [ ] **Add error tracking.** Wire Sentry (or similar) into `src/app/layout.tsx` and `src/lib/db.ts`. Currently errors are console-logged and lost.
-
-### Rowboat fork
-
-- [ ] **Get rowboat dev server returning 200 on `/`.** After P0 bugs are fixed, verify the full boot loop: Clerk loads → MongoDB connects → Redis connects → renders `/projects`. File: `apps/rowboat/app/page.tsx`, `apps/rowboat/app/app.tsx`.
-- [ ] **Implement voice upload pipeline.** Spec is in `apps/rowboat/CLAUDE.md`: audio → Deepgram → entity extraction (Claude) → MongoDB knowledge graph. Target latency: <5s end-to-end. Files referenced: `apps/rowboat/app/api/voice/route.ts`, `apps/rowboat/app/api/memory/route.ts`.
-- [ ] **Implement pre-meeting brief generation.** Query knowledge graph by attendee → Claude synthesis → structured markdown brief. File: `apps/rowboat/app/api/brief/route.ts`.
-- [ ] **Implement Stripe checkout for Early Access / Executive tiers.** Files: `apps/rowboat/app/lib/stripe.ts`, `apps/rowboat/app/api/stripe/checkout/route.ts`, `apps/rowboat/app/api/stripe/portal/route.ts`, `apps/rowboat/app/api/stripe/webhook/route.ts`.
-
----
-
-## 🟡 P2 — Polish / Tech Debt
-
-### Main app
-
-- [ ] **Make FAQ section collapsible.** All 8 FAQs are currently expanded as static text, adding ~2000px to the homepage. Use accordion pattern. File: `src/app/components/` (find FAQ section in landing).
-- [ ] **Reduce homepage length.** Currently ~9700px (13+ screens). Consolidate the "Not chatbots. Actual teammates." section (8 cards) with the "How it works" section.
-- [ ] **Sign-up page title missing "Sign Up" prefix.** Title is `"The Autonomous — AI Agents..."` instead of `"Sign Up | The Autonomous..."` like sign-in. File: `src/app/sign-up/[[...sign-up]]/page.tsx`.
-- [ ] **Add `vitest` coverage report.** Currently no coverage gate. Add `--coverage` to CI and set threshold (start at 60%).
-- [ ] **TypeScript strict null checks.** `tsconfig.json` is strict but a few files use `as` casting that hides nulls. Audit and remove.
-- [ ] **Replace in-memory rate limiting** (`src/lib/rate-limit.ts`) with Redis-backed (Upstash) for multi-instance deploys.
-- [ ] **Audit `useEffect` data fetching.** Several dashboard components fetch in `useEffect` instead of using server components. Migrate where possible.
-- [ ] **Remove unused agent role icons.** `src/app/components/agent-icons.tsx` likely has dead exports — run `ts-prune` to confirm.
-
-### Rowboat fork
-
-- [ ] **Pin Node version.** Add `apps/rowboat/.nvmrc` with `22.11.0` and `engines.node` in `package.json`.
-- [ ] **Update HeroUI to stable.** Currently on `2.8.0-beta.10` — beta. Upgrade once stable is released, retest.
-- [ ] **Remove `--legacy-peer-deps` workaround.** Caused by HeroUI beta + Clerk 7. Once HeroUI ships stable + supports React 19 cleanly, run plain `npm install`.
-- [ ] **Add `.env.local.example`** in fork that mirrors `.env.example` but with safe placeholder values (no `pk_live_...` strings that look like real keys).
-- [ ] **Document MongoDB schema.** Knowledge-graph collections (Person, Conversation, Commitment, Event, Note) should have a schema doc with example documents and indexes. Add to `apps/rowboat/DESIGN.md` or create `apps/rowboat/SCHEMA.md`.
-
-### Cross-cutting
-
-- [ ] **Unify Clerk config.** If both apps share Clerk, document it in this file's "Cross-app conventions" section so future agents don't fork the auth flow.
-- [ ] **CI pipeline.** No GitHub Actions config visible. Add: lint, typecheck, test, build for each push.
-- [ ] **Pre-commit hooks.** Use `husky` + `lint-staged` to run `prettier` + `eslint` on staged files.
-- [ ] **Update `CLAUDE.md`** in main app to mention the rowboat fork relationship and to point at this `TODO.md`.
+### Optional but high-impact
+- [ ] Rename workspace via the inline edit to match the audience: "Soma Pilot" for getsoma meeting, "JAA Pilot" for JAA meeting
+- [ ] Re-run `bun run scripts/shopify-e2e.ts` once before each demo to confirm token still valid (24h expiry on the cached `shpat_…`)
 
 ---
 
-## 🔵 Backlog — Ideas (Not Yet Scoped)
+## 🟧 POST-DEMO / GO-LIVE
 
-### Product
+### From you · 5–10 min each
 
-- [ ] **Slack integration as a messaging surface** (alongside Telegram and WhatsApp). Many SMB users live in Slack.
-- [ ] **Voice-first onboarding** in the main app: "Tell us about your company" via the browser microphone → Claude transcribes and analyzes → recommendations.
-- [ ] **Agent eval leaderboard** publicly visible — show which agent roles produce highest-quality work (anonymized).
-- [ ] **White-label mode** for agencies — let agencies sell The Autonomous under their own brand.
-- [ ] **Agent marketplace** — let users publish and install community-built agent presets.
-- [ ] **Mobile app (iOS/Android)** — currently the web app is responsive but a native app would help with push notifications for agent updates.
+- [ ] **Commit the working tree** (264-test diff has been sitting since `74b2e50`). Recommend ~6–8 logical commits:
+  1. `feat(db): bootstrap base schema script + migrations 005-006`
+  2. `feat(timesheets): Telegram reminder vertical (DB + cron + webhook + admin UI)`
+  3. `feat(shopify): editor + planner + apply + insights against live store`
+  4. `feat(admin): toast system + send burst + workspace rename + sidebar polish`
+  5. `fix(onboarding): create companies row on final step (was orphaning users at /admin)`
+  6. `chore(dev): service-worker disable on localhost + extension-error filter`
+- [ ] **Rotate all secrets** (security section above)
+- [ ] **Deploy to Railway**:
+  - Connect repo → main branch
+  - Paste every `.env.local` key into Railway env (use `.env.example` as the checklist)
+  - Flip Clerk to production keys (`pk_live_…` / `sk_live_…`)
+  - Set `NEXT_PUBLIC_APP_URL` and `APP_BASE_URL` to `https://theautonomous.org`
+- [ ] **Register Telegram webhook against production URL** (one-shot curl):
+  ```bash
+  TOKEN="<TELEGRAM_BOT_TOKEN>"
+  SECRET="<TELEGRAM_WEBHOOK_SECRET>"
+  curl -X POST "https://api.telegram.org/bot$TOKEN/setWebhook" \
+    -H "Content-Type: application/json" \
+    -d "{\"url\":\"https://theautonomous.org/api/messaging/telegram\",\"secret_token\":\"$SECRET\"}"
+  ```
+- [ ] **Set up Railway cron** for `/api/cron/timesheet-reminders`:
+  - Schedule: `0 17 * * *` (daily 17:00 UTC; use `30 11 * * *` for 17:00 IST since Railway crons run UTC)
+  - Command: `curl "$APP_BASE_URL/api/cron/timesheet-reminders?token=$CRON_SECRET"`
+  - First-run smoke: trigger manually from Railway UI, watch the logs for the run summary
 
-### Engineering
+### Open code work (defer if not blocking)
 
-- [ ] **Move task processor to a queue** (BullMQ on Redis, or SQS). Currently `croner` schedules in-process which doesn't scale across replicas.
-- [ ] **Postgres → Drizzle ORM** migration. Currently raw SQL via `postgres` package. Drizzle would give compile-time schema safety.
-- [ ] **Multi-tenant database isolation.** Currently all companies share tables with `company_id` column. For larger customers, consider row-level security (Postgres RLS).
-- [ ] **Streaming chat UI fallbacks** for slow connections (current SSE has no reconnect logic).
-- [ ] **Webhook retry queue** with exponential backoff for `/api/webhooks/*` deliveries.
+- [ ] **Tighten the topbar** — remove any leftover mock data, ensure user info is real
+- [ ] **Mobile responsive sweep** of `/admin/*` (sidebar is `hidden lg:flex` — would 404 visual on tablet)
+- [ ] **Telegram: per-firm bot tokens** — current code uses one global bot. When a second firm signs up, they'll share `@timesheettrial_bot` which is the wrong UX. Move `TELEGRAM_BOT_TOKEN` to the `integrations` table per-firm.
+- [ ] **Shopify: per-firm credentials** — same comment. `SHOPIFY_CLIENT_ID/SECRET` are global env right now.
+- [ ] **Schedule editor: visual cron builder** — many users don't know cron syntax; the preset chips help but a dedicated wheel/picker would be nicer.
+- [ ] **Vector search via Vault** for the Shopify insights — currently the planner sees the catalog raw; with vault you could also feed past edits, brand voice docs, and competitor research the merchant uploads.
+- [ ] **Webhook auto-registration** on first deploy — there's a TS helper at `src/lib/telegram.ts:setWebhook` already; wire it into a deploy hook or admin button.
+- [ ] **Replace the manual `confirm()` dialogs** in `RowActions` and `MarkSubmittedButton` with the new Toast system's confirm modal (TBD — not yet built).
+- [ ] **A `/admin/timesheets/history`** drilldown — the `timesheet_submissions` table has all the data; a simple page showing past periods + per-employee compliance would be a good v2.
+- [ ] **Render-test admin pages with a Clerk session** — I couldn't fully test these without auth. Confirm `/admin/agents`, `/admin/approvals`, `/admin/notifications`, `/admin/vault`, `/admin/integrations`, `/admin/provisioning` all render cleanly.
 
-### Memory product (rowboat fork)
+### Out of scope for now (intentionally deferred)
 
-- [ ] **Calendar integration** — auto-trigger pre-meeting brief 15 min before each Google Calendar event.
-- [ ] **CRM sync** — write extracted entities back to HubSpot/Salesforce/Pipedrive.
-- [ ] **Chrome extension** — capture conversations from Gmail / LinkedIn / WhatsApp Web directly into the knowledge graph.
-- [ ] **Recall-style "moments" view** — timeline of past conversations with searchable transcripts.
+- WhatsApp via Gupshup — code exists but BSP signup never started; merchant pivot to Telegram makes this lower priority
+- Old `/dashboard/[companyId]/*` subtree — files on disk but unreachable; safe to delete in a follow-up
+- Memory product (`autonomous-memory`) — separate repo, separate `TODO.md`
+- Shopify: variant-creation, image upload, smart-collection creation (deliberately excluded from v1; can add per merchant request)
+- Multi-tenant Telegram bots (one bot per firm) — covered above as code-work item
 
 ---
 
-## Cross-App Conventions
+## 📜 TL;DR — Tomorrow's order
 
-- **Clerk auth is shared** (planned) between main app and rowboat fork. Don't fork the sign-in flow — reuse `@clerk/nextjs` instance.
-- **Design system** is defined in `DESIGN.md` (one per repo). They share fonts (Instrument Serif + DM Sans) and accent color (#D4A853). Read before any UI change.
-- **Database boundaries:**
-  - Main app → SQLite (dev) / Supabase Postgres (prod). Schema in `src/lib/db-sqlite.ts`.
-  - Rowboat fork → MongoDB (knowledge graph) + Redis (queues). Schema in `apps/rowboat/src/entities/models/`.
-  - **Never share data across these databases directly.** Use HTTP APIs if cross-product data is needed.
-- **Background work** lives in workers (`src/worker.ts` for main; `apps/rowboat/app/scripts/jobs-worker.ts` for memory). Don't run long-running tasks inline in API routes.
-- **Secrets policy:** never commit `.env.local`, never log full tokens. Use AES-256-GCM (`ENCRYPTION_KEY` env var) for at-rest encryption of user-supplied API keys (`src/lib/db-sqlite.ts` `storeUserApiKey`).
+1. **Right before the demo:** browser spot-check (above), pre-open tabs, tail dev log
+2. **In each demo:** rename workspace to match audience → walk through the relevant vertical
+3. **After the demo:** rotate secrets → commit working tree → deploy to Railway → register Telegram webhook → set up cron
 
 ---
 
-## Recently Completed (for context)
-
-- 2026-04-28 — Restored Supabase project from `INACTIVE` → `ACTIVE_HEALTHY`.
-- 2026-04-28 — Installed `framer-motion` in rowboat fork (HeroUI peer dep).
-- 2026-04-28 — Wrote new README.md and TODO.md for handoff.
-- 2026-04-XX — Replaced Chainflux branding with The Autonomous Org across all pages (commit `fe70608`).
-- 2026-04-XX — Wired pricing CTAs to Clerk modal, fixed newsletter error layout (commit `89a08ac`).
-- 2026-04-XX — Made DB connection errors non-fatal in `/api/analyze` (commits `bc56b58`, `a86383a`).
-- 2026-04-XX — Wired up newsletter + contact forms via Resend, fixed PWA icons (commit `3153b6c`).
-
----
-
-## Useful Commands
+## 🗂 Helper scripts you can lean on
 
 ```bash
-# Main app
-cd /Users/abhinavramesh/theautonomousorg
-npm run dev                           # Start on :3000
-npm test                              # Vitest
-curl http://localhost:3000/api/health # Sanity check
+# Live Shopify smoke — catalog read, no mutations
+bun run scripts/shopify-smoke.ts
 
-# Rowboat fork
-cd /Users/abhinavramesh/autonomous-memory/apps/rowboat
-npm run dev                           # Start on :3000 (uses Turbopack)
-npm run mongodb-ensure-indexes        # Set up MongoDB indexes
-npm run setupQdrant                   # Set up Qdrant vectors
-npm run rag-worker                    # Run RAG worker
-npm run jobs-worker                   # Run background jobs worker
+# Print current tags for verification before/after Apply
+bun run scripts/shopify-tags.ts
 
-# Both
-git status
-git log --oneline -20
-gh pr create
+# Full Shopify e2e: token → plan → apply → verify → rollback → verify clean
+bun run scripts/shopify-e2e.ts
+
+# Live Claude insights run (no Clerk)
+bun run scripts/shopify-insights-test.ts
+
+# Telegram webhook handler dry-run (link → DONE → HELP → reset)
+bun run scripts/telegram-webhook-e2e.ts
+
+# Timesheet domain dry-run (DB roster + cron pass)
+bun run scripts/timesheet-e2e.ts
+
+# Bootstrap base schema on a fresh Supabase
+DATABASE_URL='postgresql://…' bun run scripts/init-base-schema.ts
 ```
 
-## Quick References
+---
 
-- Supabase project ref: `hobjxomvmxradkgnivol` (region: `ap-southeast-1`)
-- Production URL: `theautonomous.org`
-- Memory app target URL: `memory.theautonomous.org`
-- Clerk dashboard: [dashboard.clerk.com](https://dashboard.clerk.com)
-- Railway dashboard: [railway.app/project/...](https://railway.app)
-- Resend dashboard: [resend.com/domains](https://resend.com/domains)
-- Stripe dashboard: [dashboard.stripe.com](https://dashboard.stripe.com)
+## File-level diff since `74b2e50` (current uncommitted work)
+
+See `HANDOFF.md` for the full file-by-file breakdown — that's the source of truth for the diff state.

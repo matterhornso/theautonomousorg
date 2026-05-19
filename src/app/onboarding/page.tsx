@@ -165,18 +165,47 @@ export default function OnboardingPage() {
     if (currentStep < steps.length - 1) {
       setCurrentStep((s) => s + 1);
     } else {
-      // Final step — save and redirect
+      // Final step — save profile + create the workspace company, then go.
       setSaving(true);
-      await fetch("/api/profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          biggest_challenges: selectedChallenges.join("; "),
-          automation_goals: selectedAutomations.join("; "),
-        }),
-      });
-      router.push("/");
+      try {
+        await fetch("/api/profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...form,
+            biggest_challenges: selectedChallenges.join("; "),
+            automation_goals: selectedAutomations.join("; "),
+          }),
+        });
+        // The sidebar's "Workspace" pill uses the company name. Default to a
+        // user-centric label so each signup ends up with *their* workspace —
+        // "Riya's Workspace" is more honest than recycling the company name
+        // they typed. Falls back to "My Workspace" when no name is available.
+        const firstName =
+          form.full_name.trim().split(/\s+/)[0] ||
+          user?.firstName ||
+          "";
+        const workspaceName = firstName
+          ? `${firstName}'s Workspace`
+          : "My Workspace";
+        const companyRes = await fetch("/api/companies", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: workspaceName,
+            url: form.company_website.trim() || "https://example.com",
+            industry: form.industry || undefined,
+            stage: form.company_size || undefined,
+          }),
+        });
+        if (!companyRes.ok) {
+          const json = await companyRes.json().catch(() => ({}));
+          console.error("Company create failed:", json);
+        }
+      } catch (err) {
+        console.error("Onboarding finalise failed:", err);
+      }
+      router.push("/admin");
     }
   };
 
