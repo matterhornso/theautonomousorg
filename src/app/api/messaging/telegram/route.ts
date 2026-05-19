@@ -21,6 +21,14 @@ import {
   markSubmitted,
   currentPeriodKey,
 } from "@/lib/timesheets";
+import {
+  findBroadcastAdmin,
+  registerBroadcastAdmin,
+  interpretCommand,
+  runBroadcast,
+  sendReminders,
+  logBroadcast,
+} from "@/lib/broadcast";
 import { ceoTools, executeCeoTool } from "@/lib/mcp/ceo-tools";
 import { createAgentRun, completeAgentRun } from "@/lib/agent-runs";
 import { buildLessonsHelper } from "@/lib/lessons";
@@ -85,6 +93,102 @@ export async function POST(request: NextRequest) {
     ]
       .filter(Boolean)
       .join(" ");
+
+    // Best-effort status reply to the admin. A failed status send (e.g. the
+    // admin blocked the bot) must never abort the actual broadcast work.
+    const tellAdmin = async (msg: string) => {
+      try {
+        await sendMessage(chatId, msg);
+      } catch (err) {
+        console.warn("[telegram] admin reply send failed:", err);
+      }
+    };
+
+    // ─── Broadcast-admin flow ───────────────────────────────────────
+    // Runs FIRST: a registered admin's chat is a fan-out command channel,
+    // not an employee or end-user chat. `/register <code>` enrols a chat.
+
+    const registerMatch = text.match(/^\/register\s+(\S+)\s*$/i);
+    const broadcastAdmin = await findBroadcastAdmin(chatId);
+
+    if (registerMatch && !broadcastAdmin) {
+      const result = await registerBroadcastAdmin(
+        chatId,
+        registerMatch[1]!,
+        displayName || null
+      );
+      await tellAdmin(
+        result.ok
+          ? `You're registered as a broadcast admin. ✅\n\n` +
+            `Message me in plain English — e.g. *"tell everyone the office is closed Friday"* — ` +
+            `and I'll send it to every contact by email and Telegram. ` +
+            `Or say *"send timesheet reminders"* to trigger the weekly pass.`
+          : `Couldn't register: ${result.error}`
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    if (broadcastAdmin) {
+      if (text === "/start" || registerMatch) {
+        await tellAdmin(
+          `You're a *broadcast admin*. 📣\n\n` +
+            `• Send a plain-English instruction and I'll broadcast it to all firm ` +
+            `contacts (email + Telegram).\n` +
+            `• Say *"send timesheet reminders"* to run the weekly reminder pass.\n\n` +
+            `Add contacts in bulk via CSV on the admin dashboard.`
+        );
+        return NextResponse.json({ ok: true });
+      }
+
+      const cmd = await interpretCommand(text);
+      await tellAdmin(cmd.reply);
+
+      if (cmd.action === "broadcast") {
+        const res = await runBroadcast(
+          broadcastAdmin.companyId,
+          cmd.message,
+          cmd.subject
+        );
+        const failed = res.emailFailed + res.telegramFailed;
+        await logBroadcast({
+          companyId: broadcastAdmin.companyId,
+          adminChatId: chatId,
+          instruction: text,
+          action: "broadcast",
+          message: cmd.message,
+          emailSent: res.emailSent,
+          telegramSent: res.telegramSent,
+          failed,
+        });
+        await tellAdmin(
+          `Done — ${res.totalContacts} contact(s): ` +
+            `*${res.emailSent}* email, *${res.telegramSent}* Telegram` +
+            (failed > 0 ? `, ${failed} failed.` : `.`)
+        );
+      } else if (cmd.action === "send_reminders") {
+        const res = await sendReminders(broadcastAdmin.companyId);
+        await logBroadcast({
+          companyId: broadcastAdmin.companyId,
+          adminChatId: chatId,
+          instruction: text,
+          action: "send_reminders",
+          telegramSent: res.sent,
+          failed: res.failed,
+        });
+        await tellAdmin(
+          `Timesheet reminders for *${res.periodKey}*: ` +
+            `${res.sent} sent, ${res.failed} not reachable (no linked Telegram).`
+        );
+      } else {
+        await logBroadcast({
+          companyId: broadcastAdmin.companyId,
+          adminChatId: chatId,
+          instruction: text,
+          action: "unknown",
+        });
+      }
+      return NextResponse.json({ ok: true });
+    }
 
     // ─── Timesheet flow ─────────────────────────────────────────────
     // Runs BEFORE agent routing because timesheet employees may not have

@@ -12,6 +12,7 @@ const isProtectedRoute = createRouteMatcher([
   "/api/provisioning(.*)",
   "/api/shopify(.*)",
   "/api/timesheets(.*)",
+  "/api/contacts(.*)",
   "/api/vault(.*)",
   // NOT gated here (route handlers do their own auth with internal-secret bypass):
   //   /api/memory/*           — Deepgram / Fireflies / Zoom webhooks
