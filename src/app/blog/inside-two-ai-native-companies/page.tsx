@@ -2,14 +2,25 @@ import { Navbar } from "../../components/navbar";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+const POST_URL =
+  "https://www.theautonomous.org/blog/inside-two-ai-native-companies";
+
 export const metadata: Metadata = {
   title:
     "Inside Two AI-Native Companies: An Accounting Firm and a Revenue Agent",
   description:
     "Two case studies from The Autonomous — a chartered accountancy firm running its compliance loop on Telegram, and an e-commerce revenue agent shipping catalog edits in minutes. Same platform, different shapes.",
-  alternates: {
-    canonical:
-      "https://theautonomous.org/blog/inside-two-ai-native-companies",
+  alternates: { canonical: POST_URL },
+  openGraph: {
+    type: "article",
+    url: POST_URL,
+    title:
+      "Inside Two AI-Native Companies: An Accounting Firm and a Revenue Agent",
+    description:
+      "Two case studies from The Autonomous — a chartered accountancy firm and an e-commerce revenue agent.",
+    publishedTime: "2026-05-13",
+    modifiedTime: "2026-05-13",
+    authors: ["Abhinav Ramesh"],
   },
   keywords: [
     "AI-native company",
@@ -25,31 +36,67 @@ export const metadata: Metadata = {
 
 const articleJsonLd = {
   "@context": "https://schema.org",
-  "@type": "Article",
+  "@type": "BlogPosting",
+  "@id": POST_URL,
   headline:
     "Inside Two AI-Native Companies: An Accounting Firm and a Revenue Agent",
   description:
     "Two case studies from The Autonomous — a chartered accountancy firm running its compliance loop on Telegram, and an e-commerce revenue agent shipping catalog edits in minutes.",
+  image: {
+    "@type": "ImageObject",
+    url: "https://www.theautonomous.org/og-image.png",
+    width: 1200,
+    height: 630,
+  },
   author: {
     "@type": "Person",
+    "@id": "https://www.theautonomous.org/#founder",
     name: "Abhinav Ramesh",
-    url: "https://theautonomous.org",
+    jobTitle: "Founder",
+    url: "https://www.theautonomous.org/about",
+    sameAs: [
+      "https://twitter.com/chainflux",
+      "https://github.com/matterhornso",
+    ],
   },
   publisher: {
     "@type": "Organization",
-    name: "TheAutonomous",
-    url: "https://theautonomous.org",
+    "@id": "https://www.theautonomous.org/#organization",
+    name: "The Autonomous",
+    url: "https://www.theautonomous.org",
     logo: {
       "@type": "ImageObject",
-      url: "https://theautonomous.org/icon.svg",
+      url: "https://www.theautonomous.org/icon.svg",
+      width: 512,
+      height: 512,
     },
   },
   datePublished: "2026-05-13",
   dateModified: "2026-05-13",
-  mainEntityOfPage: {
-    "@type": "WebPage",
-    "@id":
-      "https://theautonomous.org/blog/inside-two-ai-native-companies",
+  mainEntityOfPage: { "@type": "WebPage", "@id": POST_URL },
+  isPartOf: { "@id": "https://www.theautonomous.org/#website" },
+  breadcrumb: {
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://www.theautonomous.org",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Blog",
+        item: "https://www.theautonomous.org/blog",
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: "Inside Two AI-Native Companies",
+        item: POST_URL,
+      },
+    ],
   },
 };
 

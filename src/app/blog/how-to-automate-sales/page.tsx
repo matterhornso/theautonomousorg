@@ -2,12 +2,23 @@ import { Navbar } from "../../components/navbar";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+const POST_URL =
+  "https://www.theautonomous.org/blog/how-to-automate-sales";
+
 export const metadata: Metadata = {
   title: "How to Automate Sales with AI Agents: A Step-by-Step Guide",
   description:
     "A practical guide to automating your sales pipeline with AI agents. Learn how to use AI for prospect research, outbound email sequences, lead qualification, and demo scheduling.",
-  alternates: {
-    canonical: "https://theautonomous.org/blog/how-to-automate-sales",
+  alternates: { canonical: POST_URL },
+  openGraph: {
+    type: "article",
+    url: POST_URL,
+    title: "How to Automate Sales with AI Agents: A Step-by-Step Guide",
+    description:
+      "From prospect research to demo scheduling — a practical guide to automating your sales pipeline with AI agents.",
+    publishedTime: "2026-03-26",
+    modifiedTime: "2026-05-23",
+    authors: ["Abhinav Ramesh"],
   },
   keywords: [
     "automate sales with AI",
@@ -21,29 +32,65 @@ export const metadata: Metadata = {
 
 const articleJsonLd = {
   "@context": "https://schema.org",
-  "@type": "Article",
+  "@type": "BlogPosting",
+  "@id": POST_URL,
   headline: "How to Automate Sales with AI Agents: A Step-by-Step Guide",
   description:
     "A practical guide to automating your sales pipeline with AI agents — from prospect research to demo scheduling.",
+  image: {
+    "@type": "ImageObject",
+    url: "https://www.theautonomous.org/og-image.png",
+    width: 1200,
+    height: 630,
+  },
   author: {
-    "@type": "Organization",
-    name: "TheAutonomous",
-    url: "https://theautonomous.org",
+    "@type": "Person",
+    "@id": "https://www.theautonomous.org/#founder",
+    name: "Abhinav Ramesh",
+    url: "https://www.theautonomous.org/about",
+    sameAs: [
+      "https://twitter.com/chainflux",
+      "https://github.com/matterhornso",
+    ],
   },
   publisher: {
     "@type": "Organization",
-    name: "TheAutonomous",
-    url: "https://theautonomous.org",
+    "@id": "https://www.theautonomous.org/#organization",
+    name: "The Autonomous",
+    url: "https://www.theautonomous.org",
     logo: {
       "@type": "ImageObject",
-      url: "https://theautonomous.org/icon.svg",
+      url: "https://www.theautonomous.org/icon.svg",
+      width: 512,
+      height: 512,
     },
   },
   datePublished: "2026-03-26",
-  dateModified: "2026-03-26",
-  mainEntityOfPage: {
-    "@type": "WebPage",
-    "@id": "https://theautonomous.org/blog/how-to-automate-sales",
+  dateModified: "2026-05-23",
+  mainEntityOfPage: { "@type": "WebPage", "@id": POST_URL },
+  isPartOf: { "@id": "https://www.theautonomous.org/#website" },
+  breadcrumb: {
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://www.theautonomous.org",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Blog",
+        item: "https://www.theautonomous.org/blog",
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: "How to Automate Sales with AI Agents",
+        item: POST_URL,
+      },
+    ],
   },
 };
 
@@ -64,6 +111,17 @@ export default function HowToAutomateSalesPage() {
             &larr; Back to Blog
           </Link>
           <div className="flex items-center gap-3 text-xs text-neutral-400 mb-3">
+            <span className="text-neutral-600">
+              By{" "}
+              <a
+                href="https://twitter.com/chainflux"
+                className="text-neutral-700 hover:text-accent transition-colors"
+                rel="author"
+              >
+                Abhinav Ramesh
+              </a>
+            </span>
+            <span>&middot;</span>
             <time dateTime="2026-03-26">March 26, 2026</time>
             <span>&middot;</span>
             <span>9 min read</span>

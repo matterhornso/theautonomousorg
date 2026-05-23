@@ -1,68 +1,85 @@
 import { MetadataRoute } from "next";
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://theautonomous.org";
+// Canonical host — www is the live, resolving hostname.
+// The apex (theautonomous.org) returns a connection error; all URLs must use www.
+const BASE = "https://www.theautonomous.org";
 
+export default function sitemap(): MetadataRoute.Sitemap {
   return [
+    // ── Core marketing pages ────────────────────────────────────────────────
     {
-      url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 1,
+      url: BASE,
+      lastModified: new Date("2026-05-13"), // last structural content change
+      priority: 1.0,
     },
     {
-      url: `${baseUrl}/memory`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
+      url: `${BASE}/memory`,
+      lastModified: new Date("2026-05-12"),
       priority: 0.9,
     },
     {
-      url: `${baseUrl}/blog`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
+      url: `${BASE}/contact`,
+      lastModified: new Date("2026-03-21"),
+      priority: 0.6,
+    },
+
+    // ── Blog index ──────────────────────────────────────────────────────────
+    {
+      url: `${BASE}/blog`,
+      lastModified: new Date("2026-05-13"), // bumped when latest post shipped
       priority: 0.8,
     },
+
+    // ── Blog posts — ordered by datePublished desc ──────────────────────────
+    // inside-two-ai-native-companies: datePublished 2026-05-13 (was missing)
     {
-      url: `${baseUrl}/blog/what-are-ai-agents`,
+      url: `${BASE}/blog/inside-two-ai-native-companies`,
+      lastModified: new Date("2026-05-13"),
+      priority: 0.75,
+    },
+    // why-we-are-building-the-autonomous: datePublished 2026-05-12 (was missing)
+    {
+      url: `${BASE}/blog/why-we-are-building-the-autonomous`,
+      lastModified: new Date("2026-05-12"),
+      priority: 0.75,
+    },
+    // Original trio — all datePublished 2026-03-26
+    {
+      url: `${BASE}/blog/what-are-ai-agents`,
       lastModified: new Date("2026-03-26"),
-      changeFrequency: "monthly",
       priority: 0.7,
     },
     {
-      url: `${baseUrl}/blog/ai-agents-vs-chatbots`,
+      url: `${BASE}/blog/ai-agents-vs-chatbots`,
       lastModified: new Date("2026-03-26"),
-      changeFrequency: "monthly",
       priority: 0.7,
     },
     {
-      url: `${baseUrl}/blog/how-to-automate-sales`,
+      url: `${BASE}/blog/how-to-automate-sales`,
       lastModified: new Date("2026-03-26"),
-      changeFrequency: "monthly",
       priority: 0.7,
     },
+
+    // ── Legal ───────────────────────────────────────────────────────────────
     {
-      url: `${baseUrl}/contact`,
+      url: `${BASE}/privacy`,
       lastModified: new Date("2026-03-21"),
-      changeFrequency: "monthly",
-      priority: 0.5,
-    },
-    {
-      url: `${baseUrl}/sign-in`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.4,
-    },
-    {
-      url: `${baseUrl}/privacy`,
-      lastModified: new Date("2026-03-21"),
-      changeFrequency: "monthly",
       priority: 0.3,
     },
     {
-      url: `${baseUrl}/terms`,
+      url: `${BASE}/terms`,
       lastModified: new Date("2026-03-21"),
-      changeFrequency: "monthly",
       priority: 0.3,
     },
+
+    // ── Excluded (do NOT add back without review) ───────────────────────────
+    // /sign-in          — auth page; Google ignores but it pollutes the index
+    // /sign-up          — same reason
+    // /dashboard/*      — behind auth; also Disallowed in robots.txt
+    // /admin/*          — internal tooling
+    // /api/*            — API routes
+    // /onboarding       — post-auth flow; Disallowed in robots.txt
+    // /provisioning/*   — Disallowed in robots.txt
+    // /profile          — user-specific, behind auth
   ];
 }

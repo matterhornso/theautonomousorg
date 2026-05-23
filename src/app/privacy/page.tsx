@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description: "How The Autonomous collects, uses, and protects your data. Learn about our AI data processing practices, your rights, and our commitment to privacy.",
-  alternates: { canonical: "https://theautonomous.org/privacy" },
+  alternates: { canonical: "https://www.theautonomous.org/privacy" },
 };
 
 export default function PrivacyPage() {

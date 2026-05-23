@@ -1,15 +1,22 @@
-# TheAutonomous
+# The Autonomous
+# Version: 2026-05-23
+# License: CC BY 4.0 — https://creativecommons.org/licenses/by/4.0/
+# Site: https://www.theautonomous.org
+# Built by: Chainflux — https://twitter.com/chainflux
+# Founder: Abhinav Ramesh
+# Full content: https://www.theautonomous.org/llms-full.txt
+
 > AI agents for every role in your company.
 
-## What is TheAutonomous?
-TheAutonomous is an AI workforce platform that provides specialized AI agents for every business function. Instead of hiring individual employees or subscribing to dozens of SaaS tools, companies enter their website URL, receive AI-powered recommendations for which agent roles would have the highest impact, and launch a team of AI agents that start working immediately.
+## What is The Autonomous?
+The Autonomous is an AI workforce platform that provides specialized AI agents for every business function. Instead of hiring individual employees or subscribing to dozens of SaaS tools, companies enter their website URL, receive AI-powered recommendations for which agent roles would have the highest impact, and launch a team of AI agents that start working immediately.
 
-Each agent is a fully autonomous software entity powered by Claude Sonnet 4.6 (or a user-chosen model) with persistent memory, role-specific skills, real tool integrations, and the ability to collaborate with other agents. Agents don't just answer questions — they proactively research, execute tasks, and report back.
+Each agent is a fully autonomous software entity powered by Claude Sonnet 4.6 (or a user-chosen model) with persistent memory, role-specific skills, real tool integrations, and the ability to collaborate with other agents. Agents do not just answer questions — they proactively research, execute tasks, and report back.
 
-TheAutonomous is built by Chainflux and designed for traditional small businesses getting into AI for the first time — not AI-native companies. The platform is designed so non-technical business owners can get AI agents working for their company in 2 minutes.
+The Autonomous is built by Chainflux and designed for traditional small businesses adopting AI for the first time, as well as AI-native startups building closed-loop operations from day one. The platform is designed so non-technical business owners can get AI agents working for their company in 2 minutes.
 
 ## How It Works
-1. Enter your company website URL at theautonomous.org
+1. Enter your company website URL at https://www.theautonomous.org
 2. AI analyzes your business — industry, team size, workflows, growth stage
 3. Platform recommends which AI agents would have the highest impact
 4. Select the roles you need — each agent arrives pre-configured
@@ -19,7 +26,7 @@ TheAutonomous is built by Chainflux and designed for traditional small businesse
 ## Agent Roles (14 Pre-Built + Custom)
 - **Sales Agent:** Prospect research via Apollo.io (210M+ contacts), outbound email sequences via Instantly.ai, lead qualification, CRM updates, demo scheduling, pipeline management
 - **Marketing Agent:** SEO audits, content creation, social media management, campaign planning, performance analytics, competitor content analysis
-- **Accounting Agent:** Transaction categorization, invoice processing, expense tracking, financial reporting, tax preparation support
+- **Accounting Agent:** Transaction categorization, invoice processing, expense tracking, financial reporting, tax preparation support, GST/TDS reconciliation
 - **Strategy Agent:** Market research, competitive analysis, business planning, KPI tracking, growth opportunity identification, board deck preparation
 - **Product Agent:** User research, feature prioritization, roadmap planning, requirements documentation, competitor feature analysis
 - **Front-End Engineering Agent:** UI code review, component architecture, accessibility audits, performance optimization, design system maintenance
@@ -37,8 +44,9 @@ TheAutonomous is built by Chainflux and designed for traditional small businesse
 - 14 AI agent roles with 168 role-specific skills and 112 system capabilities
 - Proactive task execution — agents work before you ask
 - Persistent memory across all conversations — agents get smarter over time
+- Shared tenant-scoped knowledge graph — every agent reads from one brain
 - Inter-agent collaboration via @mentions (e.g., Sales agent asks Admin agent to draft a contract)
-- Real tool integrations: Apollo.io (210M+ contacts), Instantly.ai (email automation), Web Search
+- Real tool integrations: Apollo.io (210M+ contacts), Instantly.ai (email automation), Web Search, Shopify Admin API
 - BYOM (Bring Your Own Model): GPT-4o, Gemini, Llama, Mistral, or any OpenAI-compatible endpoint
 - WhatsApp and Telegram messaging bridges — manage agents from your phone
 - Admin dashboard for full agent management and analytics
@@ -53,38 +61,62 @@ TheAutonomous is built by Chainflux and designed for traditional small businesse
 - **Enterprise (Custom):** Unlimited TA credits with volume discounts. All integrations. Custom models & fine-tuning. Dedicated support. SOC2 & HIPAA compliance.
 - All plans: 50 credits per prompt. No credit card required for Starter.
 
+## Autonomous Memory (Companion Product)
+- **Early Access ($99/month):** Unlimited recordings, Fireflies/Otter/Granola sync, pre-meeting briefs, memory graph search, desktop + web + mobile.
+- **Executive ($499/month):** Everything in Early Access plus dedicated onboarding, private Slack with founders, custom brief formats, CRM sync, priority Fireflies ingestion, SOC 2 Type I docs + DPA.
+
 ## Technical Details
 - Built with Next.js 16, React 19, TypeScript, Tailwind CSS 4
 - AI backbone: Claude Sonnet 4.6 (Anthropic) by default, with BYOM support
-- Database: Supabase (PostgreSQL)
+- Database: Supabase (PostgreSQL) with Row-Level Security per tenant
 - Authentication: Clerk
 - Email: Resend
 - Payments: Stripe
-- Hosting: Cloud-based with isolated instances per company
+- Hosting: Railway with isolated instances per company
 
 ## Target Market
-Traditional small businesses getting into AI for the first time. CTOs, COOs, and founders of SMBs and enterprises looking to augment or automate business workflows with AI.
+- Traditional small businesses adopting AI for the first time (CA firms, law firms, consultancies)
+- AI-native startups building closed-loop operations from day one
+- CTOs, COOs, founders, and operators of SMBs looking to augment or replace business workflows with AI
+
+## Customer Case Studies
+- **JAA Associates** — A chartered accountancy firm in Bengaluru running its compliance loop on Telegram. Partners message the bot in plain English to broadcast firm-wide updates and trigger weekly timesheet reminder passes. Replaces the Friday-afternoon WhatsApp chase.
+- **getsoma.store** — A direct-to-consumer Shopify merchant. Uses The Autonomous as a revenue agent: one-click category-aware competitor insights with prefilled edit suggestions, and prompt-driven catalog mutations applied sequentially via the Shopify Admin API with diff preview and rollback.
 
 ## FAQ
 
-### What is TheAutonomous?
-TheAutonomous is an AI platform that provides AI agents for every role in your company — Sales, Marketing, Accounting, HR, Legal, Strategy, Product, Engineering, and more. Each agent comes with role-specific skills, persistent memory, and real tool integrations.
+### What is The Autonomous?
+The Autonomous is an AI platform that provides AI agents for every role in your company — Sales, Marketing, Accounting, HR, Legal, Strategy, Product, Engineering, and more. Each agent comes with role-specific skills, persistent memory across conversations, and real tool integrations. You enter your company website, the platform analyzes your business and recommends agents, and you launch your AI workforce in two minutes.
 
 ### How does it differ from chatbots?
 Chatbots are reactive — you ask a question, you get an answer, the conversation resets. AI agents have persistent memory, use real tools (APIs, databases, email), work proactively, specialize in specific roles, and collaborate with other agents. They are autonomous workers, not conversation interfaces.
 
+### How does it differ from RPA or traditional automation?
+RPA scripts a fixed sequence of UI clicks. Traditional automation runs deterministic if-then rules. An AI agent reasons about a goal, picks tools, and adapts when the world changes. RPA breaks when the UI changes. An agent re-plans.
+
 ### What AI models are supported?
-Claude Sonnet 4.6 is the default. Users can bring their own models: GPT-4o, Gemini, Llama, Mistral, or any OpenAI-compatible endpoint.
+Claude Sonnet 4.6 is the default — the best reasoning model available today. Users on Growth and Enterprise plans can bring their own model: GPT-4o, Gemini, Llama, Mistral, or any OpenAI-compatible endpoint. Use Haiku for high-throughput tasks, Opus for strategy, or a fine-tune for domain-specific judgment. The memory and the agents stay the same — only the brain changes.
 
 ### Is my data secure?
-Each agent runs in an isolated cloud instance. Data never crosses between companies. All communications are encrypted. Enterprise customers can access SOC2 and HIPAA compliance.
+Each company runs in an isolated tenant with row-level security on every database read. Data never crosses between companies — your agents cannot see another tenant's knowledge graph, and the platform enforces this at the database layer. All traffic is HTTPS, secrets are encrypted at rest. Enterprise customers get SOC 2 Type I docs, a DPA, and HIPAA compliance.
 
 ### How do I communicate with agents?
-Via the admin dashboard, WhatsApp, or Telegram. Multiple team members can connect to the same agent.
+Via the admin dashboard, WhatsApp, or Telegram. Multiple team members can connect to the same agent. A conversation that starts in WhatsApp can continue from the dashboard without losing state.
+
+### Can multiple agents share information?
+Yes. Every agent in your workspace reads from and writes to one tenant-scoped knowledge graph. The Sales agent already knows what the Strategy agent decided yesterday. The Legal agent already knows the contract terms the Sales agent agreed to last week. This shared memory is the actual breakthrough — a team of agents sharing one brain is qualitatively different from a single agent.
+
+### What does "AI-native company" mean in practice?
+A company designed as a closed loop where every action produces an artifact, every artifact feeds back into the central intelligence, and the next decision starts from everything that came before. Productivity gains are linear. Closed loops compound exponentially.
+
+### Who founded The Autonomous?
+The Autonomous is built by Abhinav Ramesh, founder of Chainflux. Contact: abhinav@chainflux.com or @chainflux on Twitter/X.
 
 ## Links
-- Website: https://theautonomous.org
-- Blog: https://theautonomous.org/blog
+- Website: https://www.theautonomous.org
+- Blog: https://www.theautonomous.org/blog
+- Memory product: https://www.theautonomous.org/memory
 - Contact: hello@theautonomous.org
-- Privacy: https://theautonomous.org/privacy
-- Terms: https://theautonomous.org/terms
+- Founder: abhinav@chainflux.com — https://twitter.com/chainflux
+- Privacy: https://www.theautonomous.org/privacy
+- Terms: https://www.theautonomous.org/terms
