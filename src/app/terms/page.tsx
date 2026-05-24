@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Terms of Service",
   description: "Terms of Service for The Autonomous AI agent platform. Covers usage policies, AI agent limitations, billing, third-party integrations, and intellectual property.",
-  alternates: { canonical: "https://theautonomous.org/terms" },
+  alternates: { canonical: "https://www.theautonomous.org/terms" },
 };
 
 export default function TermsPage() {

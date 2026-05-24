@@ -2,11 +2,20 @@ import { Navbar } from "../components/navbar";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+const BLOG_URL = "https://www.theautonomous.org/blog";
+
 export const metadata: Metadata = {
   title: "Blog",
   description:
-    "Insights on AI agents, business automation, and the future of autonomous companies. Guides, comparisons, and strategies from TheAutonomous.",
-  alternates: { canonical: "https://theautonomous.org/blog" },
+    "Insights on AI agents, business automation, and the future of autonomous companies. Guides, comparisons, and strategies from The Autonomous.",
+  alternates: { canonical: BLOG_URL },
+  openGraph: {
+    type: "website",
+    url: BLOG_URL,
+    title: "The Autonomous Blog",
+    description:
+      "Insights on AI agents, business automation, and the future of autonomous companies.",
+  },
 };
 
 const posts = [
@@ -55,10 +64,40 @@ const posts = [
   },
 ];
 
+const blogJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Blog",
+  "@id": BLOG_URL,
+  name: "The Autonomous Blog",
+  description:
+    "Insights on AI agents, business automation, and the future of autonomous companies. Guides, comparisons, and strategies from The Autonomous.",
+  url: BLOG_URL,
+  publisher: { "@id": "https://www.theautonomous.org/#organization" },
+  isPartOf: { "@id": "https://www.theautonomous.org/#website" },
+  blogPost: posts.map((p) => ({
+    "@type": "BlogPosting",
+    "@id": `https://www.theautonomous.org/blog/${p.slug}`,
+    headline: p.title,
+    description: p.description,
+    url: `https://www.theautonomous.org/blog/${p.slug}`,
+    datePublished: p.date,
+    author: {
+      "@type": "Person",
+      "@id": "https://www.theautonomous.org/#founder",
+      name: "Abhinav Ramesh",
+    },
+    publisher: { "@id": "https://www.theautonomous.org/#organization" },
+  })),
+};
+
 export default function BlogPage() {
   return (
     <div className="min-h-screen bg-surface">
       <Navbar />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogJsonLd) }}
+      />
       <div className="max-w-[1280px] mx-auto px-6 lg:px-8 pt-28 pb-20">
         <h1 className="font-[family-name:var(--font-serif)] text-4xl sm:text-5xl tracking-tight mb-4">
           Blog

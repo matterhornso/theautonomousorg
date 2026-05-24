@@ -3,26 +3,93 @@ import { Navbar } from "../components/navbar";
 import { Reveal } from "../components/reveal";
 import { MemoryWaitlistForm } from "../components/memory-waitlist-form";
 
+const MEMORY_URL = "https://www.theautonomous.org/memory";
+
 export const metadata: Metadata = {
   title: "Autonomous Memory — Never forget a conversation",
   description:
     "An executive memory layer for CEOs, CROs, and founders. Record meetings, import Fireflies transcripts, and get pre-meeting briefs that remember every commitment, context, and person you've ever talked to.",
-  alternates: {
-    canonical: "https://theautonomous.org/memory",
-  },
+  alternates: { canonical: MEMORY_URL },
   openGraph: {
     title: "Autonomous Memory — Never forget a conversation",
     description:
       "Your private executive memory. Every meeting, commitment, and relationship — searchable, synthesized, and waiting before your next call.",
-    url: "https://theautonomous.org/memory",
+    url: MEMORY_URL,
     type: "website",
+    images: [
+      {
+        url: "https://www.theautonomous.org/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Autonomous Memory — Never forget a conversation",
+        type: "image/png",
+      },
+    ],
   },
+};
+
+const memoryJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "@id": `${MEMORY_URL}#software`,
+  name: "Autonomous Memory",
+  url: MEMORY_URL,
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web, iOS, Android, macOS",
+  description:
+    "An executive memory layer for CEOs, CROs, and founders. Record meetings, import Fireflies transcripts, and get pre-meeting briefs that remember every commitment, context, and person you've ever talked to.",
+  featureList: [
+    "Unlimited meeting recordings and transcript imports",
+    "Fireflies, Otter, and Granola sync",
+    "Pre-meeting briefs with open commitments and relationship history",
+    "Memory graph search across every conversation",
+    "Desktop, web, and mobile access",
+    "Source-linked answers — every claim cites its transcript",
+    "Feeds the Autonomous workforce so agents share your context",
+  ],
+  offers: [
+    {
+      "@type": "Offer",
+      name: "Early Access",
+      price: "99",
+      priceCurrency: "USD",
+      priceSpecification: {
+        "@type": "UnitPriceSpecification",
+        price: "99",
+        priceCurrency: "USD",
+        billingDuration: "P1M",
+      },
+      description:
+        "Founders and operators who want in before we open the door.",
+    },
+    {
+      "@type": "Offer",
+      name: "Executive",
+      price: "499",
+      priceCurrency: "USD",
+      priceSpecification: {
+        "@type": "UnitPriceSpecification",
+        price: "499",
+        priceCurrency: "USD",
+        billingDuration: "P1M",
+      },
+      description:
+        "For CEOs, CROs, and GPs running 30+ meetings a week.",
+    },
+  ],
+  creator: { "@id": "https://www.theautonomous.org/#organization" },
+  provider: { "@id": "https://www.theautonomous.org/#organization" },
+  isPartOf: { "@id": "https://www.theautonomous.org/#software" },
 };
 
 export default function MemoryLanding() {
   return (
     <div className="min-h-screen bg-surface">
       <Navbar />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(memoryJsonLd) }}
+      />
 
       {/* ─── Hero — dark, editorial ─────── */}
       <section className="relative bg-primary text-surface overflow-hidden">
