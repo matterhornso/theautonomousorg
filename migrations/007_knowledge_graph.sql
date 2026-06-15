@@ -51,7 +51,10 @@ CREATE POLICY persons_tenant_isolation ON persons
 -- agent run. Contains the transcript (when one exists) and an embedding
 -- for semantic retrieval.
 
-CREATE TABLE IF NOT EXISTS conversations (
+-- NOTE: named `memory_conversations` (not `conversations`) to avoid colliding
+-- with the base agent-chat `conversations` table created by initSchema()
+-- (src/lib/db-postgres.ts). Both are tenant data but unrelated shapes.
+CREATE TABLE IF NOT EXISTS memory_conversations (
   id TEXT PRIMARY KEY,
   company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   /** meeting | call | email_thread | chat | agent_run | note */
@@ -69,20 +72,20 @@ CREATE TABLE IF NOT EXISTS conversations (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_conversations_company
-  ON conversations(company_id, occurred_at DESC NULLS LAST, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_conversations_source
-  ON conversations(company_id, source, source_ref);
+CREATE INDEX IF NOT EXISTS idx_memory_conversations_company
+  ON memory_conversations(company_id, occurred_at DESC NULLS LAST, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_memory_conversations_source
+  ON memory_conversations(company_id, source, source_ref);
 -- HNSW index for semantic search. Matches vault_chunks index params.
-CREATE INDEX IF NOT EXISTS idx_conversations_embedding
-  ON conversations
+CREATE INDEX IF NOT EXISTS idx_memory_conversations_embedding
+  ON memory_conversations
   USING hnsw (embedding vector_cosine_ops)
   WITH (m = 16, ef_construction = 64);
 
-ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE conversations FORCE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS conversations_tenant_isolation ON conversations;
-CREATE POLICY conversations_tenant_isolation ON conversations
+ALTER TABLE memory_conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE memory_conversations FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS memory_conversations_tenant_isolation ON memory_conversations;
+CREATE POLICY memory_conversations_tenant_isolation ON memory_conversations
   FOR ALL
   USING (company_id = public.current_company_id())
   WITH CHECK (company_id = public.current_company_id());
@@ -133,7 +136,7 @@ CREATE TABLE IF NOT EXISTS commitments (
   status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved', 'overdue', 'cancelled')),
   resolved_at TIMESTAMPTZ,
   /** Provenance — conversation that surfaced this commitment. */
-  source_conversation_id TEXT REFERENCES conversations(id) ON DELETE SET NULL,
+  source_conversation_id TEXT REFERENCES memory_conversations(id) ON DELETE SET NULL,
   metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -169,9 +172,11 @@ CREATE TABLE IF NOT EXISTS events_log (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Plain index (not a `WHERE starts_at > NOW()` partial — NOW() is STABLE, not
+-- IMMUTABLE, which Postgres rejects in an index predicate). The planner still
+-- uses this for the `starts_at >= NOW()` range scans in getUpcomingEvents.
 CREATE INDEX IF NOT EXISTS idx_events_upcoming
-  ON events_log(company_id, starts_at)
-  WHERE starts_at > NOW();
+  ON events_log(company_id, starts_at);
 CREATE INDEX IF NOT EXISTS idx_events_company
   ON events_log(company_id, starts_at DESC);
 
