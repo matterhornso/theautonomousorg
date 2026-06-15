@@ -298,6 +298,7 @@ See `apps/rowboat/.env.example`. Variables:
 | `OPENAI_API_KEY` | Yes | OpenAI-compatible endpoint for rowboat agent runtime |
 | `OPENAI_BASE_URL` | No | Defaults to `https://api.openai.com/v1` |
 | `DEEPGRAM_API_KEY` | Yes | Voice transcription |
+| `FIREFLIES_API_KEY` | No | Fireflies transcript import (`/api/memory/ingest/fireflies`); single-tenant v1 |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_REGION` / `AWS_S3_BUCKET` | Yes | Audio file storage |
 | `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Yes | Billing |
 | `STRIPE_PRICE_EARLY_ACCESS` / `STRIPE_PRICE_EXECUTIVE` | Yes | Stripe price IDs |

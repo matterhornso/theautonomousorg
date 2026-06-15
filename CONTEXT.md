@@ -16,16 +16,28 @@ Then pick the highest-priority unchecked P0 item from `TODO.md` that is not in t
 
 ---
 
-## Ecosystem Map (Two Products)
+## One Platform (with a Memory surface)
 
-The Autonomous Org operates two products in two repos:
+The Autonomous Org is **one platform in one repo**. A company spins up agents for
+every workflow, and every agent task — plus every meeting, call, and decision —
+is logged into a shared **company brain** that all agents read from and write to.
+Memory is **company-shared by default, private opt-in**.
 
 | Product | Repo | Local Path | URL | Status |
 |---------|------|-----------|-----|--------|
-| **The Autonomous** (main platform) | `matterhornso/theautonomousorg` | `/Users/abhinavramesh/theautonomousorg` | [theautonomous.org](https://theautonomous.org) | Live, deployed on Railway |
-| **Autonomous Memory** (memory product) | `matterhornso/rowboat-web3` | `/Users/abhinavramesh/autonomous-memory` | memory.theautonomous.org *(planned)* | In development, not deployed |
+| **The Autonomous** (the platform) | `matterhornso/theautonomousorg` | `/Users/abhinavramesh/theautonomousorg` | [theautonomous.org](https://theautonomous.org) | Live, deployed on Railway |
 
-The memory product lives inside `autonomous-memory/apps/rowboat` — a fork of [rowboat](https://github.com/rowboatlabs/rowboat) customized for executive meeting intelligence. The two products share Clerk auth (single sign-on planned).
+**Memory is not a separate product** — it's a surface of this platform,
+implemented natively in Postgres (knowledge graph in `migrations/007`/`008`,
+visibility lanes in `010`; ingestion via `src/lib/{entity-extractor,deepgram,fireflies,brief}.ts`
+and the `/api/memory/*` routes; surfaced at `/admin/memory`).
+
+> **Dormant (left in place):** the old standalone memory product
+> (`matterhornso/rowboat-web3`, a fork of [rowboat](https://github.com/rowboatlabs/rowboat)
+> at `/Users/abhinavramesh/autonomous-memory`) is retired in practice — never
+> deployed, no production data — and everything it did now lives in this repo. By
+> decision (2026-06-09) we **leave the repo as-is** rather than formally archiving
+> it; don't build there. See `UNIFICATION.md` for the consolidation plan.
 
 ---
 
@@ -272,44 +284,56 @@ A: Yes. Agents use @mentions to collaborate. Your Sales agent can ask Admin to d
 
 ---
 
-## Autonomous Memory (Sister Product)
+## Memory (a surface of the platform)
 
-**What it is:** Persistent AI memory for executives. Record meetings → Deepgram transcription → entity extraction (Claude) → MongoDB knowledge graph. Generate pre-meeting briefs by querying the graph + Claude synthesis.
+**What it is:** Persistent AI memory for the whole company. Meetings, calls, and
+agent runs → transcription/entity-extraction (Claude tool-use) → a **Postgres**
+knowledge graph every agent reads. Pre-meeting briefs are synthesized by querying
+the graph + Claude. This is the same capability the old standalone memory product
+had, now native to the platform — no MongoDB, no Redis, no rowboat runtime.
 
-**Why it exists:** Closes the gap left by Limitless and Rewind for boardroom-grade executive tooling — premium, dark-first UI; no free tier; targets CEOs/COOs/VP Sales who already pay for executive assistants.
+**Why it exists:** A company running on agents needs one shared, durable context.
+Every agent task writes to the brain; every agent run reads it before acting
+(`AgentRunner.beforeRun → queryCompanyMemory`). The closed loop, made the product.
 
-**Pricing:** Early Access $99/mo, Executive $299/mo. No free tier.
+**Ingestion sources (all land in the one graph):**
+- **In-app voice** — record in the browser → `POST /api/memory/ingest/audio-upload`
+  (Deepgram buffer transcription) or webhook → `/api/memory/ingest/audio` (public URL).
+- **Fireflies** — `POST /api/memory/ingest/fireflies` pulls meeting transcripts via
+  the Fireflies GraphQL API (`src/lib/fireflies.ts`), deduped on `conversations.source_ref`.
+  Key is the global `FIREFLIES_API_KEY` env (single-tenant v1, per CLAUDE.md; move to
+  a per-firm `integrations` row when onboarding a second firm).
+- **Calendar** — `/api/calendar/ingest` + the pre-meeting-brief cron.
+- **Manual / text** — `POST /api/memory/ingest`.
 
-**Tech:** Next.js 15 App Router, Clerk (shared with main app), MongoDB (knowledge graph) + Redis (queues), Anthropic Claude (entity extraction + synthesis), Deepgram (transcription), AWS S3 (audio), Stripe (billing). Deploys to Railway.
-
-**Status (2026-04-28):**
-- Code scaffolded: voice/memory/brief/fireflies/health APIs, entity extraction lib, Stripe billing routes, PWA support, Clerk auth migration done (replaced upstream Auth0)
-- **Not yet deployed** — needs MongoDB, Redis, Deepgram, S3, Stripe credentials provisioned
-- See `autonomous-memory/HANDOFF.md` and `autonomous-memory/TODO.md` for the engineering checklist
+**Visibility:** company-shared by default; a member can opt a capture private
+(the "Keep private to me" toggle on the record card). Private rows carry an
+`owner_user_id` and are invisible to agents by construction (agents read with no
+viewer → company-only). Enforced in app-layer SQL (`knowledge-graph.ts`); see
+`migrations/010_memory_visibility.sql` and `UNIFICATION.md`.
 
 **Key domain concepts:**
-- **Recording:** Audio file uploaded → Deepgram → entity extraction → MongoDB write
-- **Entity types:** Person, Conversation, Commitment, Event, Note
-- **Knowledge graph:** Entities cross-referenced by ID in MongoDB
-- **Pre-meeting brief:** Query knowledge graph → Claude synthesis → structured brief
-- **Voice pipeline target:** <5s from upload to entities stored
+- **Conversation:** any captured prose (meeting/call/email/note/agent_run) + transcript.
+- **Entity types:** Person, Conversation, Decision, Commitment, Event, Artifact.
+- **Knowledge graph:** entities + `knowledge_edges`, company-scoped (RLS + app filter).
+- **Pre-meeting brief:** query graph → Claude synthesis → structured brief.
 
 ---
 
-## Engineering Status (Both Products, 2026-04-28)
+## Engineering Status (2026-06-09)
 
-**The Autonomous (main app):**
-- ✅ Live at theautonomous.org with Supabase Postgres backend (just restored from auto-pause; consider Pro to prevent recurrence)
-- ✅ 7 commits pushed today: gitignore cleanup, /memory landing + waitlist, marketing skills bundle, CONTEXT.md, README+TODO rewrite, branding fix, pricing CTA fix
-- 🟡 Health endpoint healthy; Clerk still using dev keys; analytics + tracking incomplete
-- See `TODO.md` § "P0 — Action Items Requiring User"
-
-**Autonomous Memory (rowboat fork):**
-- ✅ Auth0 → Clerk migration complete (code-side)
-- ✅ Memory product API stubs + UI scaffolding committed
-- 🔴 Cannot run locally without env credentials (MongoDB / Redis / Deepgram / Clerk / S3 / Stripe)
-- 🔴 Node 25 + Clerk-keyless interaction causes `localStorage.getItem is not a function` SSR error — fix is to pin Node 22 LTS or supply real Clerk keys
-- See `autonomous-memory/TODO.md` § "P0 — Bugs"
+**The Autonomous (the one platform):**
+- ✅ Live at theautonomous.org on Railway, Postgres (Supabase) backend.
+- ✅ **Memory unification ~done in-repo:** knowledge graph + entity extraction +
+  briefs + Deepgram/calendar/Fireflies ingestion + visibility lanes all native.
+  Phase 1 (visibility, incl. private-persons lane / migration 011) and Phase 2
+  (Fireflies import + record/brief UI) shipped; full suite green (374 tests).
+- 🟡 **Open user actions:** apply `migrations/010` + `011` to the live DB + run the
+  deferred live E2E (needs a working `DATABASE_URL`); optionally retire/redirect
+  the `memory.theautonomous.org` subdomain; decide memory packaging (credits vs an
+  "Executive Memory" tier — `UNIFICATION.md` Phase 4). (The `rowboat-web3` repo is
+  left in place by decision — not a pending task.)
+- See `UNIFICATION.md` for the consolidation plan and `TODO.md` for the backlog.
 
 ---
 
