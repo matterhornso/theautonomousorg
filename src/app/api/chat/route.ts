@@ -29,6 +29,7 @@ import {
 } from "@/lib/mcp/apollo";
 import { ceoTools, executeCeoTool } from "@/lib/mcp/ceo-tools";
 import { buildLessonsHelper } from "@/lib/lessons";
+import { queryCompanyMemory } from "@/lib/memory";
 import { extractMentions } from "@/lib/mention-dispatch";
 import { createAgentRun, completeAgentRun } from "@/lib/agent-runs";
 import { createCompletion, getLLMConfigForCompany } from "@/lib/llm-router";
@@ -198,7 +199,33 @@ export async function POST(request: NextRequest) {
       console.warn("[chat] lesson lookup failed; continuing without:", err);
     }
 
-    const systemPrompt = agent.system_prompt + memorySection + lessonsSection;
+    // Shared company brain — meetings, decisions, commitments, docs, and prior
+    // activity relevant to this turn. The agent reads as the COMPANY (no
+    // viewerUserId), so a member's private captures are never surfaced.
+    let brainSection = "";
+    try {
+      const hits = await queryCompanyMemory({
+        companyId: agent.company_id,
+        query: message,
+        limit: 6,
+        // NO viewerUserId — agents only ever see the shared brain.
+      });
+      if (hits.length > 0) {
+        brainSection =
+          "\n\n## Company Memory\nShared context across the company. Cite it when relevant; don't invent beyond it.\n" +
+          hits
+            .map((h) => {
+              const body = h.body ? ` — ${h.body.slice(0, 240)}` : "";
+              return `- [${h.type}] ${h.title}${body}`;
+            })
+            .join("\n");
+      }
+    } catch (err) {
+      console.warn("[chat] company memory lookup failed; continuing without:", err);
+    }
+
+    const systemPrompt =
+      agent.system_prompt + memorySection + lessonsSection + brainSection;
 
     // Open a run record. Postgres-only — null in dev. We fall back to a
     // transient id so lesson writes have a stable runId either way.
