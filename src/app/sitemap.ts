@@ -18,6 +18,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     {
+      url: `${BASE}/recorder`,
+      lastModified: new Date("2026-06-09"),
+      priority: 0.8,
+    },
+    {
       url: `${BASE}/contact`,
       lastModified: new Date("2026-03-21"),
       priority: 0.6,
