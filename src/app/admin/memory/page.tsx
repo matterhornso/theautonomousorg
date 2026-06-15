@@ -8,6 +8,8 @@ import {
 } from "../_components/primitives";
 import { BrainIcon, SearchIcon, ArrowUpRight } from "../_components/icons";
 import { resolveTenant } from "../_lib/resolve-tenant";
+import { RecordCard } from "./_components/record-card";
+import { BriefComposer } from "./_components/brief-composer";
 import {
   queryCompanyMemory,
   summarizeCompanyMemory,
@@ -50,8 +52,10 @@ export default async function MemoryPage({
       query,
       types,
       limit: 50,
+      // The human viewing their own brain also sees their private rows.
+      viewerUserId: tenant.user.id,
     }),
-    summarizeCompanyMemory(tenant.firm.id),
+    summarizeCompanyMemory(tenant.firm.id, { viewerUserId: tenant.user.id }),
   ]);
 
   return (
@@ -74,6 +78,17 @@ export default async function MemoryPage({
         <SummaryStat label="Vault docs" value={summary.vaultDocs} />
         <SummaryStat label="Recent activity" value={summary.recentActivity} />
       </div>
+
+      {/* ── Capture — feed the brain ──────────────────────────────── */}
+      <Section
+        title="Capture"
+        description="Add to the brain, or pull from it. Recordings are transcribed and entity-extracted; briefs synthesize what's already known."
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <RecordCard />
+          <BriefComposer />
+        </div>
+      </Section>
 
       {/* ── Search bar ────────────────────────────────────────────── */}
       <form
