@@ -36,6 +36,20 @@ export type ConversationKind =
   | "agent_run"
   | "note";
 
+/**
+ * Visibility lane for human-sourced entities (migration 010).
+ *   - "company": shared across every agent + member (the default — the brain).
+ *   - "private": visible only to `ownerUserId`. Agents act as the company and
+ *     carry no user identity, so they never see private rows.
+ */
+export type Visibility = "company" | "private";
+
+/** Viewer context for graph reads. Absent viewer = company-only (agent path). */
+export interface ViewerContext {
+  /** Clerk user id of the human reading. Omit for agent / system reads. */
+  viewerUserId?: string;
+}
+
 export interface Conversation {
   id: string;
   companyId: string;
@@ -337,17 +351,23 @@ export async function createPerson(input: {
   role?: string;
   isExternal?: boolean;
   metadata?: Record<string, unknown>;
+  /** Defaults to "company". Inherited from the source conversation when extracted
+   *  (migration 011): a person from a private capture stays private. */
+  visibility?: Visibility;
+  ownerUserId?: string;
 }): Promise<Person | null> {
   const sql = (await getSql()) as SqlTemplate | null;
   if (!sql) return null;
   const id = `person_${randomUUID()}`;
   const rows = (await sql`
-    INSERT INTO persons (id, company_id, name, email, role, is_external, metadata)
+    INSERT INTO persons (id, company_id, name, email, role, is_external, metadata,
+      visibility, owner_user_id)
     VALUES (
       ${id}, ${input.companyId}, ${input.name},
       ${input.email ?? null}, ${input.role ?? null},
       ${input.isExternal ?? true},
-      ${JSON.stringify(input.metadata ?? {})}::jsonb
+      ${JSON.stringify(input.metadata ?? {})}::jsonb,
+      ${input.visibility ?? "company"}, ${input.ownerUserId ?? null}
     )
     RETURNING id, company_id, name, email, role, is_external, metadata, created_at
   `) as PersonRow[];
@@ -363,19 +383,25 @@ export async function createConversation(input: {
   sourceRef?: string;
   transcript?: string;
   metadata?: Record<string, unknown>;
+  /** Defaults to "company" (the shared brain). */
+  visibility?: Visibility;
+  /** Required when visibility === "private"; the owner who can see it. */
+  ownerUserId?: string;
 }): Promise<Conversation | null> {
   const sql = (await getSql()) as SqlTemplate | null;
   if (!sql) return null;
   const id = `conv_${randomUUID()}`;
   const rows = (await sql`
-    INSERT INTO conversations
-      (id, company_id, kind, title, occurred_at, source, source_ref, transcript, metadata)
+    INSERT INTO memory_conversations
+      (id, company_id, kind, title, occurred_at, source, source_ref, transcript, metadata,
+       visibility, owner_user_id)
     VALUES (
       ${id}, ${input.companyId}, ${input.kind},
       ${input.title ?? null}, ${input.occurredAt ?? null},
       ${input.source ?? null}, ${input.sourceRef ?? null},
       ${input.transcript ?? null},
-      ${JSON.stringify(input.metadata ?? {})}::jsonb
+      ${JSON.stringify(input.metadata ?? {})}::jsonb,
+      ${input.visibility ?? "company"}, ${input.ownerUserId ?? null}
     )
     RETURNING id, company_id, kind, title, occurred_at, source, source_ref,
               transcript, metadata, created_at
@@ -391,18 +417,23 @@ export async function createDecision(input: {
   decidedAt?: Date;
   category?: string;
   metadata?: Record<string, unknown>;
+  /** Defaults to "company". Inherited from the source conversation when extracted. */
+  visibility?: Visibility;
+  ownerUserId?: string;
 }): Promise<Decision | null> {
   const sql = (await getSql()) as SqlTemplate | null;
   if (!sql) return null;
   const id = `dec_${randomUUID()}`;
   const rows = (await sql`
     INSERT INTO decisions
-      (id, company_id, title, detail, decided_by, decided_at, category, metadata)
+      (id, company_id, title, detail, decided_by, decided_at, category, metadata,
+       visibility, owner_user_id)
     VALUES (
       ${id}, ${input.companyId}, ${input.title},
       ${input.detail ?? null}, ${input.decidedBy ?? null},
       ${input.decidedAt ?? null}, ${input.category ?? null},
-      ${JSON.stringify(input.metadata ?? {})}::jsonb
+      ${JSON.stringify(input.metadata ?? {})}::jsonb,
+      ${input.visibility ?? "company"}, ${input.ownerUserId ?? null}
     )
     RETURNING id, company_id, title, detail, decided_by, decided_at, category, metadata, created_at
   `) as DecisionRow[];
@@ -417,6 +448,9 @@ export async function createCommitment(input: {
   dueAt?: Date;
   sourceConversationId?: string;
   metadata?: Record<string, unknown>;
+  /** Defaults to "company". Inherited from the source conversation when extracted. */
+  visibility?: Visibility;
+  ownerUserId?: string;
 }): Promise<Commitment | null> {
   const sql = (await getSql()) as SqlTemplate | null;
   if (!sql) return null;
@@ -424,12 +458,13 @@ export async function createCommitment(input: {
   const rows = (await sql`
     INSERT INTO commitments
       (id, company_id, description, committed_by, committed_to, due_at,
-       source_conversation_id, metadata)
+       source_conversation_id, metadata, visibility, owner_user_id)
     VALUES (
       ${id}, ${input.companyId}, ${input.description},
       ${input.committedBy ?? null}, ${input.committedTo ?? null},
       ${input.dueAt ?? null}, ${input.sourceConversationId ?? null},
-      ${JSON.stringify(input.metadata ?? {})}::jsonb
+      ${JSON.stringify(input.metadata ?? {})}::jsonb,
+      ${input.visibility ?? "company"}, ${input.ownerUserId ?? null}
     )
     RETURNING id, company_id, description, committed_by, committed_to, due_at,
               status, resolved_at, source_conversation_id, metadata, created_at
@@ -495,7 +530,8 @@ export async function createEventLog(input: {
 export async function getEventsBetween(
   companyId: string,
   from: Date,
-  to: Date
+  to: Date,
+  viewer?: ViewerContext
 ): Promise<EventLogEntry[]> {
   const sql = (await getSql()) as SqlTemplate | null;
   if (!sql) return [];
@@ -506,6 +542,7 @@ export async function getEventsBetween(
     WHERE company_id = ${companyId}
       AND starts_at >= ${from}
       AND starts_at < ${to}
+      AND (visibility = 'company' OR owner_user_id = ${viewer?.viewerUserId ?? null})
     ORDER BY starts_at ASC
   `) as EventRow[];
   return rows.map(mapEvent);
@@ -568,18 +605,23 @@ export async function createArtifact(input: {
   agentRole?: string;
   runId?: string;
   metadata?: Record<string, unknown>;
+  /** Defaults to "company" — agent-authored artifacts are shared. */
+  visibility?: Visibility;
+  ownerUserId?: string;
 }): Promise<Artifact | null> {
   const sql = (await getSql()) as SqlTemplate | null;
   if (!sql) return null;
   const id = `art_${randomUUID()}`;
   const rows = (await sql`
     INSERT INTO artifacts
-      (id, company_id, agent_id, agent_role, run_id, kind, title, body, metadata)
+      (id, company_id, agent_id, agent_role, run_id, kind, title, body, metadata,
+       visibility, owner_user_id)
     VALUES (
       ${id}, ${input.companyId}, ${input.agentId ?? null}, ${input.agentRole ?? null},
       ${input.runId ?? null}, ${input.kind}, ${input.title},
       ${input.body ?? null},
-      ${JSON.stringify(input.metadata ?? {})}::jsonb
+      ${JSON.stringify(input.metadata ?? {})}::jsonb,
+      ${input.visibility ?? "company"}, ${input.ownerUserId ?? null}
     )
     RETURNING id, company_id, agent_id, agent_role, run_id, kind, title, body, metadata, created_at
   `) as ArtifactRow[];
@@ -616,24 +658,53 @@ export async function createEdge(input: {
 
 export async function getRecentConversations(
   companyId: string,
-  limit = 20
+  limit = 20,
+  viewer?: ViewerContext
 ): Promise<Conversation[]> {
   const sql = (await getSql()) as SqlTemplate | null;
   if (!sql) return [];
+  // Visibility: company-shared rows are always returned; private rows only to
+  // their owner. No viewer (agent/system read) → company-only by construction
+  // (`owner_user_id = NULL` never matches).
   const rows = (await sql`
     SELECT id, company_id, kind, title, occurred_at, source, source_ref,
            transcript, metadata, created_at
-    FROM conversations
+    FROM memory_conversations
     WHERE company_id = ${companyId}
+      AND (visibility = 'company' OR owner_user_id = ${viewer?.viewerUserId ?? null})
     ORDER BY occurred_at DESC NULLS LAST, created_at DESC
     LIMIT ${limit}
   `) as ConversationRow[];
   return rows.map(mapConversation);
 }
 
+/**
+ * Idempotency check for external imports (Fireflies, Zoom, …): returns the set
+ * of `source_ref`s that already exist for this (company, source) pair, so a
+ * re-run skips transcripts already ingested. `createConversation` does NOT
+ * dedupe on its own, so importers must call this first.
+ */
+export async function existingConversationSourceRefs(
+  companyId: string,
+  source: string,
+  sourceRefs: string[]
+): Promise<Set<string>> {
+  const sql = (await getSql()) as SqlTemplate | null;
+  if (!sql || sourceRefs.length === 0) return new Set();
+  const rows = (await sql`
+    SELECT source_ref
+    FROM memory_conversations
+    WHERE company_id = ${companyId}
+      AND source = ${source}
+      AND source_ref = ANY(${sourceRefs})
+  `) as Array<{ source_ref: string | null }>;
+  return new Set(rows.map((r) => r.source_ref).filter((x): x is string => !!x));
+}
+
 export async function getRecentDecisions(
   companyId: string,
-  limit = 20
+  limit = 20,
+  viewer?: ViewerContext
 ): Promise<Decision[]> {
   const sql = (await getSql()) as SqlTemplate | null;
   if (!sql) return [];
@@ -641,6 +712,7 @@ export async function getRecentDecisions(
     SELECT id, company_id, title, detail, decided_by, decided_at, category, metadata, created_at
     FROM decisions
     WHERE company_id = ${companyId}
+      AND (visibility = 'company' OR owner_user_id = ${viewer?.viewerUserId ?? null})
     ORDER BY decided_at DESC NULLS LAST, created_at DESC
     LIMIT ${limit}
   `) as DecisionRow[];
@@ -649,7 +721,8 @@ export async function getRecentDecisions(
 
 export async function getOpenCommitments(
   companyId: string,
-  limit = 50
+  limit = 50,
+  viewer?: ViewerContext
 ): Promise<Commitment[]> {
   const sql = (await getSql()) as SqlTemplate | null;
   if (!sql) return [];
@@ -658,6 +731,7 @@ export async function getOpenCommitments(
            status, resolved_at, source_conversation_id, metadata, created_at
     FROM commitments
     WHERE company_id = ${companyId} AND status = 'open'
+      AND (visibility = 'company' OR owner_user_id = ${viewer?.viewerUserId ?? null})
     ORDER BY due_at ASC NULLS LAST
     LIMIT ${limit}
   `) as CommitmentRow[];
@@ -666,7 +740,8 @@ export async function getOpenCommitments(
 
 export async function getUpcomingEvents(
   companyId: string,
-  limit = 20
+  limit = 20,
+  viewer?: ViewerContext
 ): Promise<EventLogEntry[]> {
   const sql = (await getSql()) as SqlTemplate | null;
   if (!sql) return [];
@@ -675,6 +750,7 @@ export async function getUpcomingEvents(
            attendees, metadata, created_at
     FROM events_log
     WHERE company_id = ${companyId} AND starts_at >= NOW()
+      AND (visibility = 'company' OR owner_user_id = ${viewer?.viewerUserId ?? null})
     ORDER BY starts_at ASC
     LIMIT ${limit}
   `) as EventRow[];
@@ -683,7 +759,8 @@ export async function getUpcomingEvents(
 
 export async function getRecentArtifacts(
   companyId: string,
-  limit = 20
+  limit = 20,
+  viewer?: ViewerContext
 ): Promise<Artifact[]> {
   const sql = (await getSql()) as SqlTemplate | null;
   if (!sql) return [];
@@ -691,6 +768,7 @@ export async function getRecentArtifacts(
     SELECT id, company_id, agent_id, agent_role, run_id, kind, title, body, metadata, created_at
     FROM artifacts
     WHERE company_id = ${companyId}
+      AND (visibility = 'company' OR owner_user_id = ${viewer?.viewerUserId ?? null})
     ORDER BY created_at DESC
     LIMIT ${limit}
   `) as ArtifactRow[];
@@ -748,7 +826,8 @@ export interface GraphSummary {
 }
 
 export async function summarizeKnowledgeGraph(
-  companyId: string
+  companyId: string,
+  viewer?: ViewerContext
 ): Promise<GraphSummary> {
   const sql = (await getSql()) as SqlTemplate | null;
   if (!sql) {
@@ -762,32 +841,22 @@ export async function summarizeKnowledgeGraph(
       edges: 0,
     };
   }
-  const oneShot = async (table: string, where: string): Promise<number> => {
-    try {
-      const rows = (await sql`
-        SELECT count(*)::int AS n FROM ${sqlIdent(table)} WHERE ${sqlRaw(where)}
-      `) as Array<{ n: number }>;
-      return rows[0]?.n ?? 0;
-    } catch {
-      return 0;
-    }
-  };
+  // SAFE-GAP fix (UNIFICATION.md): header totals must not count private rows a
+  // viewer can't see. No viewer (agent/system) → owner = null → company-only.
+  const owner = viewer?.viewerUserId ?? null;
 
-  // postgres.js typing for raw SQL identifiers requires a tagged-template
-  // shim; we fall back to per-call raw queries to keep this simple.
+  // Per-table counts. Tables with a visibility lane apply the viewer predicate
+  // so private rows are only counted for their owner.
   const counts = await Promise.all([
-    countWhere(sql, "persons", companyId),
-    countWhere(sql, "conversations", companyId),
-    countWhere(sql, "decisions", companyId),
-    countOpenCommitments(sql, companyId),
-    countUpcomingEvents(sql, companyId),
-    countWhere(sql, "artifacts", companyId),
+    countVisible(sql, "persons", companyId, owner),
+    countVisible(sql, "conversations", companyId, owner),
+    countVisible(sql, "decisions", companyId, owner),
+    countOpenCommitments(sql, companyId, owner),
+    countUpcomingEvents(sql, companyId, owner),
+    countVisible(sql, "artifacts", companyId, owner),
+    // knowledge_edges have no visibility lane (linkage, not content).
     countWhere(sql, "knowledge_edges", companyId),
   ]);
-
-  // Silence the unused-symbol warning for the oneShot helper kept above as
-  // documentation for the inline counting pattern.
-  void oneShot;
 
   return {
     persons: counts[0],
@@ -800,23 +869,38 @@ export async function summarizeKnowledgeGraph(
   };
 }
 
+// Counts for tables with NO visibility lane (linkage, not content).
 async function countWhere(
   sql: SqlTemplate,
-  table: "persons" | "conversations" | "decisions" | "artifacts" | "knowledge_edges",
+  table: "knowledge_edges",
   companyId: string
+): Promise<number> {
+  try {
+    const rows = (await sql`SELECT count(*)::int AS n FROM knowledge_edges WHERE company_id = ${companyId}`) as Array<{ n: number }>;
+    return rows[0]?.n ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+// Counts for tables WITH a visibility lane — private rows are only counted for
+// their owner. `owner = null` (no viewer) collapses the predicate to company.
+async function countVisible(
+  sql: SqlTemplate,
+  table: "persons" | "conversations" | "decisions" | "artifacts",
+  companyId: string,
+  owner: string | null
 ): Promise<number> {
   try {
     let rows: Array<{ n: number }> = [];
     if (table === "persons") {
-      rows = (await sql`SELECT count(*)::int AS n FROM persons WHERE company_id = ${companyId}`) as Array<{ n: number }>;
+      rows = (await sql`SELECT count(*)::int AS n FROM persons WHERE company_id = ${companyId} AND (visibility = 'company' OR owner_user_id = ${owner})`) as Array<{ n: number }>;
     } else if (table === "conversations") {
-      rows = (await sql`SELECT count(*)::int AS n FROM conversations WHERE company_id = ${companyId}`) as Array<{ n: number }>;
+      rows = (await sql`SELECT count(*)::int AS n FROM memory_conversations WHERE company_id = ${companyId} AND (visibility = 'company' OR owner_user_id = ${owner})`) as Array<{ n: number }>;
     } else if (table === "decisions") {
-      rows = (await sql`SELECT count(*)::int AS n FROM decisions WHERE company_id = ${companyId}`) as Array<{ n: number }>;
-    } else if (table === "artifacts") {
-      rows = (await sql`SELECT count(*)::int AS n FROM artifacts WHERE company_id = ${companyId}`) as Array<{ n: number }>;
+      rows = (await sql`SELECT count(*)::int AS n FROM decisions WHERE company_id = ${companyId} AND (visibility = 'company' OR owner_user_id = ${owner})`) as Array<{ n: number }>;
     } else {
-      rows = (await sql`SELECT count(*)::int AS n FROM knowledge_edges WHERE company_id = ${companyId}`) as Array<{ n: number }>;
+      rows = (await sql`SELECT count(*)::int AS n FROM artifacts WHERE company_id = ${companyId} AND (visibility = 'company' OR owner_user_id = ${owner})`) as Array<{ n: number }>;
     }
     return rows[0]?.n ?? 0;
   } catch {
@@ -826,12 +910,14 @@ async function countWhere(
 
 async function countOpenCommitments(
   sql: SqlTemplate,
-  companyId: string
+  companyId: string,
+  owner: string | null
 ): Promise<number> {
   try {
     const rows = (await sql`
       SELECT count(*)::int AS n FROM commitments
       WHERE company_id = ${companyId} AND status = 'open'
+        AND (visibility = 'company' OR owner_user_id = ${owner})
     `) as Array<{ n: number }>;
     return rows[0]?.n ?? 0;
   } catch {
@@ -841,24 +927,17 @@ async function countOpenCommitments(
 
 async function countUpcomingEvents(
   sql: SqlTemplate,
-  companyId: string
+  companyId: string,
+  owner: string | null
 ): Promise<number> {
   try {
     const rows = (await sql`
       SELECT count(*)::int AS n FROM events_log
       WHERE company_id = ${companyId} AND starts_at >= NOW()
+        AND (visibility = 'company' OR owner_user_id = ${owner})
     `) as Array<{ n: number }>;
     return rows[0]?.n ?? 0;
   } catch {
     return 0;
   }
-}
-
-// Unused helpers retained for type completeness — left as no-ops so we don't
-// need them at module init.
-function sqlIdent(name: string): string {
-  return name;
-}
-function sqlRaw(s: string): string {
-  return s;
 }

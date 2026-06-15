@@ -29,6 +29,7 @@ import {
   getOpenCommitments,
   getRecentArtifacts,
   summarizeKnowledgeGraph,
+  type ViewerContext,
 } from "./knowledge-graph";
 
 export type MemoryHitType = "memory" | "lesson" | "vault" | "activity" | "graph";
@@ -74,6 +75,13 @@ export interface QueryCompanyMemoryOptions {
   perSourceLimit?: number;
   /** Overall result cap. Default 20. */
   limit?: number;
+  /**
+   * Clerk user id of the human viewing. When set, the knowledge-graph source
+   * also returns that user's private rows; when omitted (agent / system read)
+   * only company-shared rows are returned. See migration 010 + knowledge-graph
+   * read functions.
+   */
+  viewerUserId?: string;
 }
 
 const DEFAULT_TYPES: MemoryHitType[] = [
@@ -197,12 +205,13 @@ export async function queryCompanyMemory(
   // migrations 007/008 aren't applied yet — zero behavior change for v2.
   if (types.includes("graph")) {
     try {
+      const viewer = { viewerUserId: opts.viewerUserId };
       const [conversations, decisions, commitments, artifacts] =
         await Promise.all([
-          getRecentConversations(opts.companyId, perSourceLimit),
-          getRecentDecisions(opts.companyId, perSourceLimit),
-          getOpenCommitments(opts.companyId, perSourceLimit),
-          getRecentArtifacts(opts.companyId, perSourceLimit),
+          getRecentConversations(opts.companyId, perSourceLimit, viewer),
+          getRecentDecisions(opts.companyId, perSourceLimit, viewer),
+          getOpenCommitments(opts.companyId, perSourceLimit, viewer),
+          getRecentArtifacts(opts.companyId, perSourceLimit, viewer),
         ]);
       for (const c of conversations) {
         const haystack = `${c.title ?? ""} ${c.transcript ?? ""}`.toLowerCase();
@@ -316,7 +325,8 @@ export interface MemorySummary {
 }
 
 export async function summarizeCompanyMemory(
-  companyId: string
+  companyId: string,
+  viewer?: ViewerContext
 ): Promise<MemorySummary> {
   let memoryEntries = 0;
   let lessons = 0;
@@ -363,8 +373,9 @@ export async function summarizeCompanyMemory(
     console.warn("[memory] activity count failed:", err);
   }
 
-  // Graph counts are no-ops without DATABASE_URL — see knowledge-graph.ts
-  const graph = await summarizeKnowledgeGraph(companyId);
+  // Graph counts are no-ops without DATABASE_URL — see knowledge-graph.ts.
+  // Pass the viewer so private rows aren't counted for non-owners (SAFE-GAP).
+  const graph = await summarizeKnowledgeGraph(companyId, viewer);
 
   return {
     memoryEntries,

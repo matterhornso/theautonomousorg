@@ -28,6 +28,7 @@ import {
   createEdge,
   type Conversation,
   type ConversationKind,
+  type Visibility,
 } from "./knowledge-graph";
 
 // ─── Tool schema ───────────────────────────────────────────────────────────
@@ -167,6 +168,13 @@ export interface ExtractionInput {
   source?: string;
   sourceRef?: string;
   metadata?: Record<string, unknown>;
+  /**
+   * Visibility lane for the conversation AND every entity extracted from it.
+   * Defaults to "company" (the shared brain). Set "private" + ownerUserId when
+   * a member opts a sensitive capture out of the shared brain.
+   */
+  visibility?: Visibility;
+  ownerUserId?: string;
 }
 
 export interface ExtractionResult {
@@ -206,6 +214,8 @@ export async function ingestConversation(
     sourceRef: input.sourceRef,
     transcript: input.text,
     metadata: input.metadata,
+    visibility: input.visibility,
+    ownerUserId: input.ownerUserId,
   });
 
   // No DB → return early. Caller sees conversation: null and knows no
@@ -248,6 +258,9 @@ export async function ingestConversation(
       email: p.email,
       role: p.role,
       isExternal: p.isExternal ?? true,
+      // A person from a private capture inherits the private lane (migration 011).
+      visibility: input.visibility,
+      ownerUserId: input.ownerUserId,
     });
     if (created) {
       personIds.push(created.id);
@@ -265,6 +278,8 @@ export async function ingestConversation(
       detail: d.detail,
       decidedBy: d.decidedBy,
       category: d.category,
+      visibility: input.visibility,
+      ownerUserId: input.ownerUserId,
     });
     if (created) decisionIds.push(created.id);
   }
@@ -285,6 +300,8 @@ export async function ingestConversation(
       committedTo: committedTo ?? undefined,
       dueAt: c.dueAt ? new Date(c.dueAt) : undefined,
       sourceConversationId: conversation.id,
+      visibility: input.visibility,
+      ownerUserId: input.ownerUserId,
     });
     if (created) commitmentIds.push(created.id);
   }

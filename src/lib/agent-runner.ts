@@ -39,6 +39,7 @@ import type { AgentHelpers } from "./agent-sdk-helpers";
 import { buildWhatsAppHelper } from "./whatsapp";
 import { buildVaultHelper } from "./vault";
 import { buildLessonsHelper } from "./lessons";
+import { queryCompanyMemory } from "./memory";
 import { buildEscalationHelper } from "./escalation";
 import { runWithTenantStore } from "./tenant-context";
 import {
@@ -600,6 +601,39 @@ function buildDefaultHelpers(args: {
       runId: args.runId,
       whatsapp,
     }),
+    // The company brain. Agents read as the company (no viewerUserId) →
+    // company-shared rows only; a member's private captures are never returned
+    // (migration 010/011). This is how a recorded meeting reaches an agent.
+    memory: {
+      async recall(opts) {
+        let hits;
+        try {
+          hits = await queryCompanyMemory({
+            companyId: args.firmId,
+            query: opts?.query,
+            limit: opts?.limit ?? 8,
+            // NO viewerUserId — agents only ever see the shared brain.
+          });
+        } catch (err) {
+          // Memory recall is supplemental context — a brain read failure must
+          // never abort the agent run. Degrade to empty, like the vault helper.
+          console.warn("[memory.recall] failed, returning no context:", err);
+          return [];
+        }
+        return hits.map((h) => ({
+          type: h.type,
+          title: h.title,
+          body: h.body,
+          score: h.score,
+          source: {
+            agentRole: h.source.agentRole,
+            docId: h.source.docId,
+            runId: h.source.runId,
+          },
+          createdAt: h.createdAt,
+        }));
+      },
+    },
   };
 }
 

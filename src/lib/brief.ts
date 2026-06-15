@@ -40,6 +40,12 @@ export interface BriefRequest {
   attendees: string[];
   /** Anchor time. Defaults to now. */
   occurredAt?: Date;
+  /**
+   * Clerk user id of the human the brief is for. When set, their own private
+   * graph rows are included alongside the shared brain. Omit for system/cron
+   * briefs (company-shared only). See migration 010.
+   */
+  viewerUserId?: string;
 }
 
 export interface BriefResult {
@@ -68,11 +74,14 @@ export async function generateBrief(
 ): Promise<BriefResult> {
   const perSourceLimit = options.perSourceLimit ?? 10;
 
-  // Pull the candidate items from the graph in parallel.
+  // Pull the candidate items from the graph in parallel. The viewer (when the
+  // brief is for a specific human) also sees their own private rows; a system /
+  // cron brief passes no viewer and stays company-shared only.
+  const viewer = { viewerUserId: req.viewerUserId };
   const [commitments, conversations, decisions] = await Promise.all([
-    getOpenCommitments(req.companyId, perSourceLimit * 3),
-    getRecentConversations(req.companyId, perSourceLimit * 3),
-    getRecentDecisions(req.companyId, perSourceLimit * 2),
+    getOpenCommitments(req.companyId, perSourceLimit * 3, viewer),
+    getRecentConversations(req.companyId, perSourceLimit * 3, viewer),
+    getRecentDecisions(req.companyId, perSourceLimit * 2, viewer),
   ]);
 
   // Filter to items relevant to the attendees (case-insensitive substring
