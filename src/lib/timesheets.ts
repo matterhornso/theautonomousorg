@@ -394,6 +394,123 @@ export async function listSubmissionsForPeriod(
   }));
 }
 
+// ─── History ───────────────────────────────────────────────────────────
+
+function joinedRowToPair(r: Record<string, unknown>): {
+  submission: TimesheetSubmission;
+  employee: Employee;
+} {
+  return {
+    submission: rowToSubmission({
+      id: r.s_id as string,
+      company_id: r.s_company_id as string,
+      employee_id: r.s_employee_id as string,
+      period_key: r.s_period_key as string,
+      submitted_at: r.s_submitted_at as Date | null,
+      source: r.s_source as string | null,
+      notes: r.s_notes as string | null,
+      reminders_sent: r.s_reminders_sent as number,
+      last_reminder_at: r.s_last_reminder_at as Date | null,
+      created_at: r.s_created_at as Date,
+    }),
+    employee: rowToEmployee({
+      id: r.e_id as string,
+      company_id: r.e_company_id as string,
+      name: r.e_name as string,
+      email: r.e_email as string,
+      telegram_handle: r.e_telegram_handle as string | null,
+      telegram_chat_id: r.e_telegram_chat_id as string | number | null,
+      timezone: r.e_timezone as string,
+      active: r.e_active as boolean,
+      created_at: r.e_created_at as Date,
+    }),
+  };
+}
+
+/** Every submission for a company across all periods, joined to its employee. */
+export async function listSubmissionHistory(
+  companyId: string
+): Promise<Array<{ submission: TimesheetSubmission; employee: Employee }>> {
+  const sql = await getSql();
+  if (!sql) return [];
+  const rows = (await sql`
+    SELECT
+      s.id              AS s_id,
+      s.company_id      AS s_company_id,
+      s.employee_id     AS s_employee_id,
+      s.period_key      AS s_period_key,
+      s.submitted_at    AS s_submitted_at,
+      s.source          AS s_source,
+      s.notes           AS s_notes,
+      s.reminders_sent  AS s_reminders_sent,
+      s.last_reminder_at AS s_last_reminder_at,
+      s.created_at      AS s_created_at,
+      e.id              AS e_id,
+      e.company_id      AS e_company_id,
+      e.name            AS e_name,
+      e.email           AS e_email,
+      e.telegram_handle AS e_telegram_handle,
+      e.telegram_chat_id AS e_telegram_chat_id,
+      e.timezone        AS e_timezone,
+      e.active          AS e_active,
+      e.created_at      AS e_created_at
+    FROM timesheet_submissions s
+    JOIN employees e ON e.id = s.employee_id
+    WHERE s.company_id = ${companyId}
+    ORDER BY s.period_key DESC, e.name ASC
+  `) as Array<Record<string, unknown>>;
+  return rows.map(joinedRowToPair);
+}
+
+export interface PeriodSummary {
+  periodKey: string;
+  total: number;
+  submitted: number;
+  outstanding: number;
+  /** Submission rate, 0–100. */
+  pct: number;
+  rows: Array<{ submission: TimesheetSubmission; employee: Employee }>;
+}
+
+/**
+ * Group flat submission/employee pairs into per-period compliance summaries,
+ * newest period first. Pure (no DB) so it's unit-testable and reusable for the
+ * mock-fallback path.
+ */
+export function aggregateHistory(
+  pairs: Array<{ submission: TimesheetSubmission; employee: Employee }>
+): PeriodSummary[] {
+  const byPeriod = new Map<
+    string,
+    Array<{ submission: TimesheetSubmission; employee: Employee }>
+  >();
+  for (const pair of pairs) {
+    const key = pair.submission.periodKey;
+    const bucket = byPeriod.get(key);
+    if (bucket) bucket.push(pair);
+    else byPeriod.set(key, [pair]);
+  }
+
+  const summaries: PeriodSummary[] = [];
+  for (const [periodKey, rows] of byPeriod) {
+    rows.sort((a, b) => a.employee.name.localeCompare(b.employee.name));
+    const total = rows.length;
+    const submitted = rows.filter(
+      (r) => r.submission.submittedAt !== null
+    ).length;
+    summaries.push({
+      periodKey,
+      total,
+      submitted,
+      outstanding: total - submitted,
+      pct: total === 0 ? 0 : Math.round((submitted / total) * 100),
+      rows,
+    });
+  }
+  summaries.sort((a, b) => b.periodKey.localeCompare(a.periodKey));
+  return summaries;
+}
+
 export async function markSubmitted(
   submissionId: string,
   source: "telegram" | "manual" | "webhook",
