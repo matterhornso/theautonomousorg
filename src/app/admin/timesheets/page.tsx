@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { resolveTenant } from "../_lib/resolve-tenant";
 import {
   PageHeader,
@@ -63,6 +64,14 @@ export default async function TimesheetsPage() {
           telegramOk
             ? `${employees.length} employees on the roster · ${linkedCount} linked to Telegram. The reminder bot pings outstanding submissions on schedule and accepts DONE / HELP replies.`
             : `Set TELEGRAM_BOT_TOKEN and TELEGRAM_WEBHOOK_SECRET in your environment to enable the reminder bot.`
+        }
+        rail={
+          <Link
+            href="/admin/timesheets/history"
+            className="text-[13px] text-neutral-600 hover:text-primary transition-colors whitespace-nowrap"
+          >
+            View history →
+          </Link>
         }
       />
 
