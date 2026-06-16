@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "../../_components/toast";
+import { useConfirm } from "../../_components/confirm";
 import { TrashIcon, ResetIcon } from "../../_components/icons";
 
 interface RowActionsProps {
@@ -19,18 +20,19 @@ export function RowActions({
 }: RowActionsProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [busy, setBusy] = useState<"delete" | "reset" | null>(null);
   const [removed, setRemoved] = useState(false);
 
   async function handleReset() {
     if (!resetSubmissionId) return;
-    if (
-      !confirm(
-        `Reset ${employeeName}'s submission for this period? They'll appear Outstanding again and can be re-reminded.`
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: `Reset ${employeeName}'s submission?`,
+      body: "They'll appear Outstanding again for this period and can be re-reminded.",
+      confirmLabel: "Reset submission",
+      tone: "warning",
+    });
+    if (!ok) return;
     setBusy("reset");
     try {
       const res = await fetch("/api/timesheets/reset-submission", {
@@ -65,13 +67,13 @@ export function RowActions({
   }
 
   async function handleDelete() {
-    if (
-      !confirm(
-        `Remove ${employeeName} from the roster? This deletes their record and all reminder history. They'll stop receiving Telegram reminders immediately.`
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: `Remove ${employeeName} from the roster?`,
+      body: "This deletes their record and all reminder history. They'll stop receiving Telegram reminders immediately.",
+      confirmLabel: "Remove",
+      tone: "danger",
+    });
+    if (!ok) return;
     setBusy("delete");
     try {
       const res = await fetch(`/api/timesheets/employees/${employeeId}`, {

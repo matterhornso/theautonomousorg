@@ -10,6 +10,10 @@ data/*.db
 # OS / editor cruft
 .DS_Store
 
+# Private marketing data + outbound docs (PUBLIC repo — never commit)
+marketing-ops/
+the-autonomous-cold-sequence.md
+
 # SQLite WAL/SHM files (transient, per dev-server boot)
 data/*.db-shm
 data/*.db-wal
