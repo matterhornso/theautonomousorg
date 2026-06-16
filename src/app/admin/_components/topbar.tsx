@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
-import { ChevronRight, SearchIcon, BellIcon } from "./icons";
+import { ChevronRight, BellIcon } from "./icons";
 
 const labels: Record<string, string> = {
   admin: "Overview",
@@ -60,28 +60,14 @@ export function AdminTopbar() {
 
       <div className="flex-1" />
 
-      {/* Search */}
-      <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-md border border-neutral-200/80 bg-white/70 text-[13px] text-neutral-500 w-[280px]">
-        <SearchIcon className="w-4 h-4" />
-        <input
-          type="search"
-          placeholder="Search runs, vault, callbacks…"
-          className="flex-1 bg-transparent outline-none placeholder:text-neutral-400"
-        />
-        <span className="text-[10.5px] font-[family-name:var(--font-mono)] text-neutral-400 border border-neutral-200 rounded px-1">
-          ⌘K
-        </span>
-      </div>
-
-      {/* Bell */}
-      <button
-        type="button"
-        className="relative p-2 rounded-md text-neutral-600 hover:bg-neutral-100 hover:text-primary transition-colors"
+      {/* Notifications — links to the real notifications page */}
+      <Link
+        href="/admin/notifications"
+        className="p-2 rounded-md text-neutral-600 hover:bg-neutral-100 hover:text-primary transition-colors"
         aria-label="Notifications"
       >
         <BellIcon className="w-5 h-5" />
-        <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-accent admin-pulse" />
-      </button>
+      </Link>
 
       {/* Clerk user menu */}
       <UserButton
