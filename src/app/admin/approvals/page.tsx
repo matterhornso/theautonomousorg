@@ -158,7 +158,7 @@ export default async function ApprovalsPage() {
           ].map((r, i) => (
             <li
               key={i}
-              className="grid grid-cols-[100px_minmax(0,1fr)_180px_140px] items-center gap-4 px-6 py-3 -mx-6 hover:bg-[rgba(212,168,83,0.04)] transition-colors"
+              className="grid grid-cols-1 sm:grid-cols-[100px_minmax(0,1fr)_180px_140px] items-center gap-4 px-6 py-3 -mx-6 hover:bg-[rgba(212,168,83,0.04)] transition-colors"
             >
               <Pill tone={r.action === "approve" ? "success" : "danger"}>
                 {r.action}

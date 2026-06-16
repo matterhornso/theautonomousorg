@@ -224,7 +224,7 @@ export function TimesheetActions({ canRun }: { canRun: boolean }) {
       </div>
 
       {showAdd && (
-        <div className="w-[420px] flex flex-col gap-2 p-4 bg-white border border-neutral-200 rounded-md">
+        <div className="w-full sm:w-[420px] flex flex-col gap-2 p-4 bg-white border border-neutral-200 rounded-md">
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}

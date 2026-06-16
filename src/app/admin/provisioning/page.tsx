@@ -184,7 +184,7 @@ function FirmRow({ firm }: { firm: FirmProvisioning }) {
       </header>
 
       {/* ── Step rail ──────────────────────────────────────────── */}
-      <ol className="grid grid-cols-6 gap-3 mt-6">
+      <ol className="grid grid-cols-3 sm:grid-cols-6 gap-3 mt-6">
         {STEPS.map((step, i) => {
           const isDone = !isFailed && i < idx;
           const isCurrent = !isFailed && i === idx;

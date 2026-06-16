@@ -69,7 +69,7 @@ export default async function NotificationsPage() {
               key={n.id}
               className={`animate-fade-up delay-${((i % 5) + 1) as 1 | 2 | 3 | 4 | 5}`}
             >
-              <article className="grid grid-cols-[60px_minmax(0,1fr)_180px_120px] items-start gap-4 px-6 py-5 -mx-6 hover:bg-[rgba(212,168,83,0.04)] transition-colors group">
+              <article className="grid grid-cols-1 sm:grid-cols-[60px_minmax(0,1fr)_180px_120px] items-start gap-4 px-6 py-5 -mx-6 hover:bg-[rgba(212,168,83,0.04)] transition-colors group">
                 <div className="pt-0.5">
                   <AlertIcon
                     className={`w-5 h-5 ${
@@ -136,7 +136,7 @@ export default async function NotificationsPage() {
             {acked.map((n) => (
               <li
                 key={n.id}
-                className="grid grid-cols-[60px_minmax(0,1fr)_180px] items-center gap-4 px-6 py-3 -mx-6 opacity-70"
+                className="grid grid-cols-1 sm:grid-cols-[60px_minmax(0,1fr)_180px] items-center gap-4 px-6 py-3 -mx-6 opacity-70"
               >
                 <div className="pt-0.5">
                   <CheckIcon className="w-4 h-4 text-[#2D5A3D]" />
