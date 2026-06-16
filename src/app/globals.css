@@ -246,6 +246,40 @@ body {
   animation: adminToastOut 0.25s ease-in both;
 }
 
+/* Admin: confirm dialog — backdrop fade + card scale-in (replaces window.confirm). */
+@keyframes adminOverlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes adminOverlayOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes adminConfirmIn {
+  from { transform: scale(0.94) translateY(8px); opacity: 0; }
+  to   { transform: scale(1) translateY(0); opacity: 1; }
+}
+@keyframes adminConfirmOut {
+  from { transform: scale(1) translateY(0); opacity: 1; }
+  to   { transform: scale(0.97) translateY(4px); opacity: 0; }
+}
+.admin-overlay-in {
+  background-color: rgba(10, 10, 11, 0.42);
+  backdrop-filter: blur(2px);
+  animation: adminOverlayIn 0.22s var(--ease-out-expo) both;
+}
+.admin-overlay-out {
+  background-color: rgba(10, 10, 11, 0.42);
+  backdrop-filter: blur(2px);
+  animation: adminOverlayOut 0.18s ease-in both;
+}
+.admin-confirm-in {
+  animation: adminConfirmIn 0.28s var(--ease-out-expo) both;
+}
+.admin-confirm-out {
+  animation: adminConfirmOut 0.18s ease-in both;
+}
+
 /* Admin: send burst — centered confirmation overlay when reminders fire. */
 @keyframes adminBurstBackdrop {
   0%   { opacity: 0; }
