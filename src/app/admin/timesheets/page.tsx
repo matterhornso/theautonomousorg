@@ -91,7 +91,7 @@ psql "$DATABASE_URL" -f migrations/005_timesheets.sql`}
       {dbConfigured && (
         <>
           <Section title="This week">
-            <div className="grid grid-cols-4 gap-8 divide-x divide-neutral-200/60">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 divide-x divide-neutral-200/60">
               <Stat label="Submitted" value={submitted} hint={`of ${rows.length}`} />
               <Stat
                 label="Outstanding"
@@ -140,7 +140,8 @@ psql "$DATABASE_URL" -f migrations/005_timesheets.sql`}
                 description="Add your first employee using the button above."
               />
             ) : (
-              <div className="divide-y divide-neutral-200/60">
+              <div className="overflow-x-auto -mx-6 px-6">
+              <div className="divide-y divide-neutral-200/60 min-w-[760px]">
                 <div className="grid grid-cols-[1.4fr_1.4fr_0.9fr_1fr_0.5fr_1fr_0.5fr] gap-4 py-3 text-[11px] uppercase tracking-[0.12em] text-neutral-500">
                   <span>Name</span>
                   <span>Email</span>
@@ -219,6 +220,7 @@ psql "$DATABASE_URL" -f migrations/005_timesheets.sql`}
                     />
                   </div>
                 ))}
+              </div>
               </div>
             )}
           </Section>
