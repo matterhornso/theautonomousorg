@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { AdminSidebar } from "./_components/sidebar";
 import { AdminTopbar } from "./_components/topbar";
 import { ToastProvider } from "./_components/toast";
+import { ConfirmProvider } from "./_components/confirm";
 import { resolveTenant } from "./_lib/resolve-tenant";
 
 export const metadata: Metadata = {
@@ -15,6 +16,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   return (
     <ToastProvider>
+      <ConfirmProvider>
       <div className="min-h-[100dvh] flex bg-surface text-primary">
         <AdminSidebar
           firmName={tenant.firm.name}
@@ -37,6 +39,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           </main>
         </div>
       </div>
+      </ConfirmProvider>
     </ToastProvider>
   );
 }

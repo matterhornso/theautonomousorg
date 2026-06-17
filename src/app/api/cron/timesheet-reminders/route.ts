@@ -1,14 +1,17 @@
 /**
  * Cron entry point for the Telegram timesheet reminder pass.
  *
- *   GET /api/cron/timesheet-reminders?token=<CRON_SECRET>
+ *   GET /api/cron/timesheet-reminders
+ *   Authorization: Bearer <CRON_SECRET>     ← preferred
  *
- * Or use Authorization: Bearer <CRON_SECRET>. Returns a JSON summary.
+ * A `?token=<CRON_SECRET>` query param is also accepted for runners that can't
+ * set headers, but prefer the Bearer header: query strings leak into access
+ * logs, proxies, and browser history. The secret is compared in constant time.
  *
  * Ops:
  * - Railway: set CRON_SECRET, schedule a daily/weekly cron (e.g. Fri 17:00 IST)
- *   with `curl "$APP_BASE_URL/api/cron/timesheet-reminders?token=$CRON_SECRET"`.
- * - Vercel: vercel.json `crons` entry; pass token via header or query.
+ *   with `curl -H "Authorization: Bearer $CRON_SECRET" "$APP_BASE_URL/api/cron/timesheet-reminders"`.
+ * - Vercel: vercel.json `crons` entry; pass the token via the Authorization header.
  *
  * v1: iterates every company that has at least one active employee. The
  * accounting firm scenario has one tenant; this still loops in case a second
@@ -17,8 +20,17 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { currentPeriodKey, runReminderPass } from "@/lib/timesheets";
 import { getSchedule, recordRun } from "@/lib/reminder-schedule";
+
+/** Constant-time string compare to avoid leaking the secret via timing. */
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
 
 async function listCompaniesWithEmployees(): Promise<string[]> {
   if (!process.env.DATABASE_URL) return [];
@@ -48,7 +60,7 @@ function authorize(request: NextRequest): NextResponse | null {
   })();
   const queryToken = request.nextUrl.searchParams.get("token");
   const token = headerToken ?? queryToken;
-  if (token !== expected) {
+  if (!token || !safeEqual(token, expected)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   return null;

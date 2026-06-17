@@ -142,7 +142,7 @@ export default async function AgentRoleRunsPage({
                   >
                     <Link
                       href={`/admin/agents/${role}/${run.id}`}
-                      className="grid grid-cols-[100px_minmax(0,1fr)_120px_120px_40px] items-start gap-4 px-3 py-4 -mx-3 rounded-md hover:bg-[rgba(212,168,83,0.05)] transition-colors group"
+                      className="grid grid-cols-1 sm:grid-cols-[100px_minmax(0,1fr)_120px_120px_40px] items-start gap-4 px-3 py-4 -mx-3 rounded-md hover:bg-[rgba(212,168,83,0.05)] transition-colors group"
                     >
                       <div className="flex items-center gap-2 pt-0.5">
                         <StatusDot tone={s.tone} live={run.status === "running"} />

@@ -10,6 +10,7 @@ import {
   SpinnerIcon,
 } from "../../_components/icons";
 import { useSendBurst } from "../../_components/send-burst";
+import { useConfirm } from "../../_components/confirm";
 import { InsightsPanel } from "./insights-panel";
 
 interface PlanOperation {
@@ -75,6 +76,7 @@ const EXAMPLE_PROMPTS = [
 
 export function ShopifyEditor() {
   const { fire: fireBurst, burst } = useSendBurst();
+  const confirm = useConfirm();
   const [prompt, setPrompt] = useState("");
   const [planning, setPlanning] = useState(false);
   const [planResp, setPlanResp] = useState<PlanResponse | null>(null);
@@ -110,13 +112,14 @@ export function ShopifyEditor() {
 
   async function handleApply() {
     if (!planResp) return;
-    if (
-      !confirm(
-        `Apply ${planResp.plan.operations.length} operation(s) to your live Shopify store? This cannot be undone automatically.`
-      )
-    ) {
-      return;
-    }
+    const opCount = planResp.plan.operations.length;
+    const ok = await confirm({
+      title: `Apply ${opCount} operation${opCount === 1 ? "" : "s"} to your live Shopify store?`,
+      body: "Changes are written to your production catalog and cannot be undone automatically.",
+      confirmLabel: "Apply to store",
+      tone: "danger",
+    });
+    if (!ok) return;
     setApplying(true);
     setApplyError(null);
     setApplyResp(null);

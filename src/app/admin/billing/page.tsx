@@ -229,7 +229,7 @@ export default async function BillingPage() {
                 key={tx.id}
                 className={`animate-fade-up delay-${((i % 5) + 1) as 1 | 2 | 3 | 4 | 5}`}
               >
-                <article className="grid grid-cols-[minmax(0,1fr)_120px_140px_120px] items-center gap-5 px-6 py-4 -mx-6 hover:bg-[rgba(212,168,83,0.04)] transition-colors">
+                <article className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_120px_140px_120px] items-center gap-5 px-6 py-4 -mx-6 hover:bg-[rgba(212,168,83,0.04)] transition-colors">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <Pill tone={txTypeTone[tx.type] ?? "neutral"}>

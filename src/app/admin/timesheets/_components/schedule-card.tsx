@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button, Pill } from "../../_components/primitives";
 import { useToast } from "../../_components/toast";
 import { ClockIcon } from "../../_components/icons";
+import { CronBuilder } from "./cron-builder";
 
 interface Schedule {
   cron: string;
@@ -69,6 +70,7 @@ export function ScheduleCard({
   const [cron, setCron] = useState(initial.cron);
   const [timezone, setTimezone] = useState(initial.timezone);
   const [saving, setSaving] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   async function applyPatch(patch: Partial<Schedule>) {
     setSaving(true);
@@ -206,18 +208,32 @@ export function ScheduleCard({
                 </button>
               ))}
             </div>
-            <input
-              value={cron}
-              onChange={(e) => setCron(e.target.value)}
-              placeholder="cron expression — e.g. 0 17 * * *"
-              className="mt-3 w-full px-3 py-2 text-[13px] font-mono border border-neutral-200 rounded focus:outline-none focus:border-accent"
-            />
-            <p className="text-[11px] text-neutral-500 mt-1.5">
-              5-field cron: minute · hour · day-of-month · month · day-of-week.
-              Use <code className="font-mono">*</code> as wildcard,{" "}
-              <code className="font-mono">1-5</code> for weekdays,{" "}
-              <code className="font-mono">5</code> for Friday.
-            </p>
+            <div className="mt-4">
+              <CronBuilder value={cron} onChange={setCron} />
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAdvanced((s) => !s)}
+              className="mt-3 text-[12px] text-neutral-500 hover:text-primary transition-colors"
+            >
+              {showAdvanced ? "Hide advanced" : "Advanced — edit raw cron"}
+            </button>
+            {showAdvanced && (
+              <>
+                <input
+                  value={cron}
+                  onChange={(e) => setCron(e.target.value)}
+                  placeholder="cron expression — e.g. 0 17 * * *"
+                  className="mt-2 w-full px-3 py-2 text-[13px] font-mono border border-neutral-200 rounded focus:outline-none focus:border-accent"
+                />
+                <p className="text-[11px] text-neutral-500 mt-1.5">
+                  5-field cron: minute · hour · day-of-month · month ·
+                  day-of-week. Use <code className="font-mono">*</code> as
+                  wildcard, <code className="font-mono">1-5</code> for weekdays,{" "}
+                  <code className="font-mono">5</code> for Friday.
+                </p>
+              </>
+            )}
           </div>
           <div>
             <label className="text-[11px] uppercase tracking-[0.12em] text-neutral-500 font-medium">

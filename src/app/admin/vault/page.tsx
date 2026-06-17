@@ -112,7 +112,7 @@ export default async function VaultPage() {
               key={d.id}
               className={`animate-fade-up delay-${((i % 5) + 1) as 1 | 2 | 3 | 4 | 5}`}
             >
-              <article className="group grid grid-cols-[40px_minmax(0,1fr)_180px_140px] items-start gap-5 px-6 py-5 -mx-6 hover:bg-[rgba(212,168,83,0.04)] transition-colors">
+              <article className="group grid grid-cols-1 sm:grid-cols-[40px_minmax(0,1fr)_180px_140px] items-start gap-5 px-6 py-5 -mx-6 hover:bg-[rgba(212,168,83,0.04)] transition-colors">
                 <FileIcon className="w-6 h-6 text-neutral-400 mt-1 group-hover:text-accent transition-colors" />
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">

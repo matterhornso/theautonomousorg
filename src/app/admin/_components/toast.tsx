@@ -104,7 +104,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           return (
             <div
               key={t.id}
-              className={`pointer-events-auto w-[380px] flex items-start gap-3 px-4 py-3.5 rounded-lg bg-white border ${styles.ring} shadow-[0_8px_24px_rgba(10,10,11,0.10)] ${t.exiting ? "admin-toast-out" : "admin-toast-in"}`}
+              className={`pointer-events-auto w-[380px] max-w-[calc(100vw-3rem)] flex items-start gap-3 px-4 py-3.5 rounded-lg bg-white border ${styles.ring} shadow-[0_8px_24px_rgba(10,10,11,0.10)] ${t.exiting ? "admin-toast-out" : "admin-toast-in"}`}
               role="status"
             >
               <div

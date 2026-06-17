@@ -1,0 +1,16 @@
+# gitleaks config for the secret-scanning CI gate (.github/workflows/security.yml).
+# Extends the default ruleset; only suppresses known false positives.
+
+[extend]
+useDefault = true
+# `curl-auth-header` is a generic "Authorization: Bearer <x>" matcher that fires
+# on our API documentation examples (README.md is full of example curls). It is
+# NOT provider-specific — real provider keys (Anthropic, Stripe, Shopify,
+# Telegram, Postgres URLs, etc.) are still caught by their dedicated rules.
+disabledRules = ["curl-auth-header"]
+
+[allowlist]
+description = "Placeholder values in committed examples are not real secrets."
+paths = [
+  '''\.env\.example$''',
+]
