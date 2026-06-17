@@ -1,0 +1,31 @@
+name: security
+
+# Secret-scanning gate for a PUBLIC repo. Fails the build if a credential is
+# committed. Pairs with GitHub's native push protection (see SECURITY.md) —
+# push protection blocks known provider patterns at push time; gitleaks adds
+# entropy-based + custom-rule scanning in CI and covers the full history on PRs.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so a secret slipped into an earlier commit is caught,
+          # not just the diff.
+          fetch-depth: 0
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No GITLEAKS_LICENSE needed for public repos.
