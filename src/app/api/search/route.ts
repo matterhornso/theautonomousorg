@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { searchMessages, getCompany } from "@/lib/db";
+import { inTenant } from "@/lib/with-tenant-route";
 
 export async function GET(request: NextRequest) {
   const { userId } = await auth();
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest) {
   const query = request.nextUrl.searchParams.get("q");
   const agentId = request.nextUrl.searchParams.get("agentId") || undefined;
   const limitStr = request.nextUrl.searchParams.get("limit");
-  const limit = limitStr ? parseInt(limitStr, 10) : 50;
+  const limit = Math.min(Math.max(parseInt(limitStr || "50", 10) || 50, 1), 100);
 
   if (!companyId || !query) {
     return NextResponse.json({ error: "Missing companyId or query" }, { status: 400 });
@@ -27,7 +28,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const results = await searchMessages(companyId, query, { agentId, limit });
+  const results = await inTenant(companyId, userId, () =>
+    searchMessages(companyId, query, { agentId, limit })
+  );
 
   return NextResponse.json({ results, query, total: results.length });
 }

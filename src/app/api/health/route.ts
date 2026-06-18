@@ -24,7 +24,9 @@ export async function GET() {
       checks.database = result[0]?.ok === 1 ? "connected" : "unexpected";
       await sql.end();
     } catch (error) {
-      checks.database = `FAILED: ${error instanceof Error ? error.message : "unknown"}`;
+      // Log the detail server-side; don't leak DB internals to a public endpoint.
+      console.error("[health] database check failed:", error);
+      checks.database = "FAILED";
     }
   } else {
     checks.database = "SKIPPED (no DATABASE_URL)";
