@@ -3,10 +3,27 @@ import { auth } from "@clerk/nextjs/server";
 import {
   createWorkflow,
   getWorkflowsByCompany,
+  getWorkflow,
   getCompany,
   deleteWorkflow,
   updateWorkflow,
 } from "@/lib/db";
+
+/** Load a workflow and confirm the caller owns its company, else return an error response. */
+async function requireWorkflowOwnership(userId: string, workflowId: string | null) {
+  if (!workflowId) {
+    return { ok: false as const, response: NextResponse.json({ error: "Missing workflowId" }, { status: 400 }) };
+  }
+  const workflow = await getWorkflow(workflowId);
+  if (!workflow) {
+    return { ok: false as const, response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
+  }
+  const company = await getCompany(workflow.company_id);
+  if (!company || company.user_id !== userId) {
+    return { ok: false as const, response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
+  }
+  return { ok: true as const };
+}
 
 export async function GET(request: NextRequest) {
   const { userId } = await auth();
@@ -67,9 +84,8 @@ export async function PUT(request: NextRequest) {
   const body = await request.json();
   const { workflowId, name, description, steps, isActive } = body;
 
-  if (!workflowId) {
-    return NextResponse.json({ error: "Missing workflowId" }, { status: 400 });
-  }
+  const guard = await requireWorkflowOwnership(userId, workflowId);
+  if (!guard.ok) return guard.response;
 
   await updateWorkflow(workflowId, {
     ...(name !== undefined && { name }),
@@ -88,10 +104,10 @@ export async function DELETE(request: NextRequest) {
   }
 
   const workflowId = request.nextUrl.searchParams.get("workflowId");
-  if (!workflowId) {
-    return NextResponse.json({ error: "Missing workflowId" }, { status: 400 });
-  }
 
-  await deleteWorkflow(workflowId);
+  const guard = await requireWorkflowOwnership(userId, workflowId);
+  if (!guard.ok) return guard.response;
+
+  await deleteWorkflow(workflowId!);
   return NextResponse.json({ ok: true });
 }

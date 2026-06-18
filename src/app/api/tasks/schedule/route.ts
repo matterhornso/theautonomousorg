@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getCompaniesByUser, getAgent, createScheduledTask, getScheduledTasksByCompany } from "@/lib/db";
+import { assertCompanyOwnership } from "@/lib/auth-helpers";
 import { Cron } from "croner";
 
 export async function GET(request: NextRequest) {
@@ -40,6 +41,10 @@ export async function POST(request: NextRequest) {
   const agent = await getAgent(agentId);
   if (!agent) return NextResponse.json({ error: "Agent not found" }, { status: 404 });
 
+  // IDOR guard: caller must own the agent's company before scheduling work on it.
+  const ownership = await assertCompanyOwnership(userId, agent.company_id);
+  if (!ownership.ok) return ownership.response;
+
   // Validate cron expression
   if (cronExpression) {
     try {
@@ -74,8 +79,21 @@ export async function DELETE(request: NextRequest) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { taskId } = (await request.json()) as { taskId: string };
-  // Simple delete — in production, verify ownership
+  const { companyId, taskId } = (await request.json()) as { companyId: string; taskId: string };
+  if (!companyId || !taskId) {
+    return NextResponse.json({ error: "companyId and taskId required" }, { status: 400 });
+  }
+
+  // IDOR guard: caller must own the company AND the task must belong to it.
+  const companies = await getCompaniesByUser(userId);
+  if (!companies.find((c) => c.id === companyId)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const tasks = await getScheduledTasksByCompany(companyId);
+  if (!tasks.find((t) => t.id === taskId)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const db = await import("@/lib/db");
   await db.updateTaskStatus(taskId, "failed", { error_message: "Cancelled by user" });
 
