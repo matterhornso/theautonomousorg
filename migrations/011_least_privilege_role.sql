@@ -13,9 +13,24 @@
 -- switch DATABASE_URL.
 --
 -- ⚠️  DO NOT switch DATABASE_URL to app_user until the per-request tenant GUC
---     (app.current_company_id) is set on EVERY query path. Today only
---     tenant-context.ts (runWithTenantStore) sets it, and it has no callers in
---     the API routes — so a NOBYPASSRLS role would currently see ZERO rows.
+--     (app.current_company_id) is set on EVERY query path — otherwise a
+--     NOBYPASSRLS role sees ZERO rows.
+--
+--     PLUMBING NOW IN PLACE (verified by scripts/verify-rls-guc.ts):
+--       - db-postgres `sql` is a proxy that routes queries onto the active
+--         tenant transaction (with GUCs set) when one is open in ALS.
+--       - withTenantContext()/inTenant() open that transaction.
+--       So wrapping a route in inTenant(companyId, userId, ...) makes all its
+--       db calls RLS-enforced — no per-query changes.
+--
+--     REMAINING BEFORE CUTOVER (mechanical, dormant until DATABASE_URL flips):
+--       1. Wrap every tenant-data API route in inTenant() (one example wired:
+--          GET /api/workflows). Resolve-by-id routes look up company_id first.
+--       2. RSC pages under /admin and /dashboard have no single wrap point —
+--          give them a tenant-scoped data layer (call db inside inTenant) or a
+--          per-segment wrapper.
+--       3. Add a real RLS isolation test against a DB with app_user (forged GUC
+--          → 0 rows).
 --     Cutover checklist is at the bottom of this file.
 
 -- 1) Connection role WITHOUT superuser / bypassrls.

@@ -6,6 +6,7 @@
  */
 
 import postgres from "postgres";
+import { getActiveTx } from "./tenant-als";
 import { randomUUID, createCipheriv, createDecipheriv, randomBytes, scryptSync } from "crypto";
 import type {
   Company,
@@ -26,10 +27,11 @@ if (!DATABASE_URL) {
 // Supabase transaction pooler (port 6543) requires prepare: false
 // SSL required for Railway → Supabase connectivity
 const isPooler = DATABASE_URL?.includes(':6543') || DATABASE_URL?.includes('pooler.supabase.com');
-// Exported so tenant-context.ts and tests can share the same connection pool.
-// Do NOT use this directly from app code — go through withTenantContext() so
-// Postgres RLS policies see the active company_id/user_id (see migrations/001_rls_policies.sql).
-export const sql = DATABASE_URL
+
+// The base connection pool. Connects as whatever role DATABASE_URL specifies.
+// Used directly only by tenant-context (to open the per-request transaction)
+// and cutover/verification scripts; app code goes through `sql` below.
+export const basePool = DATABASE_URL
   ? postgres(DATABASE_URL, {
       max: 10,
       idle_timeout: 20,
@@ -38,6 +40,34 @@ export const sql = DATABASE_URL
       prepare: isPooler ? false : true,
       onnotice: () => {},
     })
+  : (null as unknown as ReturnType<typeof postgres>);
+
+// `sql` transparently routes every query onto the ACTIVE tenant transaction
+// (opened by withTenantContext, which sets app.current_company_id /
+// app.current_user_id so Postgres RLS enforces tenant isolation) when one is
+// open in AsyncLocalStorage; otherwise it uses the base pool. This makes all
+// ~150 existing db-postgres queries RLS-aware with ZERO call-site changes.
+//
+// Dormant today: while DATABASE_URL connects as a BYPASSRLS role (postgres),
+// RLS is ignored and this behaves exactly like the base pool. Once the cutover
+// to the NOBYPASSRLS app_user role happens (migrations/011), queries that run
+// outside a tenant transaction will be correctly denied by RLS.
+export const sql = basePool
+  ? (new Proxy(function () {} as unknown as ReturnType<typeof postgres>, {
+      apply(_target, _thisArg, args: unknown[]) {
+        const active = getActiveTx() as unknown as ((...a: unknown[]) => unknown) | null;
+        const target = (active ?? basePool) as unknown as (...a: unknown[]) => unknown;
+        return target(...args);
+      },
+      get(_target, prop) {
+        const active = getActiveTx();
+        const target = (active ?? basePool) as unknown as Record<PropertyKey, unknown>;
+        const value = target[prop];
+        return typeof value === "function"
+          ? (value as (...a: unknown[]) => unknown).bind(target)
+          : value;
+      },
+    }) as unknown as ReturnType<typeof postgres>)
   : (null as unknown as ReturnType<typeof postgres>);
 
 // Prevent unhandled connection errors from crashing the process
