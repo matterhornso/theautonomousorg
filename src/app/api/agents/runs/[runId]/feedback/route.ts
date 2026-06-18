@@ -19,6 +19,7 @@ import { auth } from "@clerk/nextjs/server";
 import { assertCompanyOwnership } from "@/lib/auth-helpers";
 import { getAgentRun } from "@/lib/agent-runs";
 import { updateLessonForRun } from "@/lib/lessons";
+import { safeEqual } from "@/lib/secure-compare";
 
 export async function POST(
   request: NextRequest,
@@ -32,9 +33,9 @@ export async function POST(
   // Internal-secret bypass for agent self-rating / server-side flows.
   const internalSecret = request.headers.get("x-internal-secret");
   const isInternal =
-    internalSecret &&
-    process.env.INTERNAL_SECRET &&
-    internalSecret === process.env.INTERNAL_SECRET;
+    !!internalSecret &&
+    !!process.env.INTERNAL_SECRET &&
+    safeEqual(internalSecret, process.env.INTERNAL_SECRET);
 
   let userId: string | null = null;
   if (!isInternal) {

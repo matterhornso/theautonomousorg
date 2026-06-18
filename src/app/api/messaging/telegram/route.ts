@@ -34,6 +34,7 @@ import { createAgentRun, completeAgentRun } from "@/lib/agent-runs";
 import { buildLessonsHelper } from "@/lib/lessons";
 import { notifyHelpRequest } from "@/lib/escalation";
 import { randomUUID } from "crypto";
+import { safeEqual } from "@/lib/secure-compare";
 
 const client = new Anthropic();
 
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Telegram webhook not configured" }, { status: 503 });
     }
     const headerSecret = request.headers.get("x-telegram-bot-api-secret-token");
-    if (headerSecret !== webhookSecret) {
+    if (!safeEqual(headerSecret, webhookSecret)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

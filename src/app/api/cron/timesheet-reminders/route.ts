@@ -3,10 +3,11 @@
  *
  *   GET /api/cron/timesheet-reminders
  *   Authorization: Bearer <CRON_SECRET>     ← preferred
+ *   x-cron-secret: <CRON_SECRET>            ← also accepted
  *
- * A `?token=<CRON_SECRET>` query param is also accepted for runners that can't
- * set headers, but prefer the Bearer header: query strings leak into access
- * logs, proxies, and browser history. The secret is compared in constant time.
+ * The secret is header-only — query-string tokens are no longer accepted
+ * because query strings leak into access logs, proxies, and browser history.
+ * The secret is compared in constant time.
  *
  * Ops:
  * - Railway: set CRON_SECRET, schedule a daily/weekly cron (e.g. Fri 17:00 IST)
@@ -20,17 +21,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { timingSafeEqual } from "crypto";
 import { currentPeriodKey, runReminderPass } from "@/lib/timesheets";
 import { getSchedule, recordRun } from "@/lib/reminder-schedule";
-
-/** Constant-time string compare to avoid leaking the secret via timing. */
-function safeEqual(a: string, b: string): boolean {
-  const ab = Buffer.from(a);
-  const bb = Buffer.from(b);
-  if (ab.length !== bb.length) return false;
-  return timingSafeEqual(ab, bb);
-}
+import { safeEqual } from "@/lib/secure-compare";
 
 async function listCompaniesWithEmployees(): Promise<string[]> {
   if (!process.env.DATABASE_URL) return [];
@@ -53,14 +46,14 @@ function authorize(request: NextRequest): NextResponse | null {
       { status: 503 }
     );
   }
+  // Header-only: never accept the secret via query string (query strings
+  // leak into access logs, proxies, and browser history).
   const headerToken = (() => {
     const auth = request.headers.get("authorization");
     if (auth?.startsWith("Bearer ")) return auth.slice(7);
-    return null;
+    return request.headers.get("x-cron-secret");
   })();
-  const queryToken = request.nextUrl.searchParams.get("token");
-  const token = headerToken ?? queryToken;
-  if (!token || !safeEqual(token, expected)) {
+  if (!safeEqual(headerToken, expected)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   return null;

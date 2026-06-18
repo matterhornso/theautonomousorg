@@ -23,13 +23,14 @@ import {
   setWebhook,
   getWebhookInfo,
 } from "@/lib/telegram";
+import { safeEqual } from "@/lib/secure-compare";
 
 export async function POST(request: NextRequest) {
   // Auth: either an internal secret (so a CI deploy hook can call this
   // without Clerk) or a signed-in Clerk session.
   const got = request.headers.get("x-internal-secret");
   const isInternal =
-    got && process.env.INTERNAL_SECRET && got === process.env.INTERNAL_SECRET;
+    !!got && !!process.env.INTERNAL_SECRET && safeEqual(got, process.env.INTERNAL_SECRET);
   if (!isInternal) {
     const session = await auth();
     if (!session.userId) {
