@@ -91,7 +91,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "The Autonomous — AI Agents for Every Business Role",
     description:
-      "Run your company with AI agents. 14 roles, 168 skills, real tool integrations. Enter your website and launch your AI workforce in 2 minutes.",
+      "Run your company with AI agents. 15 roles, 168 skills, real tool integrations. Enter your website and launch your AI workforce in 2 minutes.",
     images: [`${CANONICAL_HOST}/og-image.png`],
     creator: "@chainflux",
     site: "@chainflux",
@@ -256,7 +256,7 @@ const jsonLd = {
           name: "What AI agent roles are available?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "The Autonomous offers 14 pre-built agent roles: Sales, Marketing, Accounting, Strategy, Product, Front-End Engineering, Back-End Engineering, AI Expert, Admin, HR, Finance, Customer Success, Legal, and Data Analyst. Each role ships with role-specific skills — the Sales agent knows how to write outbound sequences and qualify leads, the Marketing agent knows how to structure SEO audits, the Accounting agent knows how to categorize transactions and prepare for filings. You can also create custom agents with your own role definitions, skills, and instructions for unique business functions.",
+            text: "The Autonomous offers 15 pre-built agent roles: Sales, Marketing, Accounting, Strategy, Product, Front-End Engineering, Back-End Engineering, AI Expert, Admin, HR, Finance, Customer Success, Legal, Data Analyst, and a CEO orchestrator. Each role ships with role-specific skills — the Sales agent knows how to write outbound sequences and qualify leads, the Marketing agent knows how to structure SEO audits, the Accounting agent knows how to categorize transactions and prepare for filings. You can also create custom agents with your own role definitions, skills, and instructions for unique business functions.",
           },
         },
         {

@@ -819,7 +819,7 @@ export default function Home() {
                 },
                 {
                   q: "What roles can AI agents fill?",
-                  a: "We offer 14 pre-built agent roles: Sales, Marketing, Accounting, Strategy, Product, Front-End Engineering, Back-End Engineering, AI Expert, Admin, HR, Finance, Customer Success, Legal, and Data Analyst. You can also create custom agents with your own role definitions, skills, and instructions.",
+                  a: "We offer 15 pre-built agent roles: Sales, Marketing, Accounting, Strategy, Product, Front-End Engineering, Back-End Engineering, AI Expert, Admin, HR, Finance, Customer Success, Legal, Data Analyst, and a CEO orchestrator. You can also create custom agents with your own role definitions, skills, and instructions.",
                 },
                 {
                   q: "How much does it cost?",
