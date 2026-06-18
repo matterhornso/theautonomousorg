@@ -22,13 +22,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { resolveTenant } from "@/app/admin/_lib/resolve-tenant";
 import { generateBrief } from "@/lib/brief";
+import { safeEqual } from "@/lib/secure-compare";
 
 export async function POST(request: NextRequest) {
   const internalSecret = request.headers.get("x-internal-secret");
   const isInternal =
-    internalSecret &&
-    process.env.INTERNAL_SECRET &&
-    internalSecret === process.env.INTERNAL_SECRET;
+    !!internalSecret &&
+    !!process.env.INTERNAL_SECRET &&
+    safeEqual(internalSecret, process.env.INTERNAL_SECRET);
 
   let body: {
     eventTitle?: string;

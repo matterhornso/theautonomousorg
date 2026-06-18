@@ -70,7 +70,25 @@ export async function PATCH(request: NextRequest) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { memberId, role } = (await request.json()) as { memberId: string; role: string };
+  const { companyId, memberId, role } = (await request.json()) as {
+    companyId: string;
+    memberId: string;
+    role: string;
+  };
+  if (!companyId || !memberId) {
+    return NextResponse.json({ error: "companyId and memberId required" }, { status: 400 });
+  }
+
+  // IDOR guard: caller must own the company AND the member must belong to it.
+  const companies = await getCompaniesByUser(userId);
+  if (!companies.find((c) => c.id === companyId)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const members = await getTeamMembers(companyId);
+  if (!members.find((m) => m.id === memberId)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   await updateTeamMemberRole(memberId, role);
   return NextResponse.json({ updated: true });
 }
@@ -79,7 +97,24 @@ export async function DELETE(request: NextRequest) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { memberId } = (await request.json()) as { memberId: string };
+  const { companyId, memberId } = (await request.json()) as {
+    companyId: string;
+    memberId: string;
+  };
+  if (!companyId || !memberId) {
+    return NextResponse.json({ error: "companyId and memberId required" }, { status: 400 });
+  }
+
+  // IDOR guard: caller must own the company AND the member must belong to it.
+  const companies = await getCompaniesByUser(userId);
+  if (!companies.find((c) => c.id === companyId)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const members = await getTeamMembers(companyId);
+  if (!members.find((m) => m.id === memberId)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   await removeTeamMember(memberId);
   return NextResponse.json({ removed: true });
 }

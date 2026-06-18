@@ -70,7 +70,7 @@ export function Navbar() {
               className="hover:text-primary transition-colors py-3 inline-flex items-center gap-2"
             >
               Memory
-              <span className="text-[10px] uppercase tracking-wide bg-accent/15 text-accent px-1.5 py-0.5 rounded font-medium">
+              <span className="text-[10px] uppercase tracking-wide bg-accent/15 text-accent-ink px-1.5 py-0.5 rounded font-medium">
                 New
               </span>
             </a>
@@ -189,7 +189,7 @@ export function Navbar() {
               className="flex items-center gap-2 py-3 text-lg text-neutral-700 hover:text-primary transition-colors"
             >
               Memory
-              <span className="text-[10px] uppercase tracking-wide bg-accent/15 text-accent px-1.5 py-0.5 rounded font-medium">
+              <span className="text-[10px] uppercase tracking-wide bg-accent/15 text-accent-ink px-1.5 py-0.5 rounded font-medium">
                 New
               </span>
             </a>

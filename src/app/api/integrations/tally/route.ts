@@ -32,6 +32,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { randomUUID, createHash } from "crypto";
 import { z } from "zod";
+import { safeEqual } from "@/lib/secure-compare";
 
 const ledgerEntrySchema = z.object({
   id: z.string(),
@@ -124,7 +125,7 @@ export async function runTallyIngest(
     return { status: 503, body: { error: "Tally ingest token not configured" } };
   }
   const presented = auth?.startsWith("Bearer ") ? auth.slice("Bearer ".length) : auth;
-  if (presented !== expectedToken) {
+  if (!safeEqual(presented, expectedToken)) {
     return { status: 401, body: { error: "Unauthorized" } };
   }
 

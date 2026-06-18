@@ -1566,15 +1566,24 @@ export interface UserApiKey {
   created_at: string;
 }
 
-function getEncryptionKey(): Buffer | null {
+function getEncryptionKey(): Buffer {
   const envKey = process.env.ENCRYPTION_KEY;
-  if (!envKey) return null;
+  if (!envKey) {
+    // FAIL CLOSED in production: never store secrets without real encryption.
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "ENCRYPTION_KEY is required in production — refusing to handle API keys without encryption."
+      );
+    }
+    // Dev/test only: deterministic throwaway key so round-trips still work and
+    // secrets are never persisted as reversible plaintext. NOT for production.
+    return scryptSync("dev-only-insecure-encryption-key", "theautonomous-salt", 32);
+  }
   return scryptSync(envKey, "theautonomous-salt", 32);
 }
 
 function encryptApiKey(plaintext: string): string {
   const key = getEncryptionKey();
-  if (!key) return Buffer.from(plaintext).toString("base64");
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", key, iv);
   const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
@@ -1584,9 +1593,10 @@ function encryptApiKey(plaintext: string): string {
 
 function decryptApiKey(stored: string): string {
   const key = getEncryptionKey();
-  if (!key) return Buffer.from(stored, "base64").toString("utf8");
   const parts = stored.split(":");
-  if (parts.length !== 3) return stored; // legacy plaintext fallback
+  if (parts.length !== 3) {
+    throw new Error("Stored API key is not in the expected iv:tag:ciphertext format");
+  }
   const [ivHex, tagHex, encHex] = parts;
   const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(ivHex, "hex"));
   decipher.setAuthTag(Buffer.from(tagHex, "hex"));

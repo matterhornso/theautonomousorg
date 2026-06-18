@@ -4,6 +4,10 @@
   --color-primary: #0A0A0B;
   --color-accent: #D4A853;
   --color-accent-hover: #C49A45;
+  /* Darker gold for TEXT on light/cream surfaces. Plain --color-accent
+     (#D4A853) on white fails WCAG AA (~1.9:1); this ink shade passes for
+     small text while reading as the same gold family. */
+  --color-accent-ink: #9A7B2E;
   --color-secondary: #2D5A3D;
   --color-surface: #FAFAF8;
   --color-surface-mid: #F0EDE6;
@@ -19,9 +23,12 @@
   --color-neutral-800: #252320;
   --color-neutral-900: #0A0A0B;
 
-  --font-serif: "Instrument Serif", Georgia, serif;
-  --font-sans: "DM Sans", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  /* Font sources are loaded via next/font/google in layout.tsx and exposed as
+     --font-instrument-serif / --font-dm-sans / --font-jetbrains-mono on <html>.
+     Keep the original named-family + system fallbacks after them. */
+  --font-serif: var(--font-instrument-serif), "Instrument Serif", Georgia, serif;
+  --font-sans: var(--font-dm-sans), "DM Sans", system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), "JetBrains Mono", monospace;
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out-smooth: cubic-bezier(0.45, 0, 0.55, 1);
@@ -47,6 +54,18 @@ body {
 ::selection {
   background: var(--color-accent);
   color: var(--color-primary);
+}
+
+/* Readable gold for small text on light/cream surfaces (WCAG AA).
+   Use this instead of `text-accent` for any GOLD TEXT sitting on white/cream.
+   TODO (broader sweep, out of scope for this change): the small uppercase
+   gold "eyebrow" labels rendered with `text-accent` across the marketing
+   pages — notably src/app/page.tsx and src/app/memory/page.tsx — have the
+   same ~1.9:1 contrast problem and should be migrated to `.text-accent-ink`
+   (or text-accent-ink) in a follow-up. Only the navbar "New" badge is
+   swapped here to keep this diff focused. */
+.text-accent-ink {
+  color: var(--color-accent-ink);
 }
 
 /* Scroll-triggered fade-up animation */

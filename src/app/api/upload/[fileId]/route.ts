@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getFileUpload } from "@/lib/db";
+import { assertCompanyOwnership } from "@/lib/auth-helpers";
 import path from "path";
 import fs from "fs";
 
@@ -39,6 +40,19 @@ export async function GET(
       return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
 
+    // Ownership check (IDOR guard): the file must belong to the caller directly
+    // or via a company they own/are a member of. Return 404 (not 403) so we
+    // don't confirm the existence of another tenant's file id.
+    const ownsDirectly = !!upload.user_id && upload.user_id === userId;
+    if (!ownsDirectly) {
+      const ownership = upload.company_id
+        ? await assertCompanyOwnership(userId, upload.company_id)
+        : null;
+      if (!ownership || !ownership.ok) {
+        return NextResponse.json({ error: "File not found" }, { status: 404 });
+      }
+    }
+
     // Path traversal protection
     if (upload.file_path.includes("..")) {
       return NextResponse.json({ error: "Invalid file path" }, { status: 400 });
@@ -67,7 +81,8 @@ export async function GET(
       headers: {
         "Content-Type": contentType,
         "Content-Disposition": `inline; filename="${upload.file_name.replace(/[^\w\s.-]/g, '_').replace(/\s+/g, '_')}"`,
-        "Cache-Control": "public, max-age=31536000, immutable",
+        // Private tenant content — never cache in shared/CDN caches.
+        "Cache-Control": "private, no-store",
       },
     });
   } catch (error) {

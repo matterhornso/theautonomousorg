@@ -34,6 +34,7 @@ import { auth } from "@clerk/nextjs/server";
 import { resolveTenant } from "@/app/admin/_lib/resolve-tenant";
 import { ingestConversation } from "@/lib/entity-extractor";
 import type { ConversationKind } from "@/lib/knowledge-graph";
+import { safeEqual } from "@/lib/secure-compare";
 
 const VALID_KINDS: ConversationKind[] = [
   "meeting",
@@ -49,9 +50,9 @@ export async function POST(request: NextRequest) {
   // header and an explicit companyId in the body.
   const internalSecret = request.headers.get("x-internal-secret");
   const isInternal =
-    internalSecret &&
-    process.env.INTERNAL_SECRET &&
-    internalSecret === process.env.INTERNAL_SECRET;
+    !!internalSecret &&
+    !!process.env.INTERNAL_SECRET &&
+    safeEqual(internalSecret, process.env.INTERNAL_SECRET);
 
   let body: {
     text?: string;

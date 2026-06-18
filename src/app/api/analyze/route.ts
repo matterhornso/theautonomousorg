@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getUserProfile } from "@/lib/db";
 import { checkRateLimit, getRateLimitKey, RATE_LIMITS } from "@/lib/rate-limit";
-import { validateUrl, sanitizeInput } from "@/lib/validation";
+import { assertPublicUrl, sanitizeInput } from "@/lib/validation";
 
 const client = new Anthropic();
 
@@ -52,11 +52,18 @@ Respond in JSON format:
 
 If the website content is insufficient to analyze, still make reasonable inferences and note any assumptions.`;
 
-async function fetchWebsiteContent(url: string): Promise<string> {
+async function fetchWebsiteContent(url: string, depth = 0): Promise<string> {
+  if (depth > 3) throw new Error("Too many redirects");
+
   let targetUrl = url;
   if (!targetUrl.startsWith("http")) {
     targetUrl = `https://${targetUrl}`;
   }
+
+  // SSRF guard: re-resolve and reject private/link-local IPs on EVERY hop
+  // (defends against redirect-to-metadata and DNS rebinding).
+  const ssrfError = await assertPublicUrl(targetUrl);
+  if (ssrfError) throw new Error(ssrfError);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
@@ -69,8 +76,18 @@ async function fetchWebsiteContent(url: string): Promise<string> {
           "Mozilla/5.0 (compatible; TheAutonomousBot/1.0; +https://theautonomous.org)",
         Accept: "text/html,application/xhtml+xml",
       },
-      redirect: "follow",
+      // Do NOT auto-follow: handle redirects manually so each hop is re-validated.
+      redirect: "manual",
     });
+
+    // Manual redirect handling with per-hop SSRF re-validation.
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location");
+      if (!location) throw new Error("Redirect without location");
+      const nextUrl = new URL(location, targetUrl).toString();
+      clearTimeout(timeout);
+      return fetchWebsiteContent(nextUrl, depth + 1);
+    }
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
@@ -125,8 +142,8 @@ export async function POST(request: NextRequest) {
     const { url: rawUrl } = await request.json();
     const url = typeof rawUrl === "string" ? sanitizeInput(rawUrl) : "";
 
-    // Validate URL
-    const urlError = validateUrl(url || "");
+    // Validate URL (prefix checks + DNS resolution → private-IP rejection)
+    const urlError = await assertPublicUrl(url || "");
     if (urlError) {
       return NextResponse.json({ error: urlError }, { status: 400 });
     }

@@ -3,10 +3,28 @@ import { auth } from "@clerk/nextjs/server";
 import {
   createWorkflow,
   getWorkflowsByCompany,
+  getWorkflow,
   getCompany,
   deleteWorkflow,
   updateWorkflow,
 } from "@/lib/db";
+import { inTenant } from "@/lib/with-tenant-route";
+
+/** Load a workflow and confirm the caller owns its company, else return an error response. */
+async function requireWorkflowOwnership(userId: string, workflowId: string | null) {
+  if (!workflowId) {
+    return { ok: false as const, response: NextResponse.json({ error: "Missing workflowId" }, { status: 400 }) };
+  }
+  const workflow = await getWorkflow(workflowId);
+  if (!workflow) {
+    return { ok: false as const, response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
+  }
+  const company = await getCompany(workflow.company_id);
+  if (!company || company.user_id !== userId) {
+    return { ok: false as const, response: NextResponse.json({ error: "Not found" }, { status: 404 }) };
+  }
+  return { ok: true as const };
+}
 
 export async function GET(request: NextRequest) {
   const { userId } = await auth();
@@ -24,7 +42,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const workflows = await getWorkflowsByCompany(companyId);
+  // Example of the RLS-ready pattern: companyId is known + ownership verified,
+  // so run the tenant query inside the GUC-scoped transaction (inTenant). After
+  // the app_user cutover this query is also enforced by RLS, not just the check
+  // above. See src/lib/with-tenant-route.ts.
+  const workflows = await inTenant(companyId, userId, () =>
+    getWorkflowsByCompany(companyId)
+  );
   return NextResponse.json({ workflows });
 }
 
@@ -67,9 +91,8 @@ export async function PUT(request: NextRequest) {
   const body = await request.json();
   const { workflowId, name, description, steps, isActive } = body;
 
-  if (!workflowId) {
-    return NextResponse.json({ error: "Missing workflowId" }, { status: 400 });
-  }
+  const guard = await requireWorkflowOwnership(userId, workflowId);
+  if (!guard.ok) return guard.response;
 
   await updateWorkflow(workflowId, {
     ...(name !== undefined && { name }),
@@ -88,10 +111,10 @@ export async function DELETE(request: NextRequest) {
   }
 
   const workflowId = request.nextUrl.searchParams.get("workflowId");
-  if (!workflowId) {
-    return NextResponse.json({ error: "Missing workflowId" }, { status: 400 });
-  }
 
-  await deleteWorkflow(workflowId);
+  const guard = await requireWorkflowOwnership(userId, workflowId);
+  if (!guard.ok) return guard.response;
+
+  await deleteWorkflow(workflowId!);
   return NextResponse.json({ ok: true });
 }

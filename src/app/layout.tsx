@@ -1,7 +1,32 @@
 import type { Metadata } from "next";
+import { Instrument_Serif, DM_Sans, JetBrains_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { PwaRegister } from "./components/pwa-register";
 import "./globals.css";
+
+// Brand fonts wired to the CSS variables consumed in globals.css
+// (--font-serif / --font-sans / --font-mono). Instrument Serif is the
+// editorial display face, DM Sans the body/UI face, JetBrains Mono for code.
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  display: "swap",
+  variable: "--font-instrument-serif",
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  display: "swap",
+  variable: "--font-dm-sans",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  display: "swap",
+  variable: "--font-jetbrains-mono",
+});
 
 // Canonical host is www. The apex (theautonomous.org) does not currently
 // resolve at the DNS layer — every URL emitted to crawlers, AI agents,
@@ -239,7 +264,7 @@ const jsonLd = {
           name: "Is The Autonomous free?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Yes, The Autonomous offers 1,000 free credits on signup with no credit card required. That covers roughly 20 conversations with your agents. After that, the Growth plan is $49 per month and includes 5,000 credits, with additional credits at $15 per 1,000. Enterprise plans include unlimited credits, all integrations, BYOM (Bring Your Own Model), SOC 2, HIPAA compliance, and dedicated support — pricing on request.",
+            text: "Yes, The Autonomous offers 1,000 free credits on signup with no credit card required. That covers roughly 20 conversations with your agents. Credit overage rates differ by tier: on the free Starter plan, additional credits are $19 per 1,000; on the Growth plan ($49 per month, which includes 5,000 credits), additional credits are $15 per 1,000. Enterprise plans include unlimited credits, all integrations, BYOM (Bring Your Own Model), SOC 2, HIPAA compliance, and dedicated support — pricing on request.",
           },
         },
         {
@@ -294,7 +319,10 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider>
-      <html lang="en">
+      <html
+        lang="en"
+        className={`${instrumentSerif.variable} ${dmSans.variable} ${jetbrainsMono.variable}`}
+      >
         <head>
           <script
             type="application/ld+json"

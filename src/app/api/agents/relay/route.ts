@@ -13,6 +13,7 @@ import {
 import { createAgentRun, completeAgentRun } from "@/lib/agent-runs";
 import { buildLessonsHelper } from "@/lib/lessons";
 import { randomUUID } from "crypto";
+import { safeEqual } from "@/lib/secure-compare";
 
 const client = new Anthropic();
 const MAX_DEPTH = 3;
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
   try {
     // Allow internal calls via secret header, or require auth
     const internalSecret = request.headers.get("x-internal-secret");
-    const isInternalCall = internalSecret && process.env.INTERNAL_SECRET && internalSecret === process.env.INTERNAL_SECRET;
+    const isInternalCall = !!internalSecret && !!process.env.INTERNAL_SECRET && safeEqual(internalSecret, process.env.INTERNAL_SECRET);
 
     if (!isInternalCall) {
       const { userId } = await auth();

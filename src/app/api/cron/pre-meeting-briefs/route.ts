@@ -1,5 +1,6 @@
 /**
- * GET /api/cron/pre-meeting-briefs?token=$CRON_SECRET
+ * GET /api/cron/pre-meeting-briefs
+ *   Authorization: Bearer $CRON_SECRET   (or x-cron-secret: $CRON_SECRET)
  * (POST also accepted with x-internal-secret header)
  *
  * Scans events_log across all tenants for meetings starting within the
@@ -27,17 +28,26 @@ import {
 } from "@/lib/knowledge-graph";
 import { generateBrief } from "@/lib/brief";
 import { sendEmail } from "@/lib/email";
+import { safeEqual } from "@/lib/secure-compare";
 
 function isAuthorized(req: NextRequest): boolean {
-  const token = req.nextUrl.searchParams.get("token");
-  if (token && process.env.CRON_SECRET && token === process.env.CRON_SECRET) {
+  // Cron secret is header-only — never accepted via query string (query
+  // strings leak into access logs, proxies, and browser history).
+  const auth = req.headers.get("authorization");
+  const bearer = auth?.startsWith("Bearer ") ? auth.slice("Bearer ".length) : null;
+  const cronHeader = bearer ?? req.headers.get("x-cron-secret");
+  if (
+    cronHeader &&
+    process.env.CRON_SECRET &&
+    safeEqual(cronHeader, process.env.CRON_SECRET)
+  ) {
     return true;
   }
   const header = req.headers.get("x-internal-secret");
   if (
     header &&
     process.env.INTERNAL_SECRET &&
-    header === process.env.INTERNAL_SECRET
+    safeEqual(header, process.env.INTERNAL_SECRET)
   ) {
     return true;
   }

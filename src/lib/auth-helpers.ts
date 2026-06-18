@@ -13,7 +13,8 @@ import {
  */
 export async function assertCompanyOwnership(
   userId: string,
-  companyId: string | null
+  companyId: string | null,
+  opts: { allowClaim?: boolean } = {}
 ): Promise<
   | { ok: true; companyId: string }
   | { ok: false; response: NextResponse }
@@ -35,11 +36,15 @@ export async function assertCompanyOwnership(
   }
 
   // Check if the company exists but has no owner (provisioned without auth)
-  // and claim it for the current user
-  const company = await getCompany(companyId);
-  if (company && !company.user_id) {
-    await claimCompanyForUser(companyId, userId);
-    return { ok: true, companyId };
+  // and claim it for the current user. SECURITY: only when the caller opts in
+  // (i.e. the authenticated provisioning flow). Auto-claiming on every ownership
+  // check let any user take over an unclaimed company by guessing its id.
+  if (opts.allowClaim) {
+    const company = await getCompany(companyId);
+    if (company && !company.user_id) {
+      await claimCompanyForUser(companyId, userId);
+      return { ok: true, companyId };
+    }
   }
 
   // Check team membership (accepted invites)
