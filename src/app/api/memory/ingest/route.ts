@@ -34,6 +34,7 @@ import { auth } from "@clerk/nextjs/server";
 import { resolveTenant } from "@/app/admin/_lib/resolve-tenant";
 import { ingestConversation } from "@/lib/entity-extractor";
 import type { ConversationKind } from "@/lib/knowledge-graph";
+import { safeSecretEqual } from "@/lib/request-guards";
 
 const VALID_KINDS: ConversationKind[] = [
   "meeting",
@@ -48,10 +49,7 @@ export async function POST(request: NextRequest) {
   // Internal-secret bypass — Deepgram / Zoom webhooks call this with the
   // header and an explicit companyId in the body.
   const internalSecret = request.headers.get("x-internal-secret");
-  const isInternal =
-    internalSecret &&
-    process.env.INTERNAL_SECRET &&
-    internalSecret === process.env.INTERNAL_SECRET;
+  const isInternal = safeSecretEqual(internalSecret, process.env.INTERNAL_SECRET);
 
   let body: {
     text?: string;
@@ -62,6 +60,12 @@ export async function POST(request: NextRequest) {
     sourceRef?: string;
     metadata?: Record<string, unknown>;
     companyId?: string;
+    /** "private" keeps the capture (and its extracted entities) out of the
+     *  shared brain — visible only to its owner. Defaults to "company". */
+    visibility?: string;
+    /** Owner for an internal-call private capture. For Clerk-session calls the
+     *  owner is always the signed-in user. */
+    ownerUserId?: string;
   };
   try {
     body = (await request.json()) as typeof body;
@@ -77,8 +81,10 @@ export async function POST(request: NextRequest) {
   }
 
   // Resolve companyId — either from the Clerk session's tenant or from the
-  // request body when this is an internal call.
+  // request body when this is an internal call. Also capture the acting user so
+  // a private capture can be owned correctly.
   let companyId: string;
+  let actingUserId: string | undefined;
   if (isInternal) {
     if (!body.companyId) {
       return NextResponse.json(
@@ -87,13 +93,25 @@ export async function POST(request: NextRequest) {
       );
     }
     companyId = body.companyId;
+    actingUserId = body.ownerUserId;
   } else {
     const session = await auth();
     if (!session.userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    actingUserId = session.userId;
     const tenant = await resolveTenant();
     companyId = tenant.firm.id;
+  }
+
+  // Visibility defaults to the shared brain. "private" requires a known owner.
+  const visibility: "company" | "private" =
+    body.visibility === "private" ? "private" : "company";
+  if (visibility === "private" && !actingUserId) {
+    return NextResponse.json(
+      { error: "ownerUserId required for a private capture" },
+      { status: 400 }
+    );
   }
 
   const kind: ConversationKind =
@@ -119,6 +137,8 @@ export async function POST(request: NextRequest) {
       source: body.source,
       sourceRef: body.sourceRef,
       metadata: body.metadata,
+      visibility,
+      ownerUserId: visibility === "private" ? actingUserId : undefined,
     });
 
     return NextResponse.json({

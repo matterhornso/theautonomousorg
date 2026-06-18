@@ -122,6 +122,34 @@ export interface EscalationHelper {
   escalateToHuman(opts: { roleHint: string; subject: string; detail: string }): Promise<void>;
 }
 
+// ─── Memory helper ─────────────────────────────────────────────────────────
+// The shared company brain, exposed to an agent's beforeRun. Folds together the
+// 5 memory sources (agent KV, lessons, vault, activity, and the knowledge graph
+// of meetings/decisions/commitments) behind one query. Agents read as the
+// COMPANY — they carry no user identity — so private captures are never
+// returned (migration 010/011). This is the link that lets a meeting recorded
+// by one person inform an agent acting later.
+
+export interface MemoryRecallHit {
+  type: "memory" | "lesson" | "vault" | "activity" | "graph";
+  title: string;
+  /** Always present (queryCompanyMemory sets it); may be empty string. */
+  body: string;
+  /** Relevance score when the source is ranked (e.g. vault semantic search). */
+  score?: number;
+  source: { agentRole?: string; docId?: string; runId?: string };
+  createdAt: string;
+}
+
+export interface MemoryHelper {
+  /**
+   * Recall relevant context from the shared brain. `query` ranks/filters across
+   * sources; omit it for the most recent shared context. Default limit 8.
+   * Company-shared only — an agent never sees a member's private rows.
+   */
+  recall(opts?: { query?: string; limit?: number }): Promise<MemoryRecallHit[]>;
+}
+
 // ─── Bundle ────────────────────────────────────────────────────────────────
 
 export interface AgentHelpers {
@@ -129,6 +157,7 @@ export interface AgentHelpers {
   vault: VaultHelper;
   lessons: LessonsHelper;
   escalation: EscalationHelper;
+  memory: MemoryHelper;
 }
 
 // ─── Stub implementation ───────────────────────────────────────────────────
@@ -157,6 +186,9 @@ export function createStubHelpers(): AgentHelpers {
       handoff: notImpl("escalation.handoff"),
       alertSpoc: notImpl("escalation.alertSpoc"),
       escalateToHuman: notImpl("escalation.escalateToHuman"),
+    },
+    memory: {
+      recall: notImpl("memory.recall"),
     },
   };
 }

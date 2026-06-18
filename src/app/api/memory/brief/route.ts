@@ -22,13 +22,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { resolveTenant } from "@/app/admin/_lib/resolve-tenant";
 import { generateBrief } from "@/lib/brief";
+import { safeSecretEqual } from "@/lib/request-guards";
 
 export async function POST(request: NextRequest) {
   const internalSecret = request.headers.get("x-internal-secret");
-  const isInternal =
-    internalSecret &&
-    process.env.INTERNAL_SECRET &&
-    internalSecret === process.env.INTERNAL_SECRET;
+  const isInternal = safeSecretEqual(internalSecret, process.env.INTERNAL_SECRET);
 
   let body: {
     eventTitle?: string;
@@ -56,6 +54,9 @@ export async function POST(request: NextRequest) {
   }
 
   let companyId: string;
+  // Set only for Clerk-session callers so the brief includes the requester's own
+  // private rows. Internal/cron callers stay company-shared (no viewer).
+  let viewerUserId: string | undefined;
   if (isInternal) {
     if (!body.companyId) {
       return NextResponse.json(
@@ -69,6 +70,7 @@ export async function POST(request: NextRequest) {
     if (!session.userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    viewerUserId = session.userId;
     const tenant = await resolveTenant();
     companyId = tenant.firm.id;
   }
@@ -87,6 +89,7 @@ export async function POST(request: NextRequest) {
       eventTitle: body.eventTitle,
       attendees: body.attendees.filter((a): a is string => typeof a === "string"),
       occurredAt,
+      viewerUserId,
     });
     return NextResponse.json(result);
   } catch (err) {

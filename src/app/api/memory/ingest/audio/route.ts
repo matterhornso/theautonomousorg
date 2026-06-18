@@ -36,6 +36,7 @@ import {
 } from "@/lib/deepgram";
 import { ingestConversation } from "@/lib/entity-extractor";
 import type { ConversationKind } from "@/lib/knowledge-graph";
+import { safeSecretEqual, isPubliclyFetchableHttpUrl } from "@/lib/request-guards";
 
 const VALID_KINDS: ConversationKind[] = [
   "meeting",
@@ -55,10 +56,7 @@ export async function POST(request: NextRequest) {
   }
 
   const internalSecret = request.headers.get("x-internal-secret");
-  const isInternal =
-    internalSecret &&
-    process.env.INTERNAL_SECRET &&
-    internalSecret === process.env.INTERNAL_SECRET;
+  const isInternal = safeSecretEqual(internalSecret, process.env.INTERNAL_SECRET);
 
   let body: {
     audioUrl?: string;
@@ -70,6 +68,11 @@ export async function POST(request: NextRequest) {
     sourceRef?: string;
     language?: string;
     metadata?: Record<string, unknown>;
+    /** "private" keeps the recording (and its extracted entities) out of the
+     *  shared brain — visible only to its owner. Defaults to "company". */
+    visibility?: string;
+    /** Owner for an internal-call private capture. Clerk calls use the user. */
+    ownerUserId?: string;
   };
   try {
     body = (await request.json()) as typeof body;
@@ -83,9 +86,18 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
+  // SSRF guard: Deepgram fetches this URL server-side, so reject non-public /
+  // internal / non-https targets (cloud metadata, internal services).
+  if (!isPubliclyFetchableHttpUrl(body.audioUrl)) {
+    return NextResponse.json(
+      { error: "audioUrl must be a public https URL" },
+      { status: 400 }
+    );
+  }
 
-  // Resolve tenant
+  // Resolve tenant + acting user (for private captures).
   let companyId: string;
+  let actingUserId: string | undefined;
   if (isInternal) {
     if (!body.companyId) {
       return NextResponse.json(
@@ -94,13 +106,24 @@ export async function POST(request: NextRequest) {
       );
     }
     companyId = body.companyId;
+    actingUserId = body.ownerUserId;
   } else {
     const session = await auth();
     if (!session.userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    actingUserId = session.userId;
     const tenant = await resolveTenant();
     companyId = tenant.firm.id;
+  }
+
+  const visibility: "company" | "private" =
+    body.visibility === "private" ? "private" : "company";
+  if (visibility === "private" && !actingUserId) {
+    return NextResponse.json(
+      { error: "ownerUserId required for a private capture" },
+      { status: 400 }
+    );
   }
 
   // Transcribe
@@ -143,6 +166,8 @@ export async function POST(request: NextRequest) {
       durationSec: transcript.durationSec,
       detectedLanguage: transcript.language,
     },
+    visibility,
+    ownerUserId: visibility === "private" ? actingUserId : undefined,
   });
 
   return NextResponse.json({

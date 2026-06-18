@@ -30,6 +30,9 @@ function makeStubHelpers(): AgentHelpers {
       alertSpoc: vi.fn().mockResolvedValue(undefined),
       escalateToHuman: vi.fn().mockResolvedValue(undefined),
     },
+    memory: {
+      recall: vi.fn().mockResolvedValue([]),
+    },
   };
 }
 

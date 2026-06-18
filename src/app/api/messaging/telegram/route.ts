@@ -32,6 +32,7 @@ import {
 import { ceoTools, executeCeoTool } from "@/lib/mcp/ceo-tools";
 import { createAgentRun, completeAgentRun } from "@/lib/agent-runs";
 import { buildLessonsHelper } from "@/lib/lessons";
+import { queryCompanyMemory } from "@/lib/memory";
 import { notifyHelpRequest } from "@/lib/escalation";
 import { randomUUID } from "crypto";
 
@@ -422,10 +423,30 @@ export async function POST(request: NextRequest) {
       console.warn("[telegram] lesson lookup failed:", err);
     }
 
+    // Shared company brain (company-only — agents pass no viewer).
+    let brainSection = "";
+    try {
+      const hits = await queryCompanyMemory({
+        companyId,
+        query: userMessage,
+        limit: 6,
+      });
+      if (hits.length > 0) {
+        brainSection =
+          "\n\n## Company Memory\nShared context across the company. Cite it when relevant.\n" +
+          hits
+            .map((h) => `- [${h.type}] ${h.title}${h.body ? ` — ${h.body.slice(0, 200)}` : ""}`)
+            .join("\n");
+      }
+    } catch (err) {
+      console.warn("[telegram] company memory lookup failed:", err);
+    }
+
     const systemPrompt =
       targetAgent.system_prompt +
       memorySection +
       lessonsSection +
+      brainSection +
       `\n\n## Messaging Context\nYou are responding via Telegram to ${displayName}. Keep responses concise and mobile-friendly. Use Markdown formatting sparingly — Telegram supports *bold*, _italic_, and \`code\`.`;
 
     // Open a run record. Postgres-only — null in dev; we fall back to a
