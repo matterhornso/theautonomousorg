@@ -69,8 +69,8 @@ the company got more legible.
 
 ## Agent roles
 
-The platform ships with 14 pre-built agent roles, each with role-specific
-skills:
+The platform ships with 14 specialist agent roles (plus a CEO orchestrator that
+routes between them — 15 in total), each with role-specific skills:
 
 - Sales Agent — prospect research via Apollo.io (210M+ contacts), outbound
   email sequences via Instantly.ai, lead qualification, CRM updates, demo
