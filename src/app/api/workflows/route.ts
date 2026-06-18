@@ -37,19 +37,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing companyId" }, { status: 400 });
   }
 
-  const company = await getCompany(companyId);
-  if (!company || company.user_id !== userId) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
-  // Example of the RLS-ready pattern: companyId is known + ownership verified,
-  // so run the tenant query inside the GUC-scoped transaction (inTenant). After
-  // the app_user cutover this query is also enforced by RLS, not just the check
-  // above. See src/lib/with-tenant-route.ts.
-  const workflows = await inTenant(companyId, userId, () =>
-    getWorkflowsByCompany(companyId)
-  );
-  return NextResponse.json({ workflows });
+  // Whole handler in the tenant tx: the ownership check and the read are both
+  // RLS-enforced after the app_user cutover. See src/lib/with-tenant-route.ts.
+  return inTenant(companyId, userId, async () => {
+    const company = await getCompany(companyId);
+    if (!company || company.user_id !== userId) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    const workflows = await getWorkflowsByCompany(companyId);
+    return NextResponse.json({ workflows });
+  });
 }
 
 export async function POST(request: NextRequest) {

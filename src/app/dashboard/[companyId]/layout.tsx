@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect, notFound } from "next/navigation";
 import { getCompaniesByUser } from "@/lib/db";
+import { withUserContext } from "@/lib/tenant-context";
 
 /**
  * Ownership gate for every /dashboard/[companyId]/* page.
@@ -22,7 +23,7 @@ export default async function CompanyDashboardLayout({
   if (!userId) redirect("/sign-in");
 
   const { companyId } = await params;
-  const companies = await getCompaniesByUser(userId);
+  const companies = await withUserContext(userId, () => getCompaniesByUser(userId));
   if (!companies.find((c) => c.id === companyId)) {
     notFound();
   }

@@ -3,6 +3,7 @@ import "server-only";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getCompaniesByUser } from "@/lib/db";
+import { withUserContext } from "@/lib/tenant-context";
 import type { Company } from "@/lib/types";
 
 export interface ResolvedTenant {
@@ -47,7 +48,9 @@ export async function resolveTenant(): Promise<ResolvedTenant> {
   if (!userId) redirect("/sign-in");
 
   const [companies, user] = await Promise.all([
-    getCompaniesByUser(userId),
+    // Bootstrap read: user GUC only, so it works under the NOBYPASSRLS app_user
+    // role (companies policy allows `user_id = current_user_id()`).
+    withUserContext(userId, () => getCompaniesByUser(userId)),
     currentUser(),
   ]);
 
