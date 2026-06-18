@@ -27,6 +27,11 @@ if (!DATABASE_URL) {
 // Supabase transaction pooler (port 6543) requires prepare: false
 // SSL required for Railway → Supabase connectivity
 const isPooler = DATABASE_URL?.includes(':6543') || DATABASE_URL?.includes('pooler.supabase.com');
+// SSL is required for Railway → Supabase, but must be off for local Postgres
+// (local dev / RLS test harness). Honour ?sslmode=disable or a localhost host.
+const disableSsl =
+  !!DATABASE_URL &&
+  (/[?&]sslmode=disable/.test(DATABASE_URL) || /@(localhost|127\.0\.0\.1)[:/]/.test(DATABASE_URL));
 
 // The base connection pool. Connects as whatever role DATABASE_URL specifies.
 // Used directly only by tenant-context (to open the per-request transaction)
@@ -36,7 +41,7 @@ export const basePool = DATABASE_URL
       max: 10,
       idle_timeout: 20,
       connect_timeout: 15,
-      ssl: 'require',
+      ssl: disableSsl ? false : 'require',
       prepare: isPooler ? false : true,
       onnotice: () => {},
     })

@@ -31,7 +31,9 @@
 --          per-segment wrapper.
 --       3. Add a real RLS isolation test against a DB with app_user (forged GUC
 --          → 0 rows).
---     Cutover checklist is at the bottom of this file.
+--     Full plan + route coverage checklist: see CUTOVER.md (the mechanism is
+--     PROVEN against a real NOBYPASSRLS role via scripts/verify-rls-isolation.ts).
+--     Cutover checklist is also at the bottom of this file.
 
 -- 1) Connection role WITHOUT superuser / bypassrls.
 DO $$

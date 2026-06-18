@@ -72,6 +72,32 @@ export async function withTenantContext<T>(
 }
 
 /**
+ * Run queries with ONLY the user GUC set (app.current_user_id), leaving
+ * app.current_company_id empty.
+ *
+ * Use for BOOTSTRAP / user-scoped reads that happen before a company is chosen
+ * — e.g. resolveTenant()'s getCompaniesByUser(userId), "list my companies", or
+ * resolving which company a user owns. The `companies` RLS policy is
+ * `(id = current_company_id()) OR (user_id = current_user_id())`, so with the
+ * user GUC set these queries correctly return the caller's own companies (and
+ * nothing else) under the NOBYPASSRLS app_user role.
+ */
+export async function withUserContext<T>(userId: string, fn: () => Promise<T>): Promise<T> {
+  if (!userId || typeof userId !== "string") {
+    throw new Error("withUserContext: userId is required (got " + JSON.stringify(userId) + ")");
+  }
+  if (!sql) {
+    throw new Error("withUserContext: DATABASE_URL is not configured");
+  }
+  return await sql.begin(async (tx) => {
+    const txSql = tx as unknown as Sql;
+    await txSql`SELECT set_config('app.current_user_id', ${userId}, true)`;
+    await txSql`SELECT set_config('app.current_company_id', '', true)`;
+    return await tenantStore.run({ ctx: { companyId: "", userId }, tx: txSql }, fn);
+  }) as T;
+}
+
+/**
  * Like withTenantContext but for system-level operations that legitimately
  * need to bypass tenant scope: cron jobs, webhook receivers, migrations.
  *
