@@ -56,8 +56,8 @@ The Autonomous is built by Chainflux and designed for traditional small business
 - Team access — multiple people can connect to the same agent
 
 ## Pricing
-- **Starter (Free):** 1,000 TA credits included (~20 conversations), then $19 per 1,000 credits. Claude Sonnet 4.6 included. WhatsApp integration. Community support.
-- **Growth ($49/month):** 5,000 TA credits per month, then $15 per 1,000 credits. BYOM support. WhatsApp + Slack. Priority support. Agent collaboration.
+- **Starter (Free):** 1,000 TA credits included (~20 conversations), then Starter overage of $19 per 1,000 credits. Claude Sonnet 4.6 included. WhatsApp integration. Community support.
+- **Growth ($49/month):** 5,000 TA credits per month, then Growth overage of $15 per 1,000 credits. BYOM support. WhatsApp + Slack. Priority support. Agent collaboration.
 - **Enterprise (Custom):** Unlimited TA credits with volume discounts. All integrations. Custom models & fine-tuning. Dedicated support. SOC2 & HIPAA compliance.
 - All plans: 50 credits per prompt. No credit card required for Starter.
 

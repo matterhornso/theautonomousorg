@@ -9,9 +9,9 @@
   },
   "api": {
     "type": "openapi",
-    "url": "https://theautonomous.org/openapi.json"
+    "url": "https://www.theautonomous.org/openapi.json"
   },
-  "logo_url": "https://theautonomous.org/icon.svg",
+  "logo_url": "https://www.theautonomous.org/icon.svg",
   "contact_email": "hello@theautonomous.org",
-  "legal_info_url": "https://theautonomous.org/terms"
+  "legal_info_url": "https://www.theautonomous.org/terms"
 }
