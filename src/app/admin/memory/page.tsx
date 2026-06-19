@@ -7,6 +7,7 @@ import {
   EmptyState,
 } from "../_components/primitives";
 import { BrainIcon, SearchIcon, ArrowUpRight } from "../_components/icons";
+import Link from "next/link";
 import { resolveTenant } from "../_lib/resolve-tenant";
 import {
   queryCompanyMemory,
@@ -64,14 +65,23 @@ export default async function MemoryPage({
           </span>
         }
         title="One brain. Every agent. Every artifact."
-        description="The shared memory every agent in this workspace reads from. Combines per-agent key-value memory, lessons from prior runs, vault documents, and recent activity into a single queryable surface. The closed loop made visible."
+        description="The shared memory every agent in this workspace reads from. Combines per-agent key-value memory, lessons from prior runs, the documents you upload, and recent activity into a single queryable surface. The closed loop made visible."
+        rail={
+          <Link
+            href="/admin/vault"
+            className="inline-flex items-center justify-center gap-2 font-medium rounded-md transition-all duration-200 px-3 py-1.5 text-[13px] border border-neutral-300 text-neutral-700 hover:border-neutral-400 hover:bg-neutral-50"
+          >
+            <ArrowUpRight className="w-3.5 h-3.5" />
+            Add documents
+          </Link>
+        }
       />
 
       {/* ── Summary strip ─────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-y-6 gap-x-4 -mx-6 px-6 py-6 border-y border-neutral-200/80">
         <SummaryStat label="Memory entries" value={summary.memoryEntries} />
         <SummaryStat label="Lessons" value={summary.lessons} />
-        <SummaryStat label="Vault docs" value={summary.vaultDocs} />
+        <SummaryStat label="Documents" value={summary.vaultDocs} />
         <SummaryStat label="Recent activity" value={summary.recentActivity} />
       </div>
 

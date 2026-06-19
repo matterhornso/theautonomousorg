@@ -37,11 +37,11 @@ export default async function VaultPage() {
         eyebrow={
           <span className="inline-flex items-center gap-2">
             <VaultIcon className="w-3.5 h-3.5" />
-            Vault
+            Memory · Documents
           </span>
         }
-        title="One store. Every agent. Every input."
-        description="Universal knowledge base for the workspace. Anything an agent reads, anything you feed in — voice memos, contracts, customer data, brand guides. Tenant-isolated via Postgres RLS; agents query a pgvector index over Cohere multilingual embeddings."
+        title="Feed the brain. Every document, every input."
+        description="Upload anything an agent should know — voice memos, contracts, customer data, brand guides. Each document is chunked, embedded (Cohere multilingual), and added to Memory, the shared brain every agent queries. Tenant-isolated via Postgres RLS over a pgvector index."
         rail={
           <>
             <ReembedButton />
