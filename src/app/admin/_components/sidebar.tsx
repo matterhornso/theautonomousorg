@@ -28,6 +28,8 @@ interface NavItem {
   icon: ComponentType<SVGProps<SVGSVGElement>>;
   /** Numeric badge (e.g. open approvals count). */
   badge?: number;
+  /** Render indented, as a child of the item above it. */
+  nested?: boolean;
 }
 
 const items: NavItem[] = [
@@ -38,8 +40,8 @@ const items: NavItem[] = [
   { href: "/admin/shopify", label: "Shopify Editor", icon: ShopIcon },
   { href: "/admin/approvals", label: "Approvals", icon: ApprovalsIcon, badge: 4 },
   { href: "/admin/notifications", label: "Notifications", icon: BellIcon, badge: 4 },
-  { href: "/admin/vault", label: "Vault", icon: VaultIcon },
   { href: "/admin/memory", label: "Memory", icon: BrainIcon },
+  { href: "/admin/vault", label: "Documents", icon: VaultIcon, nested: true },
   { href: "/admin/integrations", label: "Integrations", icon: FlowIcon },
   { href: "/admin/billing", label: "Billing", icon: BillingIcon },
   { href: "/admin/provisioning", label: "Provisioning", icon: ProvisionIcon },
@@ -260,7 +262,9 @@ export function AdminSidebar({
                 )}
                 <Link
                   href={item.href}
-                  className={`flex items-center gap-3 px-4 py-2 rounded-md text-[13.5px] transition-colors ${
+                  className={`flex items-center gap-3 pr-4 py-2 rounded-md text-[13.5px] transition-colors ${
+                    item.nested ? "pl-9" : "pl-4"
+                  } ${
                     active
                       ? "bg-white text-primary"
                       : "text-neutral-600 hover:text-primary hover:bg-white/60"
