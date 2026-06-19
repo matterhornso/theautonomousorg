@@ -1,6 +1,7 @@
 import "server-only";
 
 import { resolveTenant, type ResolvedTenant } from "./resolve-tenant";
+import { inTenant } from "@/lib/with-tenant-route";
 import * as mock from "../_data/mock";
 import type {
   AdminNotification,
@@ -53,11 +54,17 @@ export interface AdminBootstrap {
 export async function loadAdminBootstrap(): Promise<AdminBootstrap> {
   const tenant = await resolveTenant();
 
-  const [pendingApprovals, notifications, vaultDocs] = await Promise.all([
-    loadPendingApprovals(tenant.firm.id),
-    loadNotifications(tenant.firm.id),
-    loadVaultDocs(tenant.firm.id),
-  ]);
+  // Company-scoped reads run inside the tenant tx (RLS-enforced after cutover).
+  const [pendingApprovals, notifications, vaultDocs] = await inTenant(
+    tenant.firm.id,
+    tenant.user.id,
+    () =>
+      Promise.all([
+        loadPendingApprovals(tenant.firm.id),
+        loadNotifications(tenant.firm.id),
+        loadVaultDocs(tenant.firm.id),
+      ])
+  );
 
   return {
     tenant,

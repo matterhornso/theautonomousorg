@@ -23,14 +23,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Query must be at least 2 characters" }, { status: 400 });
   }
 
-  const company = await getCompany(companyId);
-  if (!company || company.user_id !== userId) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
-  const results = await inTenant(companyId, userId, () =>
-    searchMessages(companyId, query, { agentId, limit })
-  );
-
-  return NextResponse.json({ results, query, total: results.length });
+  // Whole handler runs in the tenant tx so the ownership check + the read are
+  // both RLS-enforced after the app_user cutover.
+  return inTenant(companyId, userId, async () => {
+    const company = await getCompany(companyId);
+    if (!company || company.user_id !== userId) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    const results = await searchMessages(companyId, query, { agentId, limit });
+    return NextResponse.json({ results, query, total: results.length });
+  });
 }
