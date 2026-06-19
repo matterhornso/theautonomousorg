@@ -54,17 +54,23 @@ export interface AdminBootstrap {
 export async function loadAdminBootstrap(): Promise<AdminBootstrap> {
   const tenant = await resolveTenant();
 
-  // Company-scoped reads run inside the tenant tx (RLS-enforced after cutover).
-  const [pendingApprovals, notifications, vaultDocs] = await inTenant(
-    tenant.firm.id,
-    tenant.user.id,
-    () =>
-      Promise.all([
-        loadPendingApprovals(tenant.firm.id),
-        loadNotifications(tenant.firm.id),
-        loadVaultDocs(tenant.firm.id),
-      ])
-  );
+  // Company-scoped reads, each in its OWN tenant tx (RLS-enforced after cutover).
+  // NB: must NOT share one transaction across a Promise.all — a transaction
+  // connection can't run concurrent queries. Each loader gets its own pooled
+  // connection, and a failure (incl. opening the tx) falls back to its fixture
+  // so the overview never crashes.
+  const safeLoad = async <T>(fn: () => Promise<T>, fallback: T): Promise<T> => {
+    try {
+      return await inTenant(tenant.firm.id, tenant.user.id, fn);
+    } catch {
+      return fallback;
+    }
+  };
+  const [pendingApprovals, notifications, vaultDocs] = await Promise.all([
+    safeLoad(() => loadPendingApprovals(tenant.firm.id), mock.pendingApprovals),
+    safeLoad(() => loadNotifications(tenant.firm.id), mock.notifications),
+    safeLoad(() => loadVaultDocs(tenant.firm.id), mock.vaultDocs),
+  ]);
 
   return {
     tenant,
